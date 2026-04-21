@@ -1,265 +1,175 @@
-# Bidforge
-Event-driven real-time freelance marketplace built with Spring Boot, Kafka, Redis, WebSockets, and microservices
+Bidforge
+🚀 Real-Time Freelance Marketplace (Event-Driven Backend)
 
+A production-grade backend system inspired by platforms like Fiverr and Upwork, designed to demonstrate modern backend engineering practices including microservices, event-driven architecture, real-time communication, and scalable cloud deployment.
 
-# 🚀 Real-Time Freelance Marketplace (Event-Driven Backend)
+⚡ This project focuses on engineering depth, scalability, and real-world system design, not just features.
 
-## 📌 Overview
+📌 Overview
 
-A production-grade backend system inspired by platforms like Fiverr/Upwork, designed to demonstrate **modern backend engineering practices** including microservices, event-driven architecture, real-time communication, and scalable cloud deployment.
+This system enables clients to post jobs, freelancers to bid, and both parties to communicate and complete work using a secure escrow-based payment system.
 
-This project focuses on **engineering depth**, not just features.
+Built with:
 
----
+Event-driven architecture (Kafka)
+Microservices (Spring Boot)
+Real-time communication (WebSockets)
+Distributed caching (Redis)
+Cloud-native deployment (AWS)
+🧠 Key Highlights
+⚡ Event-driven architecture using Apache Kafka
+🔄 Microservices with Spring Boot & Spring Cloud
+💬 Real-time communication via WebSockets
+⚡ Redis for caching, rate limiting, and pub/sub
+💳 Escrow-based payment workflow (simulated)
+🔐 Secure authentication with JWT + OAuth2
+☁️ Cloud-ready architecture (AWS)
+🏗️ Architecture
+🔹 High-Level Components
+API Gateway
+Auth Service
+User Service
+Job Service
+Bidding Service
+Chat Service
+Payment Service
+Notification Service
+Matching Service
+🔹 Architecture Principles
+Database per service
+Loose coupling via Kafka
+Eventual consistency
+Scalable stateless services
+Separation of sync vs async communication
+🔄 Communication Patterns
+✅ Synchronous (Immediate Response)
+REST APIs (via API Gateway)
+⚡ Asynchronous (Event-Driven)
+Kafka topics for inter-service communication
+⚡ Event-Driven Design (Kafka)
+📌 Topics
+job_created
+bid_placed
+payment_success
+message_sent
+🔄 Example Flow
+Client creates job → job_created
+Notification service consumes → notifies freelancers
+Freelancer places bid → bid_placed
+Real-time update pushed via WebSocket
+🌐 Real-Time Features
+Live bidding updates
+Real-time chat system
+Typing indicators
+Online/offline presence tracking
+💳 Escrow Payment Workflow
+Client funds are locked in escrow
+Freelancer completes job
+Funds are released upon approval
+Payment States:
+INITIATED
+HELD (Escrow)
+RELEASED
+REFUNDED
+FAILED
+🗄️ Tech Stack
+Layer	Technology
+Backend	Java 21, Spring Boot
+Microservices	Spring Cloud
+Messaging	Apache Kafka
+Database	PostgreSQL
+Cache	Redis
+Realtime	WebSockets
+Container	Docker
+Cloud	AWS (EC2, RDS, S3, CloudWatch)
+🔐 Security
+JWT-based authentication
+OAuth2 login support
+Role-Based Access Control (RBAC)
+Client
+Freelancer
+Admin
+⚙️ API Gateway Responsibilities
+Request routing
+Authentication validation
+Rate limiting (Redis-based)
+Logging & monitoring
+Load balancing
+Circuit breaking (Resilience4j)
+🧠 Advanced Engineering Concepts
+✅ Event Handling
+Idempotent consumers
+Retry mechanisms
+Dead Letter Queues (DLQ)
+✅ Data Consistency
+Eventual consistency
+Outbox pattern (recommended)
+✅ Distributed Transactions
+Saga pattern for payment & job workflows
+📊 Observability
+Logging (centralized)
+Metrics (Prometheus + Grafana)
+Distributed tracing (Zipkin/Jaeger)
+Health checks (Spring Actuator)
+🧩 Core Features
+Job posting & management
+Real-time bidding system
+Chat between client & freelancer
+Escrow payment system
+Notification system (email/in-app)
+Smart freelancer-job matching
+🤖 Matching Service
 
-## 🧠 Key Highlights
+Matches freelancers to jobs based on:
 
-- ⚡ Event-driven architecture using **Apache Kafka**
-    
-- 🔄 Microservices with **Spring Boot**
-    
-- 💬 Real-time communication using **WebSockets**
-    
-- ⚡ Redis for caching, rate limiting, and pub/sub
-    
-- 💳 Escrow-based payment workflow (simulated)
-    
-- ☁️ AWS-ready deployment architecture
-    
-- 🔐 Secure authentication (JWT + OAuth2)
-    
-
----
-
-## 🏗️ Architecture
-
-### High-Level Architecture Diagram
-
-```mermaid
-graph TD
-    Client[Client Apps (Web/Mobile)] -->|HTTP/WebSocket| APIGW[API Gateway]
-
-    APIGW --> AUTH[Auth Service]
-    APIGW --> USER[User Service]
-    APIGW --> JOB[Job Service]
-    APIGW --> BID[Bidding Service]
-    APIGW --> CHAT[Chat Service (WebSocket)]
-    APIGW --> PAY[Payment Service]
-
-    JOB -->|job_created| KAFKA[(Kafka Cluster)]
-    BID -->|bid_placed| KAFKA
-    PAY -->|payment_success| KAFKA
-    CHAT -->|message_sent| KAFKA
-
-    KAFKA --> NOTIF[Notification Service]
-    KAFKA --> MATCH[Matching Service]
-
-    CHAT <-->|Pub/Sub| REDIS[(Redis)]
-    BID <-->|Cache/Rate Limit| REDIS
-    USER <-->|Cache| REDIS
-
-    AUTH --> DB1[(PostgreSQL)]
-    USER --> DB2[(PostgreSQL)]
-    JOB --> DB3[(PostgreSQL)]
-    BID --> DB4[(PostgreSQL)]
-    CHAT --> DB5[(PostgreSQL)]
-    PAY --> DB6[(PostgreSQL)]
-
-    PAY --> EXT[Payment Gateway (Stripe/Razorpay)]
-
-    NOTIF --> EMAIL[Email/SMS Service]
-
-    subgraph AWS Cloud
-        APIGW
-        AUTH
-        USER
-        JOB
-        BID
-        CHAT
-        PAY
-        NOTIF
-        MATCH
-        REDIS
-        KAFKA
-    end
-```
-
-### Microservices
-
-- **API Gateway** – Entry point, routing, auth validation
-    
-- **Auth Service** – JWT, OAuth2 login
-    
-- **User Service** – Profiles, roles, ratings
-    
-- **Job Service** – Job creation & management
-    
-- **Bidding Service** – Real-time bidding logic
-    
-- **Chat Service** – WebSocket-based messaging
-    
-- **Payment Service** – Escrow & transaction handling
-    
-- **Notification Service** – Email & in-app notifications (Kafka consumers)
-    
-- **Matching Service** – Async freelancer-job matching (Kafka consumer)
-    
-
----
-
-## ⚡ Event-Driven Design (Kafka)
-
-### Topics
-
-- `job_created`
-    
-- `bid_placed`
-    
-- `payment_success`
-    
-- `message_sent`
-    
-
-### Example Flow
-
-1. User creates job → `job_created`
-    
-2. Notification service consumes → notifies freelancers
-    
-3. Freelancer places bid → `bid_placed`
-    
-4. WebSocket service pushes update in real-time
-    
-
----
-
-## 🌐 Real-Time Features
-
-- Live bidding updates
-    
-- Real-time chat
-    
-- Typing indicators
-    
-- Online/offline presence tracking
-    
-
----
-
-## 🗄️ Tech Stack
-
-- **Backend:** Java 21, Spring Boot
-    
-- **Microservices:** Spring Cloud
-    
-- **Messaging:** Apache Kafka
-    
-- **Database:** PostgreSQL
-    
-- **Cache:** Redis
-    
-- **Realtime:** WebSockets
-    
-- **Containerization:** Docker
-    
-- **Cloud:** AWS (EC2, RDS, S3, CloudWatch)
-    
-
----
-
-## 🔥 Advanced Features
-
-### 💡 Escrow Payment System
-
-- Funds locked on hiring
-    
-- Released after job completion
-    
-- Handles retries & failures
-    
-
-### 💡 Rate Limiting
-
-- Redis-based API throttling
-    
-- Prevents abuse/spam
-    
-
-### 💡 Smart Matching
-
-- Kafka-based async processing
-    
-- Matches freelancers to jobs
-    
-
-### 💡 Observability
-
-- Logging & monitoring
-    
-- Health checks (Spring Actuator)
-    
-
----
-
-## 🧪 Running Locally
-
-```bash
-# Clone repo
+Skills
+Ratings
+Past performance
+Availability
+🚨 Failure Handling
+Kafka failures handled via retries
+Payment idempotency to prevent double charges
+Service fallback strategies
+Dead letter queues for failed events
+🧪 Running Locally
+# Clone repository
 git clone <repo-url>
 
-# Start services
+# Start all services
 docker-compose up
 
 # Run individual service
 cd auth-service
 mvn spring-boot:run
-```
-
----
-
-## ☁️ Deployment (AWS)
-
-- EC2 / ECS for services
-    
-- RDS for PostgreSQL
-    
-- S3 for file storage
-    
-- MSK (Kafka) or self-hosted Kafka
-    
-- CloudWatch for logs
-    
-
----
-
-## 📊 Future Improvements
-
-- ElasticSearch for advanced search
-    
-- WebRTC for video communication
-    
-- AI-based freelancer recommendation
-    
-- Distributed tracing (Zipkin)
-    
-
----
-
-## 💼 Resume Impact
+☁️ Deployment (AWS)
+EC2 / ECS → Microservices
+RDS → PostgreSQL
+S3 → File storage
+MSK / Kafka Cluster → Event streaming
+CloudWatch → Logging & monitoring
+📈 Scalability Considerations
+Horizontal scaling of services
+Redis caching for performance
+Kafka partitioning for throughput
+Read replicas for databases
+🔮 Future Improvements
+🔍 Elasticsearch for advanced job search
+🎥 WebRTC for video communication
+🤖 AI-based freelancer recommendations
+🧵 Full distributed tracing implementation
+🛡️ Fraud detection system
+⚖️ Dispute resolution system
+💼 Resume Impact
 
 This project demonstrates:
 
-- Scalable microservices architecture
-    
-- Event-driven system design
-    
-- Real-time system implementation
-    
-- Production-level backend engineering
-    
-
----
-
-## 📬 Contact
-
-For queries or collaboration, feel free to connect.
+Scalable microservices architecture
+Event-driven system design
+Real-time system implementation
+Distributed systems engineering
+Payment workflow design (escrow)
+📚 Learning Outcomes
+Designing production-grade backend systems
+Handling distributed system failures
+Building real-time applications
+Implementing event-driven architecture
