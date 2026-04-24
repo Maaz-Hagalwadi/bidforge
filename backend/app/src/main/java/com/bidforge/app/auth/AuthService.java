@@ -1,6 +1,7 @@
 package com.bidforge.app.auth;
 
 import com.bidforge.app.auth.dto.request.LoginRequest;
+import com.bidforge.app.auth.dto.request.RefreshTokenRequest;
 import com.bidforge.app.auth.dto.request.RegisterRequest;
 import com.bidforge.app.auth.dto.response.LoginResponse;
 import com.bidforge.app.common.exception.EmailAlreadyExistsException;
@@ -21,6 +22,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     public UserResponse register(RegisterRequest request) {
         String email = request.getEmail().toLowerCase().trim();
@@ -62,10 +64,29 @@ public class AuthService {
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
         return LoginResponse.builder()
                 .message("Login successful")
                 .accessToken(jwtService.generateToken(user))
+                .refreshToken(refreshToken.getToken())
                 .tokenType("Bearer")
                 .build();
+    }
+
+    public LoginResponse refresh(RefreshTokenRequest request) {
+        RefreshToken newRefreshToken = refreshTokenService.validateAndRotate(request.getRefreshToken());
+        User user = newRefreshToken.getUser();
+
+        return LoginResponse.builder()
+                .message("Token refreshed")
+                .accessToken(jwtService.generateToken(user))
+                .refreshToken(newRefreshToken.getToken())
+                .tokenType("Bearer")
+                .build();
+    }
+
+    public void logout(RefreshTokenRequest request) {
+        refreshTokenService.revokeByToken(request.getRefreshToken());
     }
 }
