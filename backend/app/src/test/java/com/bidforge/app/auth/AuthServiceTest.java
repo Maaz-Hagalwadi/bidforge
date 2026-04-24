@@ -31,6 +31,7 @@ class AuthServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
+    @Mock private RefreshTokenService refreshTokenService;
 
     @InjectMocks private AuthService authService;
 
@@ -40,7 +41,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         registerRequest = new RegisterRequest(
-                "John Doe", "john@example.com", "Password1@", null);
+                "John Doe", "john@example.com", "Password1@", "+12345678901");
 
         savedUser = User.builder()
                 .id(1L)
@@ -79,7 +80,7 @@ class AuthServiceTest {
 
     @Test
     void register_throwsWhenEmailExists() {
-        when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(savedUser));
+        when(userRepository.findByEmail(any())).thenReturn(Optional.of(savedUser));
 
         assertThatThrownBy(() -> authService.register(registerRequest))
                 .isInstanceOf(EmailAlreadyExistsException.class);
@@ -88,9 +89,9 @@ class AuthServiceTest {
     @Test
     void register_throwsWhenPhoneExists() {
         RegisterRequest reqWithPhone = new RegisterRequest(
-                "Jane", "jane@example.com", "Password1@", "+1234567890");
+                "Jane", "jane@example.com", "Password1@", "+19876543210");
         when(userRepository.findByEmail(any())).thenReturn(Optional.empty());
-        when(userRepository.findByPhoneNumber("+1234567890"))
+        when(userRepository.findByPhoneNumber("+19876543210"))
                 .thenReturn(Optional.of(savedUser));
 
         assertThatThrownBy(() -> authService.register(reqWithPhone))
@@ -99,14 +100,17 @@ class AuthServiceTest {
 
     @Test
     void login_success_returnsToken() {
-        LoginRequest loginRequest = new LoginRequest("john@example.com", "Password1@");
+        LoginRequest loginRequest = new LoginRequest("John@Example.COM", "Password1@");
         when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(savedUser));
         when(passwordEncoder.matches("Password1@", "encoded")).thenReturn(true);
         when(jwtService.generateToken(savedUser)).thenReturn("jwt-token");
+        when(refreshTokenService.createRefreshToken(savedUser)).thenReturn(
+                RefreshToken.builder().token("refresh-token-uuid").user(savedUser).build());
 
         LoginResponse response = authService.login(loginRequest);
 
-        assertThat(response.getToken()).isEqualTo("jwt-token");
+        assertThat(response.getAccessToken()).isEqualTo("jwt-token");
+        assertThat(response.getRefreshToken()).isEqualTo("refresh-token-uuid");
         assertThat(response.getMessage()).isEqualTo("Login successful");
     }
 

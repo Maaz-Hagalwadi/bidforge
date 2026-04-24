@@ -1,6 +1,7 @@
 package com.bidforge.app.auth;
 
 import com.bidforge.app.auth.dto.request.LoginRequest;
+import com.bidforge.app.auth.dto.request.RefreshTokenRequest;
 import com.bidforge.app.auth.dto.request.RegisterRequest;
 import com.bidforge.app.auth.dto.response.LoginResponse;
 import com.bidforge.app.user.dto.response.UserResponse;
@@ -30,5 +31,16 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<LoginResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
     }
 }
