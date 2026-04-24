@@ -16,4 +16,5 @@ public class UserResponse {
     private String phoneNumber;
     private Role role;
     private Double rating;
+    private String profileImageUrl;
 }
