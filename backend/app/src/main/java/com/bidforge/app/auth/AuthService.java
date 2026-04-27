@@ -35,12 +35,15 @@ public class AuthService {
                     .ifPresent(u -> { throw new PhoneAlreadyExistsException("Phone number already in use"); });
         }
 
+        Role role = (request.getRole() != null && request.getRole() != Role.ADMIN)
+                ? request.getRole() : Role.CLIENT;
+
         User user = User.builder()
                 .name(request.getName())
                 .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phoneNumber(request.getPhoneNumber())
-                .role(Role.CLIENT)
+                .role(role)
                 .build();
 
         User saved = userRepository.save(user);
