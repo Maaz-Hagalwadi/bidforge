@@ -47,6 +47,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/auth/register",
                                 "/auth/refresh", "/auth/logout").permitAll()
+                        .requestMatchers("/client/**").hasRole("CLIENT")
+                        .requestMatchers("/freelancer/**").hasRole("FREELANCER")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    user-select: none;
+  }
+
+  .field-error {
+    @apply text-xs text-red-400 mt-1 min-h-[16px];
+  }
+
+  .auth-input {
+    @apply w-full bg-slate-900/50 border border-slate-800 rounded-lg py-md pl-12 pr-md text-white placeholder-slate-600
+      focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all;
+  }
+
+  .tonal-card {
+    background-color: #ffffff;
+    border: 1px solid #E9ECEF;
+    box-shadow: 0px 4px 12px rgba(10, 25, 47, 0.05);
+    transition: all 200ms ease;
+  }
+
+  .tonal-card:hover {
+    box-shadow: 0px 8px 24px rgba(10, 25, 47, 0.08);
+    border-color: rgba(0, 89, 187, 0.2);
+  }
+}

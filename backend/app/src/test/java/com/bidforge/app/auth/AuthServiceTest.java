@@ -41,7 +41,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         registerRequest = new RegisterRequest(
-                "John Doe", "john@example.com", "Password1@", "+12345678901");
+                "John Doe", "john@example.com", "Password1@", "+12345678901", null);
 
         savedUser = User.builder()
                 .id(1L)
@@ -89,7 +89,7 @@ class AuthServiceTest {
     @Test
     void register_throwsWhenPhoneExists() {
         RegisterRequest reqWithPhone = new RegisterRequest(
-                "Jane", "jane@example.com", "Password1@", "+19876543210");
+                "Jane", "jane@example.com", "Password1@", "+19876543210", null);
         when(userRepository.findByEmail(any())).thenReturn(Optional.empty());
         when(userRepository.findByPhoneNumber("+19876543210"))
                 .thenReturn(Optional.of(savedUser));

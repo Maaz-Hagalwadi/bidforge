@@ -36,7 +36,7 @@ class AuthControllerTest {
 
     @BeforeEach
     void registerBaseUser() throws Exception {
-        RegisterRequest req = new RegisterRequest(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_PHONE);
+        RegisterRequest req = new RegisterRequest(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_PHONE, null);
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)));
@@ -44,7 +44,7 @@ class AuthControllerTest {
 
     @Test
     void register_validRequest_returns201WithClientRole() throws Exception {
-        RegisterRequest req = new RegisterRequest("New User", "new@example.com", VALID_PASSWORD, "+19876543210");
+        RegisterRequest req = new RegisterRequest("New User", "new@example.com", VALID_PASSWORD, "+19876543210", null);
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -56,7 +56,7 @@ class AuthControllerTest {
 
     @Test
     void register_duplicateEmail_returns400() throws Exception {
-        RegisterRequest req = new RegisterRequest(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_PHONE);
+        RegisterRequest req = new RegisterRequest(VALID_NAME, VALID_EMAIL, VALID_PASSWORD, VALID_PHONE, null);
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -67,7 +67,7 @@ class AuthControllerTest {
 
     @Test
     void register_invalidEmail_returns400() throws Exception {
-        RegisterRequest req = new RegisterRequest(VALID_NAME, "not-an-email", VALID_PASSWORD, VALID_PHONE);
+        RegisterRequest req = new RegisterRequest(VALID_NAME, "not-an-email", VALID_PASSWORD, VALID_PHONE, null);
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -79,7 +79,7 @@ class AuthControllerTest {
 
     @Test
     void register_weakPassword_returns400() throws Exception {
-        RegisterRequest req = new RegisterRequest(VALID_NAME, "new2@example.com", "weak", VALID_PHONE);
+        RegisterRequest req = new RegisterRequest(VALID_NAME, "new2@example.com", "weak", VALID_PHONE, null);
 
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

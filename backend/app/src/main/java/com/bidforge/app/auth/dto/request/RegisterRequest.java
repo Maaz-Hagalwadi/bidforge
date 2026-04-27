@@ -1,5 +1,6 @@
 package com.bidforge.app.auth.dto.request;
 
+import com.bidforge.app.user.Role;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
@@ -30,4 +31,6 @@ public class RegisterRequest {
     @NotBlank(message = "Phone number is required")
     @Pattern(regexp = "^\\+?[1-9]\\d{6,14}$", message = "Invalid phone number format")
     private String phoneNumber;
+
+    private Role role;
 }
