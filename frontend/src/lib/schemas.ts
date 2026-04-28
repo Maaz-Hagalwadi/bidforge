@@ -26,7 +26,10 @@ export const postJobSchema = z.object({
   description: z.string().min(20, 'Description must be at least 20 characters').max(2000),
   budgetMin: z.coerce.number({ invalid_type_error: 'Enter a number' }).positive('Must be > 0'),
   budgetMax: z.coerce.number({ invalid_type_error: 'Enter a number' }).positive('Must be > 0'),
-  deadline: z.string().optional(),
+  deadline: z.string().optional().refine(
+    val => !val || new Date(val) >= new Date(new Date().toDateString()),
+    { message: 'Deadline cannot be in the past' }
+  ),
   attachmentUrl: z.string().optional(),
   visibility: z.enum(['PUBLIC', 'INVITE_ONLY']),
 }).refine(d => d.budgetMax >= d.budgetMin, {

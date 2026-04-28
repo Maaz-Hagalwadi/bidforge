@@ -1,11 +1,13 @@
 package com.bidforge.app.job_invite;
 
 import com.bidforge.app.common.exception.AccessDeniedException;
+import com.bidforge.app.common.exception.InviteAlreadyProcessedException;
+import com.bidforge.app.common.exception.InviteNotFoundException;
 import com.bidforge.app.common.exception.JobNotFoundException;
 import com.bidforge.app.job.Job;
 import com.bidforge.app.job.JobRepository;
+import com.bidforge.app.job.dto.response.JobResponse;
 import com.bidforge.app.job.enums.Visibility;
-import com.bidforge.app.job_invite.dto.InvitedJobResponse;
 import com.bidforge.app.user.User;
 import com.bidforge.app.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -57,20 +59,60 @@ public class JobInviteService {
         }
     }
 
-    // 👉 Get invited jobs (freelancer)
-    public List<InvitedJobResponse> getMyInvites(User freelancer) {
+    public void acceptInvite(UUID inviteId, User freelancer) {
+
+        JobInvite invite = jobInviteRepository
+                .findByIdAndFreelancer(inviteId, freelancer)
+                .orElseThrow(() -> new InviteNotFoundException("Invite not found"));
+
+        if (invite.getStatus() != InviteStatus.INVITED) {
+            throw new InviteAlreadyProcessedException("Invite already processed");
+        }
+
+        invite.setStatus(InviteStatus.ACCEPTED);
+        jobInviteRepository.save(invite);
+    }
+
+    public void declineInvite(UUID inviteId, User freelancer) {
+
+        JobInvite invite = jobInviteRepository
+                .findByIdAndFreelancer(inviteId, freelancer)
+                .orElseThrow(() -> new InviteNotFoundException("Invite not found"));
+
+        if (invite.getStatus() != InviteStatus.INVITED) {
+            throw new InviteAlreadyProcessedException("Invite already processed");
+        }
+
+        invite.setStatus(InviteStatus.DECLINED);
+        jobInviteRepository.save(invite);
+    }
+
+    // 👉 Get invited jobs (freelancer) — returns full job data
+    public List<JobResponse> getMyInvites(User freelancer) {
 
         return jobInviteRepository
                 .findByFreelancerAndStatus(freelancer, InviteStatus.INVITED)
                 .stream()
-                .map(invite -> InvitedJobResponse.builder()
-                        .jobId(invite.getJob().getId())
-                        .title(invite.getJob().getTitle())
-                        .category(invite.getJob().getCategory())
-                        .budgetMin(invite.getJob().getBudgetMin())
-                        .budgetMax(invite.getJob().getBudgetMax())
-                        .build()
-                )
+                .map(invite -> {
+                    Job job = invite.getJob();
+                    return JobResponse.builder()
+                            .id(job.getId())
+                            .title(job.getTitle())
+                            .category(job.getCategory())
+                            .description(job.getDescription())
+                            .requiredSkills(job.getRequiredSkills())
+                            .budgetType(job.getBudgetType())
+                            .budgetMin(job.getBudgetMin())
+                            .budgetMax(job.getBudgetMax())
+                            .deadline(job.getDeadline())
+                            .attachmentUrl(job.getAttachmentUrl())
+                            .visibility(job.getVisibility())
+                            .status(job.getStatus())
+                            .clientId(job.getClient().getId())
+                            .createdAt(job.getCreatedAt())
+                            .updatedAt(job.getUpdatedAt())
+                            .build();
+                })
                 .toList();
     }
 }

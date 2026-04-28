@@ -37,6 +37,7 @@ public class CreateJobRequest {
     private Double budgetMax;
 
     // Timeline
+    @FutureOrPresent(message = "Deadline must be today or in the future")
     private LocalDateTime deadline;
 
     // File

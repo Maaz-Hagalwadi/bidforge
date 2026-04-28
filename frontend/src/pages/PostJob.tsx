@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
+import { usersApi, type FreelancerSearchResult } from '@/api/users';
 import { Navbar } from '@/components/Navbar';
 import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
@@ -56,18 +57,26 @@ export default function PostJob() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [activeStep, setActiveStep] = useState('job-details');
+  const [invitees, setInvitees] = useState<FreelancerSearchResult[]>([]);
+  const [inviteQuery, setInviteQuery] = useState('');
+  const [inviteResults, setInviteResults] = useState<FreelancerSearchResult[]>([]);
+  const [inviteSearching, setInviteSearching] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
   const draftRef = useRef(false);
+  const inviteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<PostJobFormValues>({
     resolver: zodResolver(postJobSchema),
     defaultValues: { visibility: 'PUBLIC' },
   });
+
+  const visibility = watch('visibility');
 
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
@@ -93,6 +102,27 @@ export default function PostJob() {
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
   const initials = user ? getInitials(user.name) : '?';
 
+  const searchInvite = useCallback((q: string) => {
+    if (!q.trim()) { setInviteResults([]); return; }
+    setInviteSearching(true);
+    usersApi.searchFreelancers(q)
+      .then(setInviteResults)
+      .catch(() => setInviteResults([]))
+      .finally(() => setInviteSearching(false));
+  }, []);
+
+  useEffect(() => {
+    if (inviteDebounceRef.current) clearTimeout(inviteDebounceRef.current);
+    inviteDebounceRef.current = setTimeout(() => searchInvite(inviteQuery), 300);
+    return () => { if (inviteDebounceRef.current) clearTimeout(inviteDebounceRef.current); };
+  }, [inviteQuery, searchInvite]);
+
+  const addInvitee = (f: FreelancerSearchResult) => {
+    if (!invitees.find(i => i.id === f.id)) setInvitees(prev => [...prev, f]);
+    setInviteQuery('');
+    setInviteResults([]);
+  };
+
   const addSkill = () => {
     const s = skillInput.trim();
     if (s && !skills.includes(s)) setSkills(prev => [...prev, s]);
@@ -107,7 +137,7 @@ export default function PostJob() {
     setSubmitting(true);
     setSubmitError('');
     try {
-      await jobsApi.create({
+      const job = await jobsApi.create({
         title: values.title,
         category: values.category,
         description: values.description,
@@ -120,6 +150,9 @@ export default function PostJob() {
         visibility: values.visibility,
         draft: draftRef.current,
       });
+      if (invitees.length > 0) {
+        await Promise.allSettled(invitees.map(f => jobsApi.inviteFreelancer(job.id, f.id)));
+      }
       navigate('/client/dashboard');
     } catch {
       setSubmitError('Failed to submit. Please try again.');
@@ -309,9 +342,11 @@ export default function PostJob() {
                       <label className="block text-sm font-semibold text-slate-700 mb-1.5">Deadline</label>
                       <div className="relative">
                         <input {...register('deadline')} type="date"
+                          min={new Date().toISOString().split('T')[0]}
                           className="w-full px-4 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all" />
                         <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">calendar_today</span>
                       </div>
+                      {errors.deadline && <p className="mt-1 text-xs text-red-500">{errors.deadline.message}</p>}
                     </div>
                   </section>
 
@@ -417,6 +452,80 @@ export default function PostJob() {
                   </div>
                   {errors.visibility && <p className="text-xs text-red-500 mt-2">{errors.visibility.message}</p>}
                 </div>
+
+                {/* Invite Freelancers (only when INVITE_ONLY selected) */}
+                {visibility === 'INVITE_ONLY' && (
+                  <div className="tonal-card rounded-xl p-6 space-y-4">
+                    <div className="flex items-center gap-2 font-bold text-on-surface">
+                      <span className="material-symbols-outlined text-secondary">person_add</span>
+                      <span>Invite Freelancers</span>
+                    </div>
+
+                    {/* Selected invitees */}
+                    {invitees.length > 0 && (
+                      <div className="space-y-2">
+                        {invitees.map(f => (
+                          <div key={f.id} className="flex items-center gap-2 px-3 py-2 bg-secondary/5 border border-secondary/20 rounded-lg">
+                            <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                              {f.profileImageUrl
+                                ? <img src={f.profileImageUrl} className="w-7 h-7 rounded-full object-cover" alt={f.name} />
+                                : getInitials(f.name)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-on-surface truncate">{f.name}</p>
+                              <p className="text-[11px] text-on-surface-variant truncate">{f.email}</p>
+                            </div>
+                            <button type="button" onClick={() => setInvitees(prev => prev.filter(i => i.id !== f.id))}
+                              className="p-0.5 text-on-surface-variant hover:text-on-surface transition-colors flex-shrink-0">
+                              <span className="material-symbols-outlined text-[16px]">close</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Search input */}
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">search</span>
+                      <input
+                        type="text"
+                        value={inviteQuery}
+                        onChange={e => setInviteQuery(e.target.value)}
+                        placeholder="Search by name or email…"
+                        className="w-full pl-8 pr-3 py-2 border border-outline-variant rounded-lg text-xs focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all"
+                      />
+                      {(inviteResults.length > 0 || inviteSearching || inviteQuery.trim()) && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-outline-variant rounded-lg shadow-lg z-10 overflow-hidden">
+                          {inviteSearching ? (
+                            <div className="px-3 py-2.5 text-xs text-on-surface-variant">Searching…</div>
+                          ) : inviteResults.length === 0 ? (
+                            <div className="px-3 py-2.5 text-xs text-on-surface-variant">No freelancers found.</div>
+                          ) : (
+                            inviteResults
+                              .filter(r => !invitees.find(i => i.id === r.id))
+                              .map(r => (
+                                <button key={r.id} type="button" onClick={() => addInvitee(r)}
+                                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
+                                  <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                                    {r.profileImageUrl
+                                      ? <img src={r.profileImageUrl} className="w-7 h-7 rounded-full object-cover" alt={r.name} />
+                                      : getInitials(r.name)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-semibold text-on-surface truncate">{r.name}</p>
+                                    <p className="text-[11px] text-on-surface-variant truncate">{r.email}</p>
+                                  </div>
+                                </button>
+                              ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-on-surface-variant">
+                      Invites will be sent automatically when you post the job.
+                    </p>
+                  </div>
+                )}
 
               </div>
             </div>

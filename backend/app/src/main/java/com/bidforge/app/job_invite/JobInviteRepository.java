@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface JobInviteRepository extends JpaRepository<JobInvite, UUID> {
@@ -18,4 +19,6 @@ public interface JobInviteRepository extends JpaRepository<JobInvite, UUID> {
 
     @Query("SELECT i.job.id FROM JobInvite i WHERE i.freelancer.id = :freelancerId")
     List<UUID> findJobIdsByFreelancerId(@Param("freelancerId") Long freelancerId);
+
+    Optional<JobInvite> findByIdAndFreelancer(UUID id, User freelancer);
 }

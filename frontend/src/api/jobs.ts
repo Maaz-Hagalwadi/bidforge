@@ -15,7 +15,7 @@ export const jobsApi = {
     api.get<JobResponse[]>('/jobs/my').then(r => r.data),
 
   inviteFreelancer: (jobId: string, freelancerId: number) =>
-    api.post(`/jobs/${jobId}/invite`, { freelancerId }).then(r => r.data),
+    api.post(`/jobs/${jobId}/invite/${freelancerId}`).then(r => r.data),
 
   getInvitedJobs: () =>
     api.get<JobResponse[]>('/jobs/invited').then(r => r.data),

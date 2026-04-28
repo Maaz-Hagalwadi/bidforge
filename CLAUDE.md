@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth (register, login, refresh, logout) and user profile. Planned: Job, Bidding, Chat, Payment, Notification modules.
+**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, and the full job module (post, browse, invite-only visibility, per-freelancer invitations). Planned: Bidding, Chat, Payment, Notification modules.
 
 ---
 
@@ -21,7 +21,7 @@ All Maven commands run from `backend/app/`:
 ```
 
 **Prerequisites**: PostgreSQL on `localhost:5433`, database `bidforge`, user `admin`, password `admin`.  
-Defaults are baked into `application.properties` as fallbacks — override with env vars `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`.
+Override with env vars `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`.
 
 ### Package structure (`com.bidforge.app`)
 
@@ -30,52 +30,85 @@ auth/          AuthController, AuthService, JwtService, JwtAuthFilter,
                RateLimitFilter, RefreshToken(Entity/Repository/Service)
                dto/request/  LoginRequest, RegisterRequest, RefreshTokenRequest
                dto/response/ LoginResponse
-user/          User (entity), Role (enum), UserRepository,
-               UserController, UserService
+user/          User (entity), Role (enum: CLIENT/FREELANCER/ADMIN),
+               UserRepository, UserController, UserService
                dto/request/  UpdateUserRequest
                dto/response/ UserResponse
+job/           Job (entity), JobController, JobService, JobRepository,
+               JobSpecification, JobInvitation (entity), JobInvitationRepository
+               enums/  BudgetType, JobStatus, Visibility
+               dto/request/  CreateJobRequest
+               dto/response/ JobResponse
+job_invite/    JobInvite (entity), JobInviteController, JobInviteService,
+               JobInviteRepository, InviteStatus (enum: INVITED/ACCEPTED/DECLINED)
+               dto/  InviteRequest, InvitedJobResponse
+dashboard/     DashboardController, DashboardService (stats aggregation)
 config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler
 common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 ```
 
 ### Auth & security model
 
-- `SecurityConfig` permits only `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/logout`; everything else requires a valid JWT.
-- Filter chain order: `RateLimitFilter` → `JwtAuthFilter` → `UsernamePasswordAuthenticationFilter`.
-- `JwtAuthFilter` extracts `Authorization: Bearer <token>`, validates with `JwtService`, loads the `User` entity from the DB, and sets a `UsernamePasswordAuthenticationToken` with `ROLE_<role>` authority in the `SecurityContext`.
-- `JwtService.generateToken(User)` embeds `userId` and `role` claims alongside the email subject (HS256, 15 min expiry).
-- Refresh token rotation: `RefreshTokenService.validateAndRotate()` revokes the old token and issues a new UUID-based one (7-day expiry) atomically in a transaction.
-- `UserService.getCurrentUser()` and `updateCurrentUser()` read the principal directly from `SecurityContextHolder` — the principal is the `User` entity set by `JwtAuthFilter`.
+- `SecurityConfig` permits `/auth/**`, `/jobs` (GET), `/jobs/{id}` (GET); everything else requires a valid JWT.
+- Filter chain: `RateLimitFilter` → `JwtAuthFilter` → `UsernamePasswordAuthenticationFilter`.
+- `JwtAuthFilter` sets a `UsernamePasswordAuthenticationToken` with `ROLE_<role>` authority; the principal is the full `User` entity.
+- `JwtService.generateToken(User)` embeds `userId` and `role` claims (HS256, 15 min expiry).
+- Refresh token rotation: `RefreshTokenService.validateAndRotate()` revokes the old token and issues a new UUID one (7-day expiry) atomically.
+- `UserService` and `JobService` read the principal from `SecurityContextHolder` directly — no `@AuthenticationPrincipal` needed.
+
+### Job module architecture
+
+**Visibility model**: Every `Job` is either `PUBLIC` or `INVITE_ONLY`.
+
+**Two invite-related tables** — keep them distinct:
+- `JobInvitation` — simple invite record (no status), used by `JobController.inviteFreelancer()` for the single-freelancer invite flow from `MyJobs`.
+- `JobInvite` — status-tracked invite (`INVITED`/`ACCEPTED`/`DECLINED`), used by `JobInviteController.inviteFreelancers()` for the bulk invite flow from `PostJob`, and by `getMyInvites()` to show the freelancer's inbox.
+
+**Browse visibility rules** (`JobService.getBrowseJobs`):
+- Unauthenticated / CLIENT (non-owner) → `OPEN + PUBLIC` only
+- Freelancer → `OPEN + PUBLIC` **plus** `OPEN + INVITE_ONLY` where a `JobInvite` record exists for them
+- Applied via `JobSpecification` (JPA `Specification` + `JpaSpecificationExecutor`)
+
+**Pagination**: `GET /jobs` returns `Page<JobResponse>` (Spring Data). All other job endpoints return `List<JobResponse>`.
 
 ### API endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/auth/register` | No | Register; `role` field optional (`CLIENT`/`FREELANCER`; `ADMIN` silently falls back to `CLIENT`) |
+| POST | `/auth/register` | No | `role`: `CLIENT`/`FREELANCER`; `ADMIN` falls back to `CLIENT` |
 | POST | `/auth/login` | No | Returns `accessToken`, `refreshToken`, `tokenType` |
-| POST | `/auth/refresh` | No | Rotates refresh token; returns new token pair |
+| POST | `/auth/refresh` | No | Rotates refresh token |
 | POST | `/auth/logout` | No | Revokes refresh token |
 | GET | `/users/me` | Yes | Current user profile |
 | PATCH | `/users/me` | Yes | Update `name` or `profileImageUrl` |
+| GET | `/users/search?q=` | CLIENT | Search freelancers by name/email (max 10 results) |
+| POST | `/jobs` | CLIENT | Create job; `draft: true` → `DRAFT` status, else `OPEN` |
+| GET | `/jobs` | Public | Browse; paginated, filterable by keyword/category/skills/budget/deadline |
+| GET | `/jobs/my` | CLIENT | All jobs owned by caller (all statuses) |
+| GET | `/jobs/invited` | FREELANCER | Full `JobResponse[]` for invited jobs |
+| GET | `/jobs/{id}` | Public* | *INVITE_ONLY requires ownership or active invite |
+| POST | `/jobs/{jobId}/invite/{freelancerId}` | CLIENT | Single-freelancer invite (owner + INVITE_ONLY only) |
+| POST | `/jobs/{jobId}/invite` | CLIENT | Bulk invite via `{ freelancerIds: [...] }` |
 
 ### Exception → HTTP mapping
 
 | Exception | Code | `error` field |
 |-----------|------|---------------|
 | `EmailAlreadyExistsException` | 400 | `EMAIL_ALREADY_EXISTS` |
-| `PhoneAlreadyExistsException` | 400 | `PHONE_ALREADY_EXISTS` |
 | `UserNotFoundException` | 404 | `USER_NOT_FOUND` |
+| `JobNotFoundException` | 404 | `JOB_NOT_FOUND` |
 | `InvalidCredentialsException` | 401 | `INVALID_CREDENTIALS` |
 | `InvalidTokenException` | 401 | `INVALID_TOKEN` |
-| `MethodArgumentNotValidException` | 400 | `VALIDATION_ERROR` (+ `errors[]` array) |
+| `AccessDeniedException` | 403 | `ACCESS_DENIED` |
+| `MethodArgumentNotValidException` | 400 | `VALIDATION_ERROR` (+ `errors[]`) |
 | `HttpMessageNotReadableException` | 400 | `MALFORMED_REQUEST` |
 
 `ErrorResponse` shape: `{ timestamp, status, error, message, path, errors? }`.
 
 ### Testing strategy
 
-- **Unit tests** (`AuthServiceTest`, `JwtServiceTest`): Mockito `@ExtendWith(MockitoExtension.class)`, `@Mock`/`@InjectMocks`. `JwtServiceTest` uses `ReflectionTestUtils` to inject `@Value` fields.
-- **Integration tests** (`AuthControllerTest`): `@SpringBootTest` + `@AutoConfigureMockMvc` + `@ActiveProfiles("test")` + `@Transactional`. H2 in-memory DB (`application-test.properties`). `rate-limit.max-requests=1000` prevents 429s during tests.
+- **Unit tests** (`AuthServiceTest`, `JwtServiceTest`): `@ExtendWith(MockitoExtension.class)`. `JwtServiceTest` uses `ReflectionTestUtils` to inject `@Value` fields.
+- **Integration tests** (`AuthControllerTest`): `@SpringBootTest` + `@AutoConfigureMockMvc` + `@ActiveProfiles("test")` + `@Transactional`. H2 in-memory DB (`application-test.properties`). `rate-limit.max-requests=1000` prevents 429s.
 - Do **not** use `@WebMvcTest` — `SecurityConfig` pulls in JPA-dependent filters that break the slice context.
 
 ---
@@ -89,7 +122,7 @@ npm run lint     # ESLint
 npm run format   # Prettier
 ```
 
-**Backend must be running** (`localhost:8080`) for API calls. Override with `VITE_API_BASE_URL` env var.
+**Backend must be running** (`localhost:8080`). Override with `VITE_API_BASE_URL`.
 
 ### Stack
 
@@ -97,35 +130,52 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 
 ### Routing (`src/App.tsx`)
 
-| Path | Component | Auth guard |
-|------|-----------|------------|
-| `/` | `Landing` | No |
-| `/register` | `Register` | No |
-| `/login` | `Login` | No |
-| `/dashboard` | `Dashboard` | Yes (`ProtectedRoute`) |
-| `*` | Redirect → `/` | — |
+| Path | Component | Guard |
+|------|-----------|-------|
+| `/` | `Landing` | — |
+| `/register` | `Register` | — |
+| `/login` | `Login` | — |
+| `/client/dashboard` | `ClientDashboard` | `ClientRoute` |
+| `/client/post-job` | `PostJob` | `ClientRoute` |
+| `/client/jobs` | `MyJobs` | `ClientRoute` |
+| `/freelancer/dashboard` | `FreelancerDashboard` | `FreelancerRoute` |
+| `/freelancer/invites` | `FreelancerInvites` | `FreelancerRoute` |
+| `/browse` | `BrowseJobs` | — (public) |
+| `/jobs/:id` | `JobDetail` | — (public*) |
+
+`ClientRoute` / `FreelancerRoute` (in `src/components/ProtectedRoute.tsx`) extend `ProtectedRoute` and additionally check `user.role`; redirect to the correct dashboard if wrong role.
 
 ### Key architecture patterns
 
 **Token storage**: `accessToken` in `sessionStorage`, `refreshToken` in `localStorage`.
 
-**Auto-refresh** (`src/api/axiosInstance.ts`): The Axios response interceptor catches 401s, calls `/auth/refresh` with the stored refresh token, updates both stored tokens, retries the original request, and queues any concurrent 401s to resolve after the single refresh completes. On refresh failure it clears tokens and redirects to `/login`.
+**Auto-refresh** (`src/api/axiosInstance.ts`): Response interceptor catches 401s, calls `/auth/refresh`, retries the original request, and queues concurrent 401s. On failure, clears tokens and redirects to `/login`.
 
-**Auth context** (`src/context/AuthContext.tsx`): Provides `isAuthenticated`, `isLoading`, `login()`, `register()`, `logout()`. Restores session from `sessionStorage` on mount. `register()` does **not** auto-login — callers navigate to `/login`.
+**Auth context** (`src/context/AuthContext.tsx`): `isAuthenticated`, `isLoading`, `login()`, `register()`, `logout()`, `refreshUser()`. `register()` does **not** auto-login.
 
-**Form validation**: Zod schemas in `src/lib/schemas.ts` are the source of truth for client-side rules. The backend independently validates with Jakarta Bean Validation — server errors are mapped to `react-hook-form` field errors via `setError()` in each page component.
+**API layer** (`src/api/`):
+- `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, getInvitedJobs, inviteFreelancer
+- `users.ts` — `usersApi`: searchFreelancers
 
-**Shared UI components**:
-- `BidForgeLogo` — SVG badge + wordmark, `variant="light"|"dark"`.
-- `Navbar` — navy (`#0A192F`) sticky header, 3-column grid (logo left / nav center / actions right). `variant="app"` shows Browse Jobs etc.; `variant="auth"` shows tagline. Accepts `authRight` slot.
-- `FormField` — wraps a labelled input with a Material Symbol icon and an inline error message.
-- `RoleSelector` — controlled two-button CLIENT/FREELANCER toggle, `aria-pressed` for accessibility.
-- `ProtectedRoute` — redirects unauthenticated users to `/login`; shows spinner while `isLoading`.
+**Pagination pattern**: `BrowseJobs` uses server-side pagination (`SpringPage<JobResponse>` from `GET /jobs`). `MyJobs` and `FreelancerInvites` fetch all records once and paginate client-side (10 per page). `SpringPage<T>` is defined in `src/types/job.ts`.
 
-**Path alias**: `@/` maps to `src/` (configured in `vite.config.ts` and `tsconfig.json`).
+**Search pattern**: `BrowseJobs` and `FreelancerInvites` both use a two-state approach — live form inputs vs. `applied` filters that only update on Search button click (form `onSubmit`). This prevents API/filter triggering on every keystroke.
+
+**Form validation**: Zod schemas in `src/lib/schemas.ts` are the client-side source of truth. Server errors map to `react-hook-form` field errors via `setError()`.
+
+**Shared UI components** (`src/components/`):
+- `BidForgeLogo` — SVG badge + wordmark, `variant="light"|"dark"`
+- `Navbar` — navy sticky header, 3-column grid. `variant="app"` | `"auth"`. Accepts `authRight` slot.
+- `FormField` — labelled input with Material Symbol icon and inline error
+- `RoleSelector` — CLIENT/FREELANCER toggle, `aria-pressed`
+- `ProtectedRoute` / `ClientRoute` / `FreelancerRoute` — auth + role guards
+- `ProfileDropdown` — avatar menu with profile edit and logout
+- `PageLoader` — full-area spinner with message
+
+**Path alias**: `@/` → `src/` (configured in `vite.config.ts` and `tsconfig.json`).
 
 ### Tailwind tokens (extended)
 
-Custom spacing: `xs`=4px, `sm`=8px, `md`=16px, `lg`=24px, `xl`=32px, `xxl`/`2xl`=48px, `3xl`=64px.  
+Custom spacing: `xs`=4px, `sm`=8px, `md`=16px, `lg`=24px, `xl`=32px, `2xl`=48px, `3xl`=64px.  
 Key colors: `dark-navy`=`#0A192F`, `secondary`=`#0059bb`, `secondary-container`=`#0070ea`, `primary-container`=`#0d1c32`.  
-`max-w-8xl` = 1280px (used as the standard page container width).
+`max-w-8xl` = 1280px (standard page container). `tonal-card` utility class used for elevated card surfaces.

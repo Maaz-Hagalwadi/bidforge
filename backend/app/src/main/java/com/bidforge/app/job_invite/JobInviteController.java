@@ -1,7 +1,7 @@
 package com.bidforge.app.job_invite;
 
+import com.bidforge.app.job.dto.response.JobResponse;
 import com.bidforge.app.job_invite.dto.InviteRequest;
-import com.bidforge.app.job_invite.dto.InvitedJobResponse;
 import com.bidforge.app.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,6 +26,24 @@ public class JobInviteController {
                 .getPrincipal();
     }
 
+    @PostMapping("/invites/{inviteId}/accept")
+    @PreAuthorize("hasRole('FREELANCER')")
+    public ResponseEntity<String> acceptInvite(@PathVariable UUID inviteId) {
+
+        jobInviteService.acceptInvite(inviteId, getCurrentUser());
+
+        return ResponseEntity.ok("Invite accepted");
+    }
+
+    @PostMapping("/invites/{inviteId}/decline")
+    @PreAuthorize("hasRole('FREELANCER')")
+    public ResponseEntity<String> declineInvite(@PathVariable UUID inviteId) {
+
+        jobInviteService.declineInvite(inviteId, getCurrentUser());
+
+        return ResponseEntity.ok("Invite declined");
+    }
+
     // 👨‍💼 Client invites freelancers
     @PostMapping("/{jobId}/invite")
     @PreAuthorize("hasRole('CLIENT')")
@@ -41,7 +59,7 @@ public class JobInviteController {
     // 👨‍💻 Freelancer sees invites
     @GetMapping("/invited")
     @PreAuthorize("hasRole('FREELANCER')")
-    public List<InvitedJobResponse> getMyInvites() {
+    public List<JobResponse> getMyInvites() {
         return jobInviteService.getMyInvites(getCurrentUser());
     }
 }
