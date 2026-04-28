@@ -1,5 +1,5 @@
 import api from './axiosInstance';
-import type { CreateJobPayload, JobResponse, SpringPage } from '@/types/job';
+import type { CreateJobPayload, InviteWithJobResponse, JobResponse, SpringPage } from '@/types/job';
 
 export const jobsApi = {
   create: (payload: CreateJobPayload) =>
@@ -19,4 +19,13 @@ export const jobsApi = {
 
   getInvitedJobs: () =>
     api.get<JobResponse[]>('/jobs/invited').then(r => r.data),
+
+  getInvites: () =>
+    api.get<InviteWithJobResponse[]>('/jobs/invites').then(r => r.data),
+
+  acceptInvite: (inviteId: string) =>
+    api.post<string>(`/jobs/invites/${inviteId}/accept`).then(r => r.data),
+
+  declineInvite: (inviteId: string) =>
+    api.post<string>(`/jobs/invites/${inviteId}/decline`).then(r => r.data),
 };

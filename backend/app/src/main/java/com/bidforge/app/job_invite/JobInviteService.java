@@ -8,6 +8,7 @@ import com.bidforge.app.job.Job;
 import com.bidforge.app.job.JobRepository;
 import com.bidforge.app.job.dto.response.JobResponse;
 import com.bidforge.app.job.enums.Visibility;
+import com.bidforge.app.job_invite.dto.InviteWithJobResponse;
 import com.bidforge.app.user.User;
 import com.bidforge.app.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -87,7 +88,7 @@ public class JobInviteService {
         jobInviteRepository.save(invite);
     }
 
-    // 👉 Get invited jobs (freelancer) — returns full job data
+    // 👉 Get invited jobs (freelancer) — returns full job data (INVITED only, legacy)
     public List<JobResponse> getMyInvites(User freelancer) {
 
         return jobInviteRepository
@@ -97,6 +98,37 @@ public class JobInviteService {
                     Job job = invite.getJob();
                     return JobResponse.builder()
                             .id(job.getId())
+                            .title(job.getTitle())
+                            .category(job.getCategory())
+                            .description(job.getDescription())
+                            .requiredSkills(job.getRequiredSkills())
+                            .budgetType(job.getBudgetType())
+                            .budgetMin(job.getBudgetMin())
+                            .budgetMax(job.getBudgetMax())
+                            .deadline(job.getDeadline())
+                            .attachmentUrl(job.getAttachmentUrl())
+                            .visibility(job.getVisibility())
+                            .status(job.getStatus())
+                            .clientId(job.getClient().getId())
+                            .createdAt(job.getCreatedAt())
+                            .updatedAt(job.getUpdatedAt())
+                            .build();
+                })
+                .toList();
+    }
+
+    // 👉 Get all invites with status (INVITED/ACCEPTED/DECLINED) + full job data
+    public List<InviteWithJobResponse> getMyInvitesWithStatus(User freelancer) {
+
+        return jobInviteRepository
+                .findByFreelancer(freelancer)
+                .stream()
+                .map(invite -> {
+                    Job job = invite.getJob();
+                    return InviteWithJobResponse.builder()
+                            .inviteId(invite.getId())
+                            .inviteStatus(invite.getStatus())
+                            .jobId(job.getId())
                             .title(job.getTitle())
                             .category(job.getCategory())
                             .description(job.getDescription())

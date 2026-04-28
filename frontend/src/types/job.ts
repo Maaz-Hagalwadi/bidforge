@@ -22,6 +22,28 @@ export interface CreateJobPayload {
   draft: boolean;
 }
 
+export type InviteStatus = 'INVITED' | 'ACCEPTED' | 'DECLINED';
+
+export interface InviteWithJobResponse {
+  inviteId: string;
+  inviteStatus: InviteStatus;
+  jobId: string;
+  title: string;
+  category: string;
+  description: string;
+  requiredSkills?: string;
+  budgetType: 'FIXED' | 'HOURLY';
+  budgetMin: number;
+  budgetMax: number;
+  deadline?: string;
+  attachmentUrl?: string;
+  visibility: 'PUBLIC' | 'INVITE_ONLY';
+  status: 'DRAFT' | 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'CANCELLED';
+  clientId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface JobResponse {
   id: string;
   title: string;
