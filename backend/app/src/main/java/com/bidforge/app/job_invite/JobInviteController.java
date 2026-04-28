@@ -2,6 +2,7 @@ package com.bidforge.app.job_invite;
 
 import com.bidforge.app.job.dto.response.JobResponse;
 import com.bidforge.app.job_invite.dto.InviteRequest;
+import com.bidforge.app.job_invite.dto.InviteWithJobResponse;
 import com.bidforge.app.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -56,10 +57,17 @@ public class JobInviteController {
                 .body("Invitations sent");
     }
 
-    // 👨‍💻 Freelancer sees invites
+    // 👨‍💻 Freelancer sees invites (legacy — INVITED status only)
     @GetMapping("/invited")
     @PreAuthorize("hasRole('FREELANCER')")
     public List<JobResponse> getMyInvites() {
         return jobInviteService.getMyInvites(getCurrentUser());
+    }
+
+    // 👨‍💻 Freelancer sees all invites with status (INVITED/ACCEPTED/DECLINED) + full job data
+    @GetMapping("/invites")
+    @PreAuthorize("hasRole('FREELANCER')")
+    public List<InviteWithJobResponse> getMyInvitesWithStatus() {
+        return jobInviteService.getMyInvitesWithStatus(getCurrentUser());
     }
 }

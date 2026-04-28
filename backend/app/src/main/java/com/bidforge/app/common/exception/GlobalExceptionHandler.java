@@ -167,6 +167,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 
+    @ExceptionHandler(BidAlreadyExistsException.class)
+    public ResponseEntity<ErrorResponse> handleBidExists(
+            BidAlreadyExistsException ex,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.badRequest().body(
+                ErrorResponse.builder()
+                        .timestamp(LocalDateTime.now())
+                        .status(400)
+                        .error("BAD_REQUEST")
+                        .message(ex.getMessage())
+                        .path(request.getRequestURI())
+                        .build()
+        );
+    }
+
 
     private ResponseEntity<ErrorResponse> buildResponse(
             HttpStatus status, String error, String message, HttpServletRequest request) {
