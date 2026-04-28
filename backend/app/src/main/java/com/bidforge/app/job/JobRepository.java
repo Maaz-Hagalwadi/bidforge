@@ -15,6 +15,7 @@ import java.util.UUID;
 
 public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificationExecutor<Job> {
     List<Job> findByClient(User client);
+    List<Job> findByClientOrderByCreatedAtDesc(User client);
 
     Page<Job> findByStatusAndVisibility(
             JobStatus status,

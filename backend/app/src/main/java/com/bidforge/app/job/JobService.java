@@ -51,9 +51,9 @@ public class JobService {
         return mapToResponse(jobRepository.save(job));
     }
 
-    /** Returns all jobs owned by the client — DRAFT, OPEN, ASSIGNED, COMPLETED, CANCELLED. */
+    /** Returns all jobs owned by the client — newest first. */
     public List<JobResponse> getClientJobs(User client) {
-        return jobRepository.findByClient(client)
+        return jobRepository.findByClientOrderByCreatedAtDesc(client)
                 .stream()
                 .map(this::mapToResponse)
                 .toList();

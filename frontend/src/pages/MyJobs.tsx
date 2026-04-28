@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
+import { usersApi, type FreelancerSearchResult } from '@/api/users';
 import { Navbar } from '@/components/Navbar';
 import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
@@ -49,22 +50,44 @@ function parseSkills(str?: string): string[] {
 
 // ── Invite Modal ───────────────────────────────────────────────
 
+function getInitialsFrom(name: string) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
 function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }) {
-  const [freelancerId, setFreelancerId] = useState('');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<FreelancerSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<FreelancerSearchResult | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const search = useCallback((q: string) => {
+    if (!q.trim()) { setResults([]); return; }
+    setSearching(true);
+    usersApi.searchFreelancers(q)
+      .then(setResults)
+      .catch(() => setResults([]))
+      .finally(() => setSearching(false));
+  }, []);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => search(query), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, search]);
 
   const handleInvite = async () => {
-    const id = parseInt(freelancerId.trim(), 10);
-    if (!id || isNaN(id)) { setErrorMsg('Enter a valid freelancer ID.'); return; }
+    if (!selected) return;
     setStatus('loading');
     setErrorMsg('');
     try {
-      await jobsApi.inviteFreelancer(job.id, id);
+      await jobsApi.inviteFreelancer(job.id, selected.id);
       setStatus('success');
     } catch {
       setStatus('error');
-      setErrorMsg('Failed to send invite. Check the freelancer ID and try again.');
+      setErrorMsg('Failed to send invite. Please try again.');
     }
   };
 
@@ -87,25 +110,77 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
               <span className="material-symbols-outlined text-green-600 text-2xl">check_circle</span>
             </div>
             <p className="font-semibold text-on-surface">Invite sent!</p>
-            <p className="text-sm text-on-surface-variant">The freelancer has been invited to this job.</p>
+            <p className="text-sm text-on-surface-variant">{selected?.name} has been invited to this job.</p>
             <button onClick={onClose} className="mt-2 px-6 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
               Done
             </button>
           </div>
         ) : (
           <>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-                Freelancer ID
+                Search Freelancer
               </label>
-              <input
-                type="number"
-                value={freelancerId}
-                onChange={e => { setFreelancerId(e.target.value); setErrorMsg(''); }}
-                placeholder="e.g. 42"
-                className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors"
-                onKeyDown={e => e.key === 'Enter' && handleInvite()}
-              />
+
+              {selected ? (
+                <div className="flex items-center gap-3 px-3 py-2.5 border border-secondary/40 bg-secondary/5 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    {selected.profileImageUrl
+                      ? <img src={selected.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt={selected.name} />
+                      : getInitialsFrom(selected.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-on-surface truncate">{selected.name}</p>
+                    <p className="text-xs text-on-surface-variant truncate">{selected.email}</p>
+                  </div>
+                  <button onClick={() => { setSelected(null); setQuery(''); setResults([]); }}
+                    className="p-1 text-on-surface-variant hover:text-on-surface transition-colors flex-shrink-0">
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search by name or email…"
+                    autoFocus
+                    className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors"
+                  />
+                  {(results.length > 0 || searching || query.trim()) && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-outline-variant rounded-lg shadow-lg z-10 overflow-hidden">
+                      {searching ? (
+                        <div className="px-4 py-3 text-sm text-on-surface-variant">Searching…</div>
+                      ) : results.length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-on-surface-variant">No freelancers found.</div>
+                      ) : (
+                        results.map(r => (
+                          <button key={r.id} onClick={() => { setSelected(r); setResults([]); setQuery(''); }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left">
+                            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                              {r.profileImageUrl
+                                ? <img src={r.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt={r.name} />
+                                : getInitialsFrom(r.name)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-on-surface truncate">{r.name}</p>
+                              <p className="text-xs text-on-surface-variant truncate">{r.email}</p>
+                            </div>
+                            {r.rating && (
+                              <span className="flex items-center gap-0.5 text-xs text-amber-500 flex-shrink-0">
+                                <span className="material-symbols-outlined text-[13px]">star</span>
+                                {r.rating.toFixed(1)}
+                              </span>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               {errorMsg && <p className="text-xs text-red-500">{errorMsg}</p>}
             </div>
 
@@ -113,7 +188,7 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
               <button onClick={onClose} className="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
                 Cancel
               </button>
-              <button onClick={handleInvite} disabled={status === 'loading'}
+              <button onClick={handleInvite} disabled={!selected || status === 'loading'}
                 className="flex-1 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60">
                 {status === 'loading' ? 'Sending…' : 'Send Invite'}
               </button>
@@ -139,6 +214,8 @@ export default function MyJobs() {
   const [visibilityFilter, setVisibilityFilter] = useState<'ALL' | 'PUBLIC' | 'INVITE_ONLY'>('ALL');
   const [search, setSearch] = useState('');
   const [inviteJob, setInviteJob] = useState<JobResponse | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 5;
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -157,6 +234,9 @@ export default function MyJobs() {
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, []);
 
+  const handleFilterChange = <T,>(setter: React.Dispatch<React.SetStateAction<T>>) =>
+    (val: T) => { setter(val); setPage(0); };
+
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
   const initials = user ? getInitials(user.name) : '?';
 
@@ -164,6 +244,9 @@ export default function MyJobs() {
     .filter(j => statusFilter === 'ALL' || j.status === statusFilter)
     .filter(j => visibilityFilter === 'ALL' || j.visibility === visibilityFilter)
     .filter(j => !search || j.title.toLowerCase().includes(search.toLowerCase()));
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const navRight = (
     <div className="flex items-center gap-1">
@@ -250,7 +333,7 @@ export default function MyJobs() {
                 <input
                   type="text"
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  onChange={e => { setSearch(e.target.value); setPage(0); }}
                   placeholder="Search by job title…"
                   className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
                 />
@@ -260,7 +343,7 @@ export default function MyJobs() {
                 {/* Status tabs */}
                 <div className="flex gap-1 flex-wrap flex-1">
                   {STATUS_TABS.map(tab => (
-                    <button key={tab} onClick={() => setStatusFilter(tab)}
+                    <button key={tab} onClick={() => handleFilterChange(setStatusFilter)(tab)}
                       className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', statusFilter === tab ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
                       {tab === 'ALL' ? `All (${jobs.length})` : `${STATUS_CFG[tab]?.label ?? tab} (${jobs.filter(j => j.status === tab).length})`}
                     </button>
@@ -268,9 +351,9 @@ export default function MyJobs() {
                 </div>
 
                 {/* Visibility filter */}
-                <div className="flex gap-1 flex-shrink-0">
+                <div className="flex gap-1 flex-wrap flex-shrink-0">
                   {(['ALL', 'PUBLIC', 'INVITE_ONLY'] as const).map(v => (
-                    <button key={v} onClick={() => setVisibilityFilter(v)}
+                    <button key={v} onClick={() => handleFilterChange(setVisibilityFilter)(v)}
                       className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1', visibilityFilter === v ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
                       {v !== 'ALL' && <span className="material-symbols-outlined text-[13px]">{v === 'PUBLIC' ? 'public' : 'lock'}</span>}
                       {v === 'ALL' ? 'All Visibility' : v === 'PUBLIC' ? 'Public' : 'Invite Only'}
@@ -283,7 +366,7 @@ export default function MyJobs() {
             {/* Results count */}
             {!loading && (
               <p className="text-sm text-on-surface-variant">
-                Showing <span className="font-semibold text-on-surface">{filtered.length}</span> of <span className="font-semibold text-on-surface">{jobs.length}</span> jobs
+                Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of <span className="font-semibold text-on-surface">{filtered.length}</span> jobs
               </p>
             )}
 
@@ -305,7 +388,7 @@ export default function MyJobs() {
                     Post a Job
                   </button>
                 ) : (
-                  <button onClick={() => { setStatusFilter('ALL'); setVisibilityFilter('ALL'); setSearch(''); }}
+                  <button onClick={() => { setStatusFilter('ALL'); setVisibilityFilter('ALL'); setSearch(''); setPage(0); }}
                     className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
                     Clear Filters
                   </button>
@@ -313,7 +396,7 @@ export default function MyJobs() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filtered.map(job => {
+                {paginated.map(job => {
                   const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
                   const skills = parseSkills(job.requiredSkills);
                   const isInviteOnly = job.visibility === 'INVITE_ONLY';
@@ -341,26 +424,26 @@ export default function MyJobs() {
                             </div>
                           )}
                         </div>
-                        <div className="flex md:flex-col items-start gap-3 md:items-end flex-shrink-0">
-                          <div className="text-right">
+                        <div className="flex flex-col gap-3 md:items-end flex-shrink-0 w-full md:w-auto">
+                          <div className="md:text-right">
                             <p className="text-xs text-on-surface-variant mb-0.5">Budget</p>
                             <p className="text-lg font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
                           </div>
                           {job.deadline && (
-                            <div className="text-right">
+                            <div className="md:text-right">
                               <p className="text-xs text-on-surface-variant mb-0.5">Deadline</p>
                               <p className="text-sm font-semibold text-on-surface">{formatDate(job.deadline)}</p>
                             </div>
                           )}
-                          <div className="flex flex-col gap-2 w-full md:items-end">
+                          <div className="flex flex-col gap-2 md:items-end">
                             <button onClick={() => navigate(`/jobs/${job.id}`)}
-                              className="flex items-center gap-1.5 px-4 py-2 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface-variant hover:border-secondary/40 hover:text-secondary transition-colors">
+                              className="w-full md:w-auto flex items-center justify-center gap-1.5 px-4 py-2 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface-variant hover:border-secondary/40 hover:text-secondary transition-colors">
                               <span className="material-symbols-outlined text-[15px]">open_in_new</span>
                               View Details
                             </button>
                             {isInviteOnly && job.status === 'OPEN' && (
                               <button onClick={() => setInviteJob(job)}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                                className="w-full md:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
                                 <span className="material-symbols-outlined text-[15px]">person_add</span>
                                 Invite Freelancer
                               </button>
@@ -371,6 +454,47 @@ export default function MyJobs() {
                     </article>
                   );
                 })}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {!loading && totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-2">
+                <button
+                  disabled={page === 0}
+                  onClick={() => setPage(p => p - 1)}
+                  className="flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>Prev
+                </button>
+
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                    let p: number;
+                    if (totalPages <= 7) {
+                      p = i;
+                    } else if (page < 4) {
+                      p = i < 5 ? i : i === 5 ? -1 : totalPages - 1;
+                    } else if (page >= totalPages - 4) {
+                      p = i === 0 ? 0 : i === 1 ? -1 : totalPages - 7 + i;
+                    } else {
+                      p = i === 0 ? 0 : i === 1 ? -1 : i === 5 ? -1 : i === 6 ? totalPages - 1 : page - 2 + (i - 2);
+                    }
+                    if (p === -1) return <span key={`ellipsis-${i}`} className="px-2 py-2 text-on-surface-variant text-sm">…</span>;
+                    return (
+                      <button key={p} onClick={() => setPage(p)}
+                        className={['w-9 h-9 rounded-lg text-sm font-semibold transition-colors', p === page ? 'bg-secondary text-white' : 'border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+                        {p + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  disabled={page >= totalPages - 1}
+                  onClick={() => setPage(p => p + 1)}
+                  className="flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  Next<span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                </button>
               </div>
             )}
           </div>

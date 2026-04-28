@@ -134,6 +134,40 @@ public class GlobalExceptionHandler {
                 "Something went wrong", request);
     }
 
+    @ExceptionHandler(InviteAlreadyProcessedException.class)
+    public ResponseEntity<ErrorResponse> handleInviteProcessed(
+            InviteAlreadyProcessedException ex,
+            HttpServletRequest request
+    ) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error("BAD_REQUEST")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    @ExceptionHandler(InviteNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleInviteNotFound(
+            InviteNotFoundException ex,
+            HttpServletRequest request
+    ) {
+
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("NOT_FOUND")
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+
     private ResponseEntity<ErrorResponse> buildResponse(
             HttpStatus status, String error, String message, HttpServletRequest request) {
         ErrorResponse body = ErrorResponse.builder()

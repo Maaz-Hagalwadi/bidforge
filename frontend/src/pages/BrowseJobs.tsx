@@ -8,14 +8,6 @@ import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import type { JobResponse, SpringPage } from '@/types/job';
 
-const SIDEBAR_LINKS = [
-  { icon: 'dashboard',    label: 'Dashboard',    short: 'Dashboard', active: false, path: 'DASHBOARD'  },
-  { icon: 'search',       label: 'Browse Jobs',  short: 'Browse',    active: true,  path: '/browse'    },
-  { icon: 'receipt_long', label: 'My Contracts', short: 'Contracts', active: false, path: ''           },
-  { icon: 'chat',         label: 'Messages',     short: 'Messages',  active: false, path: ''           },
-  { icon: 'payments',     label: 'Payments',     short: 'Payments',  active: false, path: ''           },
-];
-
 const SIDEBAR_BG = '#0A192F';
 
 const CATEGORIES = [
@@ -57,19 +49,43 @@ function getInitials(name: string) {
 
 const PAGE_SIZE = 10;
 
+type AppliedFilters = { keyword: string; category: string; skills: string; minBudget: string; maxBudget: string };
+const EMPTY: AppliedFilters = { keyword: '', category: '', skills: '', minBudget: '', maxBudget: '' };
+
 export default function BrowseJobs() {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const dashboardPath = user?.role === 'CLIENT' ? '/client/dashboard' : user?.role === 'FREELANCER' ? '/freelancer/dashboard' : '';
 
+  // Dynamic sidebar — freelancers get My Invites
+  const sidebarLinks = user?.role === 'FREELANCER'
+    ? [
+        { icon: 'dashboard',    label: 'Dashboard',  short: 'Dashboard', active: false, path: 'DASHBOARD'          },
+        { icon: 'search',       label: 'Browse Jobs', short: 'Browse',   active: true,  path: '/browse'            },
+        { icon: 'mail',         label: 'My Invites', short: 'Invites',   active: false, path: '/freelancer/invites' },
+        { icon: 'receipt_long', label: 'Contracts',  short: 'Contracts', active: false, path: ''                   },
+        { icon: 'payments',     label: 'Payments',   short: 'Payments',  active: false, path: ''                   },
+      ]
+    : [
+        { icon: 'dashboard',    label: 'Dashboard',  short: 'Dashboard', active: false, path: 'DASHBOARD' },
+        { icon: 'search',       label: 'Browse Jobs', short: 'Browse',   active: true,  path: '/browse'   },
+        { icon: 'receipt_long', label: 'Contracts',  short: 'Contracts', active: false, path: ''          },
+        { icon: 'chat',         label: 'Messages',   short: 'Messages',  active: false, path: ''          },
+        { icon: 'payments',     label: 'Payments',   short: 'Payments',  active: false, path: ''          },
+      ];
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
 
+  // Live form-input state
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('');
   const [minBudget, setMinBudget] = useState('');
   const [maxBudget, setMaxBudget] = useState('');
   const [skills, setSkills] = useState('');
+
+  // Applied state — only updated on Search / Clear click
+  const [applied, setApplied] = useState<AppliedFilters>(EMPTY);
 
   const [page, setPage] = useState(0);
   const [result, setResult] = useState<SpringPage<JobResponse> | null>(null);
@@ -82,17 +98,17 @@ export default function BrowseJobs() {
     const params: Record<string, string | number | undefined> = {
       page: p,
       size: PAGE_SIZE,
-      keyword: keyword || undefined,
-      category: category || undefined,
-      minBudget: minBudget ? Number(minBudget) : undefined,
-      maxBudget: maxBudget ? Number(maxBudget) : undefined,
-      skills: skills || undefined,
+      keyword: applied.keyword || undefined,
+      category: applied.category || undefined,
+      minBudget: applied.minBudget ? Number(applied.minBudget) : undefined,
+      maxBudget: applied.maxBudget ? Number(applied.maxBudget) : undefined,
+      skills: applied.skills || undefined,
     };
     jobsApi.getAll(params)
       .then(setResult)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [keyword, category, minBudget, maxBudget, skills]);
+  }, [applied]);
 
   useEffect(() => { fetchJobs(page); }, [fetchJobs, page]);
 
@@ -106,8 +122,14 @@ export default function BrowseJobs() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setApplied({ keyword, category, skills, minBudget, maxBudget });
     setPage(0);
-    fetchJobs(0);
+  };
+
+  const handleClear = () => {
+    setKeyword(''); setCategory(''); setMinBudget(''); setMaxBudget(''); setSkills('');
+    setApplied(EMPTY);
+    setPage(0);
   };
 
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
@@ -159,7 +181,7 @@ export default function BrowseJobs() {
             </button>
           </div>
           <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-            {SIDEBAR_LINKS.map(({ icon, label, active, path }) => {
+            {sidebarLinks.map(({ icon, label, active, path }) => {
               const resolved = path === 'DASHBOARD' ? dashboardPath : path;
               return (
                 <button key={label} onClick={() => resolved && navigate(resolved)} title={!sidebarOpen ? label : undefined}
@@ -259,7 +281,7 @@ export default function BrowseJobs() {
                   </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
-                  <button type="button" onClick={() => { setKeyword(''); setCategory(''); setMinBudget(''); setMaxBudget(''); setSkills(''); setPage(0); }}
+                  <button type="button" onClick={handleClear}
                     className="px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
                     Clear
                   </button>
@@ -286,7 +308,7 @@ export default function BrowseJobs() {
                 <span className="material-symbols-outlined text-5xl text-slate-300">search_off</span>
                 <p className="text-on-surface font-semibold">No jobs found</p>
                 <p className="text-sm text-on-surface-variant max-w-xs">Try adjusting your filters or check back later for new opportunities.</p>
-                <button onClick={() => { setKeyword(''); setCategory(''); setMinBudget(''); setMaxBudget(''); setSkills(''); setPage(0); }}
+                <button onClick={handleClear}
                   className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
                   Clear Filters
                 </button>
@@ -397,7 +419,7 @@ export default function BrowseJobs() {
       </div>
 
       {user && <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {SIDEBAR_LINKS.map(({ icon, short, active, path }) => {
+        {sidebarLinks.map(({ icon, short, active, path }) => {
           const resolved = path === 'DASHBOARD' ? dashboardPath : path;
           return (
             <button key={short} onClick={() => resolved && navigate(resolved)}
