@@ -6,6 +6,11 @@ import Register from '@/pages/Register';
 import Login from '@/pages/Login';
 import ClientDashboard from '@/pages/ClientDashboard';
 import FreelancerDashboard from '@/pages/FreelancerDashboard';
+import PostJob from '@/pages/PostJob';
+import MyJobs from '@/pages/MyJobs';
+import BrowseJobs from '@/pages/BrowseJobs';
+import JobDetail from '@/pages/JobDetail';
+import FreelancerInvites from '@/pages/FreelancerInvites';
 
 export default function App() {
   return (
@@ -23,6 +28,21 @@ export default function App() {
           <Route
             path="/freelancer/dashboard"
             element={<FreelancerRoute><FreelancerDashboard /></FreelancerRoute>}
+          />
+
+          <Route
+            path="/client/post-job"
+            element={<ClientRoute><PostJob /></ClientRoute>}
+          />
+          <Route
+            path="/client/jobs"
+            element={<ClientRoute><MyJobs /></ClientRoute>}
+          />
+          <Route path="/browse" element={<BrowseJobs />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
+          <Route
+            path="/freelancer/invites"
+            element={<FreelancerRoute><FreelancerInvites /></FreelancerRoute>}
           />
 
           {/* Legacy redirect */}

@@ -20,5 +20,20 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+export const postJobSchema = z.object({
+  title: z.string().min(5, 'Title must be at least 5 characters'),
+  category: z.string().min(1, 'Please select a category'),
+  description: z.string().min(20, 'Description must be at least 20 characters').max(2000),
+  budgetMin: z.coerce.number({ invalid_type_error: 'Enter a number' }).positive('Must be > 0'),
+  budgetMax: z.coerce.number({ invalid_type_error: 'Enter a number' }).positive('Must be > 0'),
+  deadline: z.string().optional(),
+  attachmentUrl: z.string().optional(),
+  visibility: z.enum(['PUBLIC', 'INVITE_ONLY']),
+}).refine(d => d.budgetMax >= d.budgetMin, {
+  message: 'Max must be ≥ min',
+  path: ['budgetMax'],
+});
+
+export type PostJobFormValues = z.infer<typeof postJobSchema>;
 export type RegisterFormValues = z.infer<typeof registerSchema>;
 export type LoginFormValues = z.infer<typeof loginSchema>;
