@@ -15,6 +15,10 @@ public interface JobInviteRepository extends JpaRepository<JobInvite, UUID> {
 
     List<JobInvite> findByFreelancer(User freelancer);
 
+    List<JobInvite> findByJob(Job job);
+
+    List<JobInvite> findByJobOrderByInvitedAtDesc(Job job);
+
     List<JobInvite> findByFreelancerAndStatus(User freelancer, InviteStatus status);
 
     boolean existsByJobAndFreelancer(Job job, User freelancer);

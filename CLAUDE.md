@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, and the full job module (post, browse, invite-only visibility, per-freelancer invitations). Planned: Bidding, Chat, Payment, Notification modules.
+**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, full job module (post, browse, invite-only visibility, per-freelancer invitations), and bidding. Planned: Chat, Payment, Notification modules.
 
 ---
 
@@ -41,7 +41,10 @@ job/           Job (entity), JobController, JobService, JobRepository,
                dto/response/ JobResponse
 job_invite/    JobInvite (entity), JobInviteController, JobInviteService,
                JobInviteRepository, InviteStatus (enum: INVITED/ACCEPTED/DECLINED)
-               dto/  InviteRequest, InvitedJobResponse
+               dto/  InviteRequest, InvitedJobResponse, JobInviteStatusResponse
+bid/           Bid (entity), BidController, BidService, BidRepository,
+               BidStatus (enum: PENDING/ACCEPTED/REJECTED)
+               dto/  CreateBidRequest, BidResponse
 dashboard/     DashboardController, DashboardService (stats aggregation)
 config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler
 common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
@@ -89,6 +92,14 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/jobs/{id}` | Public* | *INVITE_ONLY requires ownership or active invite |
 | POST | `/jobs/{jobId}/invite/{freelancerId}` | CLIENT | Single-freelancer invite (owner + INVITE_ONLY only) |
 | POST | `/jobs/{jobId}/invite` | CLIENT | Bulk invite via `{ freelancerIds: [...] }` |
+| GET | `/jobs/invites` | FREELANCER | All invites with status + full job data (`InviteWithJobResponse[]`) |
+| POST | `/jobs/invites/{inviteId}/accept` | FREELANCER | Accept an invite |
+| POST | `/jobs/invites/{inviteId}/decline` | FREELANCER | Decline an invite |
+| GET | `/jobs/{jobId}/invites` | CLIENT | All invitees + statuses for a specific job (`JobInviteStatusResponse[]`) |
+| GET | `/jobs/all-invites` | CLIENT | All invites across all client's jobs (aggregated) |
+| GET | `/jobs/{jobId}/bids` | CLIENT | All bids on a job (owner only) |
+| POST | `/jobs/{jobId}/bids` | FREELANCER | Submit a bid (`amount`, `proposal`, `deliveryDays`) |
+| POST | `/bids/{bidId}/accept` | CLIENT | Accept a bid; sets job to IN_PROGRESS, rejects all other bids |
 
 ### Exception → HTTP mapping
 
@@ -99,6 +110,10 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | `JobNotFoundException` | 404 | `JOB_NOT_FOUND` |
 | `InvalidCredentialsException` | 401 | `INVALID_CREDENTIALS` |
 | `InvalidTokenException` | 401 | `INVALID_TOKEN` |
+| `BidNotFoundException` | 404 | `NOT_FOUND` |
+| `BidAlreadyExistsException` | 400 | `BAD_REQUEST` (freelancer already bid on job) |
+| `InviteNotFoundException` | 404 | `NOT_FOUND` |
+| `InviteAlreadyProcessedException` | 400 | `BAD_REQUEST` |
 | `AccessDeniedException` | 403 | `ACCESS_DENIED` |
 | `MethodArgumentNotValidException` | 400 | `VALIDATION_ERROR` (+ `errors[]`) |
 | `HttpMessageNotReadableException` | 400 | `MALFORMED_REQUEST` |
@@ -138,6 +153,7 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 | `/client/dashboard` | `ClientDashboard` | `ClientRoute` |
 | `/client/post-job` | `PostJob` | `ClientRoute` |
 | `/client/jobs` | `MyJobs` | `ClientRoute` |
+| `/client/invites` | `ClientInvites` | `ClientRoute` |
 | `/freelancer/dashboard` | `FreelancerDashboard` | `FreelancerRoute` |
 | `/freelancer/invites` | `FreelancerInvites` | `FreelancerRoute` |
 | `/browse` | `BrowseJobs` | — (public) |
@@ -154,8 +170,10 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 **Auth context** (`src/context/AuthContext.tsx`): `isAuthenticated`, `isLoading`, `login()`, `register()`, `logout()`, `refreshUser()`. `register()` does **not** auto-login.
 
 **API layer** (`src/api/`):
-- `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, getInvitedJobs, inviteFreelancer
+- `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, inviteFreelancer (single), getInvites, acceptInvite, declineInvite, getJobInvites, getAllClientInvites, getInvitedJobs, and bid endpoints (createBid, getJobBids, acceptBid)
 - `users.ts` — `usersApi`: searchFreelancers
+
+**Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR` and `FREELANCER_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. Placeholder entries (Contracts, Payments) have no `path` yet. `withActive()` marks the active route.
 
 **Pagination pattern**: `BrowseJobs` uses server-side pagination (`SpringPage<JobResponse>` from `GET /jobs`). `MyJobs` and `FreelancerInvites` fetch all records once and paginate client-side (10 per page). `SpringPage<T>` is defined in `src/types/job.ts`.
 

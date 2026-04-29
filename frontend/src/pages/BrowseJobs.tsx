@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
 import { Navbar } from '@/components/Navbar';
@@ -55,25 +56,11 @@ const EMPTY: AppliedFilters = { keyword: '', category: '', skills: '', minBudget
 export default function BrowseJobs() {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
-  const dashboardPath = user?.role === 'CLIENT' ? '/client/dashboard' : user?.role === 'FREELANCER' ? '/freelancer/dashboard' : '';
-
-  // Dynamic sidebar — freelancers get My Invites
-  const sidebarLinks = user?.role === 'FREELANCER'
-    ? [
-        { icon: 'dashboard',    label: 'Dashboard',  short: 'Dashboard', active: false, path: 'DASHBOARD'          },
-        { icon: 'search',       label: 'Browse Jobs', short: 'Browse',   active: true,  path: '/browse'            },
-        { icon: 'mail',         label: 'My Invites', short: 'Invites',   active: false, path: '/freelancer/invites' },
-        { icon: 'receipt_long', label: 'Contracts',  short: 'Contracts', active: false, path: ''                   },
-        { icon: 'payments',     label: 'Payments',   short: 'Payments',  active: false, path: ''                   },
-      ]
-    : [
-        { icon: 'dashboard',    label: 'Dashboard',  short: 'Dashboard', active: false, path: 'DASHBOARD' },
-        { icon: 'search',       label: 'Browse Jobs', short: 'Browse',   active: true,  path: '/browse'   },
-        { icon: 'receipt_long', label: 'Contracts',  short: 'Contracts', active: false, path: ''          },
-        { icon: 'chat',         label: 'Messages',   short: 'Messages',  active: false, path: ''          },
-        { icon: 'payments',     label: 'Payments',   short: 'Payments',  active: false, path: ''          },
-      ];
-
+  const { pathname } = useLocation();
+  const sidebarLinks = withActive(
+    user?.role === 'FREELANCER' ? FREELANCER_SIDEBAR : CLIENT_SIDEBAR,
+    pathname
+  );
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -181,16 +168,13 @@ export default function BrowseJobs() {
             </button>
           </div>
           <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-            {sidebarLinks.map(({ icon, label, active, path }) => {
-              const resolved = path === 'DASHBOARD' ? dashboardPath : path;
-              return (
-                <button key={label} onClick={() => resolved && navigate(resolved)} title={!sidebarOpen ? label : undefined}
-                  className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-secondary/20 text-white' : resolved ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+            {sidebarLinks.map(({ icon, label, active, path }) => (
+                <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
+                  className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
                   <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
                   {sidebarOpen && <span className="text-sm truncate">{label}</span>}
                 </button>
-              );
-            })}
+            ))}
           </nav>
           <div className="p-3 space-y-2 border-t border-white/10 flex-shrink-0">
             {sidebarOpen && (
@@ -419,16 +403,13 @@ export default function BrowseJobs() {
       </div>
 
       {user && <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {sidebarLinks.map(({ icon, short, active, path }) => {
-          const resolved = path === 'DASHBOARD' ? dashboardPath : path;
-          return (
-            <button key={short} onClick={() => resolved && navigate(resolved)}
-              className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : resolved ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+        {sidebarLinks.map(({ icon, short, active, path }) => (
+            <button key={short} onClick={() => path && navigate(path)}
+              className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
               <span className="material-symbols-outlined text-[22px]">{icon}</span>
               <span className="text-[10px] font-semibold leading-none">{short}</span>
             </button>
-          );
-        })}
+        ))}
       </nav>}
     </div>
   );

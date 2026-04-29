@@ -11,6 +11,10 @@ import MyJobs from '@/pages/MyJobs';
 import BrowseJobs from '@/pages/BrowseJobs';
 import JobDetail from '@/pages/JobDetail';
 import FreelancerInvites from '@/pages/FreelancerInvites';
+import ClientInvites from '@/pages/ClientInvites';
+import ClientJobBids from '@/pages/ClientJobBids';
+import ClientBids from '@/pages/ClientBids';
+import FreelancerBids from '@/pages/FreelancerBids';
 
 export default function App() {
   return (
@@ -38,11 +42,27 @@ export default function App() {
             path="/client/jobs"
             element={<ClientRoute><MyJobs /></ClientRoute>}
           />
+          <Route
+            path="/client/invites"
+            element={<ClientRoute><ClientInvites /></ClientRoute>}
+          />
+          <Route
+            path="/client/bids"
+            element={<ClientRoute><ClientBids /></ClientRoute>}
+          />
+          <Route
+            path="/client/jobs/:jobId/bids"
+            element={<ClientRoute><ClientJobBids /></ClientRoute>}
+          />
           <Route path="/browse" element={<BrowseJobs />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
           <Route
             path="/freelancer/invites"
             element={<FreelancerRoute><FreelancerInvites /></FreelancerRoute>}
+          />
+          <Route
+            path="/freelancer/bids"
+            element={<FreelancerRoute><FreelancerBids /></FreelancerRoute>}
           />
 
           {/* Legacy redirect */}

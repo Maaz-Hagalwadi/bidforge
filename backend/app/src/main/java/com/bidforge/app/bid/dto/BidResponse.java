@@ -1,5 +1,6 @@
 package com.bidforge.app.bid.dto;
 
+import com.bidforge.app.bid.BidStatus;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,9 +20,13 @@ public class BidResponse {
     private Integer deliveryDays;
 
     private UUID jobId;
+    private String jobTitle;
+    private String jobStatus;
 
     private Long freelancerId;
-    private String freelancerName; // useful for client UI
+    private String freelancerName;
+
+    private BidStatus status;
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

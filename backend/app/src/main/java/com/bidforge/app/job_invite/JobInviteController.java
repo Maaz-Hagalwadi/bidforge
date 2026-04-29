@@ -3,6 +3,7 @@ package com.bidforge.app.job_invite;
 import com.bidforge.app.job.dto.response.JobResponse;
 import com.bidforge.app.job_invite.dto.InviteRequest;
 import com.bidforge.app.job_invite.dto.InviteWithJobResponse;
+import com.bidforge.app.job_invite.dto.JobInviteStatusResponse;
 import com.bidforge.app.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -69,5 +70,19 @@ public class JobInviteController {
     @PreAuthorize("hasRole('FREELANCER')")
     public List<InviteWithJobResponse> getMyInvitesWithStatus() {
         return jobInviteService.getMyInvitesWithStatus(getCurrentUser());
+    }
+
+    // 👨‍💼 Client sees all invitees for a specific job (names + statuses)
+    @GetMapping("/{jobId}/invites")
+    @PreAuthorize("hasRole('CLIENT')")
+    public List<JobInviteStatusResponse> getJobInvites(@PathVariable UUID jobId) {
+        return jobInviteService.getJobInvites(jobId, getCurrentUser());
+    }
+
+    // 👨‍💼 Client sees all invites across all their jobs
+    @GetMapping("/all-invites")
+    @PreAuthorize("hasRole('CLIENT')")
+    public List<JobInviteStatusResponse> getAllClientInvites() {
+        return jobInviteService.getAllClientInvites(getCurrentUser());
     }
 }

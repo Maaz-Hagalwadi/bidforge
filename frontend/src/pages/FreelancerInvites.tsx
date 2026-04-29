@@ -1,22 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FREELANCER_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
 import { Navbar } from '@/components/Navbar';
 import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
-import type { JobResponse } from '@/types/job';
+import type { InviteWithJobResponse } from '@/types/job';
 
 const SIDEBAR_BG = '#0A192F';
 
-const SIDEBAR_LINKS = [
-  { icon: 'dashboard',    label: 'Dashboard',   short: 'Dashboard', active: false, path: '/freelancer/dashboard' },
-  { icon: 'search',       label: 'Browse Jobs', short: 'Browse',    active: false, path: '/browse'               },
-  { icon: 'mail',         label: 'My Invites',  short: 'Invites',   active: true,  path: '/freelancer/invites'   },
-  { icon: 'receipt_long', label: 'Contracts',   short: 'Contracts', active: false, path: ''                      },
-  { icon: 'payments',     label: 'Payments',    short: 'Payments',  active: false, path: ''                      },
-];
 
 const CATEGORIES = [
   'All Categories',
@@ -60,11 +54,17 @@ const EMPTY_FILTERS: AppliedFilters = { keyword: '', category: '', skills: '', m
 export default function FreelancerInvites() {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const sidebarLinks = withActive(FREELANCER_SIDEBAR, pathname);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [jobs, setJobs] = useState<JobResponse[]>([]);
+  const [invites, setInvites] = useState<InviteWithJobResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState<Set<string>>(new Set());
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const [confirmAction, setConfirmAction] = useState<{ inviteId: string; action: 'accept' | 'decline'; title: string } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Form-input state (live, not yet applied)
   const [keyword, setKeyword] = useState('');
@@ -75,13 +75,14 @@ export default function FreelancerInvites() {
 
   // Applied state — only updated when Search is clicked
   const [applied, setApplied] = useState<AppliedFilters>(EMPTY_FILTERS);
+  const [statusTab, setStatusTab] = useState<'ALL' | 'INVITED' | 'ACCEPTED' | 'DECLINED'>('ALL');
   const [page, setPage] = useState(0);
 
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    jobsApi.getInvitedJobs()
-      .then(setJobs)
+    jobsApi.getInvites()
+      .then(setInvites)
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -106,19 +107,65 @@ export default function FreelancerInvites() {
     setPage(0);
   };
 
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmAction) return;
+    const { inviteId, action } = confirmAction;
+    setConfirmAction(null);
+    setProcessing(prev => new Set(prev).add(inviteId));
+    try {
+      if (action === 'accept') {
+        await jobsApi.acceptInvite(inviteId);
+        setInvites(prev => prev.map(inv =>
+          inv.inviteId === inviteId ? { ...inv, inviteStatus: 'ACCEPTED' } : inv
+        ));
+        showToast('Invite accepted successfully!', 'success');
+      } else {
+        await jobsApi.declineInvite(inviteId);
+        setInvites(prev => prev.map(inv =>
+          inv.inviteId === inviteId ? { ...inv, inviteStatus: 'DECLINED' } : inv
+        ));
+        showToast('Invite declined.', 'success');
+      }
+      setCardErrors(prev => { const e = { ...prev }; delete e[inviteId]; return e; });
+    } catch (err: any) {
+      const msg = (err as any)?.response?.data?.message ?? 'Something went wrong';
+      setCardErrors(prev => ({ ...prev, [inviteId]: msg }));
+      showToast(msg, 'error');
+    } finally {
+      setProcessing(prev => { const s = new Set(prev); s.delete(inviteId); return s; });
+    }
+  };
+
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
   const initials = user ? getInitials(user.name) : '?';
 
-  const filtered = jobs.filter(j => {
+  function passesFilter(inv: InviteWithJobResponse): boolean {
     if (applied.keyword) {
       const kw = applied.keyword.toLowerCase();
-      if (!j.title.toLowerCase().includes(kw) && !j.description?.toLowerCase().includes(kw)) return false;
+      if (!inv.title.toLowerCase().includes(kw) && !inv.description?.toLowerCase().includes(kw)) return false;
     }
-    if (applied.category && j.category !== applied.category) return false;
-    if (applied.skills && !j.requiredSkills?.toLowerCase().includes(applied.skills.toLowerCase())) return false;
-    if (applied.minBudget && j.budgetMin < Number(applied.minBudget)) return false;
-    if (applied.maxBudget && Number(applied.maxBudget) > 0 && j.budgetMax > Number(applied.maxBudget)) return false;
+    if (applied.category && inv.category !== applied.category) return false;
+    if (applied.skills && !inv.requiredSkills?.toLowerCase().includes(applied.skills.toLowerCase())) return false;
+    if (applied.minBudget && inv.budgetMin < Number(applied.minBudget)) return false;
+    if (applied.maxBudget && Number(applied.maxBudget) > 0 && inv.budgetMax > Number(applied.maxBudget)) return false;
     return true;
+  }
+
+  const counts = {
+    ALL:      invites.filter(passesFilter).length,
+    INVITED:  invites.filter(i => i.inviteStatus === 'INVITED'  && passesFilter(i)).length,
+    ACCEPTED: invites.filter(i => i.inviteStatus === 'ACCEPTED' && passesFilter(i)).length,
+    DECLINED: invites.filter(i => i.inviteStatus === 'DECLINED' && passesFilter(i)).length,
+  };
+
+  const filtered = invites.filter(i => {
+    if (statusTab !== 'ALL' && i.inviteStatus !== statusTab) return false;
+    return passesFilter(i);
   });
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -160,7 +207,7 @@ export default function FreelancerInvites() {
             </button>
           </div>
           <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-            {SIDEBAR_LINKS.map(({ icon, label, active, path }) => (
+            {sidebarLinks.map(({ icon, label, active, path }) => (
               <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
                 className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white font-medium' : 'text-white/30 cursor-default font-medium'].join(' ')}>
                 <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
@@ -261,16 +308,9 @@ export default function FreelancerInvites() {
               </div>
             </form>
 
-            {/* Results count */}
-            {!loading && (
-              <p className="text-sm text-on-surface-variant">
-                Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of <span className="font-semibold text-on-surface">{filtered.length}</span> jobs
-              </p>
-            )}
-
             {loading ? (
               <PageLoader message="Loading invites…" />
-            ) : jobs.length === 0 ? (
+            ) : invites.length === 0 ? (
               <div className="tonal-card rounded-xl flex flex-col items-center gap-4 py-20 text-center">
                 <span className="material-symbols-outlined text-5xl text-slate-300">mail_outline</span>
                 <p className="text-on-surface font-semibold">No invites yet</p>
@@ -280,110 +320,59 @@ export default function FreelancerInvites() {
                   Browse Public Jobs
                 </button>
               </div>
-            ) : filtered.length === 0 ? (
-              <div className="tonal-card rounded-xl flex flex-col items-center gap-4 py-20 text-center">
-                <span className="material-symbols-outlined text-5xl text-slate-300">search_off</span>
-                <p className="text-on-surface font-semibold">No invites match your filters</p>
-                <p className="text-sm text-on-surface-variant max-w-xs">Try adjusting your search criteria.</p>
-                <button onClick={handleClear}
-                  className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
-                  Clear Filters
-                </button>
-              </div>
             ) : (
-              <div className="space-y-4">
-                {paginated.map(job => {
-                  const skills = parseSkills(job.requiredSkills);
-                  return (
-                    <article key={job.id} className="tonal-card rounded-xl overflow-hidden hover:shadow-md transition-all group">
-                      <div className="p-6 flex flex-col md:flex-row md:items-start gap-6">
-                        <div className="flex-1 min-w-0 space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[13px]">lock</span>Invite Only
-                            </span>
-                            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{job.category}</span>
-                            <span className="px-2.5 py-1 bg-secondary/10 text-secondary rounded-full text-xs font-semibold">
-                              {job.budgetType === 'HOURLY' ? 'Hourly' : 'Fixed Price'}
-                            </span>
-                          </div>
-                          <h3 className="text-lg font-bold text-on-surface group-hover:text-secondary transition-colors">{job.title}</h3>
-                          <p className="text-sm text-on-surface-variant line-clamp-2">{job.description}</p>
-                          {skills.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {skills.slice(0, 5).map(s => (
-                                <span key={s} className="px-2.5 py-1 bg-slate-100 border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
-                              ))}
-                              {skills.length > 5 && <span className="text-xs text-on-surface-variant px-2">+{skills.length - 5} more</span>}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-3 md:items-end flex-shrink-0 w-full md:w-auto">
-                          <div className="md:text-right">
-                            <p className="text-xs text-on-surface-variant mb-0.5">Budget</p>
-                            <p className="text-lg font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
-                          </div>
-                          {job.deadline && (
-                            <div className="md:text-right">
-                              <p className="text-xs text-on-surface-variant mb-0.5">Deadline</p>
-                              <p className="text-sm font-semibold text-on-surface">
-                                {new Date(job.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </p>
-                            </div>
-                          )}
-                          <div className="flex flex-col gap-2 md:items-end">
-                            <button onClick={() => navigate(`/jobs/${job.id}`)}
-                              className="w-full md:w-auto flex items-center justify-center gap-1.5 px-5 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                              <span className="material-symbols-outlined text-[16px]">gavel</span>
-                              View &amp; Bid
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+              <div className="space-y-5">
 
-            {/* Pagination */}
-            {!loading && totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-2">
-                <button
-                  disabled={page === 0}
-                  onClick={() => setPage(p => p - 1)}
-                  className="flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>Prev
-                </button>
-
-                <div className="flex gap-1">
-                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                    let p: number;
-                    if (totalPages <= 7) {
-                      p = i;
-                    } else if (page < 4) {
-                      p = i < 5 ? i : i === 5 ? -1 : totalPages - 1;
-                    } else if (page >= totalPages - 4) {
-                      p = i === 0 ? 0 : i === 1 ? -1 : totalPages - 7 + i;
-                    } else {
-                      p = i === 0 ? 0 : i === 1 ? -1 : i === 5 ? -1 : i === 6 ? totalPages - 1 : page - 2 + (i - 2);
-                    }
-                    if (p === -1) return <span key={`ellipsis-${i}`} className="px-2 py-2 text-on-surface-variant text-sm">…</span>;
-                    return (
-                      <button key={p} onClick={() => setPage(p)}
-                        className={['w-9 h-9 rounded-lg text-sm font-semibold transition-colors', p === page ? 'bg-secondary text-white' : 'border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
-                        {p + 1}
-                      </button>
-                    );
-                  })}
+                {/* Status filter tabs */}
+                <div className="flex gap-1.5 flex-wrap">
+                  {([
+                    { key: 'ALL',      label: 'All',      count: counts.ALL      },
+                    { key: 'INVITED',  label: 'Pending',  count: counts.INVITED  },
+                    { key: 'ACCEPTED', label: 'Accepted', count: counts.ACCEPTED },
+                    { key: 'DECLINED', label: 'Declined', count: counts.DECLINED },
+                  ] as const).map(({ key, label, count }) => (
+                    <button key={key}
+                      onClick={() => { setStatusTab(key); setPage(0); }}
+                      className={['flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all', statusTab === key ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+                      {label}
+                      <span className={['text-xs px-1.5 py-0.5 rounded-full font-bold', statusTab === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-on-surface-variant'].join(' ')}>{count}</span>
+                    </button>
+                  ))}
                 </div>
 
-                <button
-                  disabled={page >= totalPages - 1}
-                  onClick={() => setPage(p => p + 1)}
-                  className="flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  Next<span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                </button>
+                {/* Results count */}
+                <p className="text-sm text-on-surface-variant">
+                  Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of <span className="font-semibold text-on-surface">{filtered.length}</span> invites
+                </p>
+
+                {filtered.length === 0 ? (
+                  <div className="tonal-card rounded-xl flex flex-col items-center gap-4 py-20 text-center">
+                    <span className="material-symbols-outlined text-5xl text-slate-300">search_off</span>
+                    <p className="text-on-surface font-semibold">No invites match your filters</p>
+                    <button onClick={handleClear}
+                      className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
+                      Clear Filters
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      {paginated.map(inv => (
+                        <InviteCard key={inv.inviteId} inv={inv}
+                          isProcessing={processing.has(inv.inviteId)}
+                          error={cardErrors[inv.inviteId]}
+                          dimmed={inv.inviteStatus === 'DECLINED'}
+                          onAccept={inv.inviteStatus === 'INVITED' ? () => setConfirmAction({ inviteId: inv.inviteId, action: 'accept', title: inv.title }) : undefined}
+                          onDecline={inv.inviteStatus === 'INVITED' ? () => setConfirmAction({ inviteId: inv.inviteId, action: 'decline', title: inv.title }) : undefined}
+                          onViewBid={inv.inviteStatus === 'ACCEPTED' ? () => navigate(`/jobs/${inv.jobId}`, { state: { from: 'invites' } }) : undefined}
+                        />
+                      ))}
+                    </div>
+                    {totalPages > 1 && (
+                      <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -398,7 +387,7 @@ export default function FreelancerInvites() {
       </div>
 
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {SIDEBAR_LINKS.map(({ icon, short, active, path }) => (
+        {sidebarLinks.map(({ icon, short, active, path }) => (
           <button key={short} onClick={() => path && navigate(path)}
             className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
             <span className="material-symbols-outlined text-[22px]">{icon}</span>
@@ -406,6 +395,199 @@ export default function FreelancerInvites() {
           </button>
         ))}
       </nav>
+
+      {/* Confirmation modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setConfirmAction(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5" onClick={e => e.stopPropagation()}>
+            <div className="flex flex-col items-center gap-3 text-center">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${confirmAction.action === 'accept' ? 'bg-green-100' : 'bg-red-50'}`}>
+                <span className={`material-symbols-outlined text-2xl ${confirmAction.action === 'accept' ? 'text-green-600' : 'text-red-500'}`}>
+                  {confirmAction.action === 'accept' ? 'check_circle' : 'cancel'}
+                </span>
+              </div>
+              <h2 className="text-base font-bold text-on-surface">
+                {confirmAction.action === 'accept' ? 'Accept Invite?' : 'Decline Invite?'}
+              </h2>
+              <p className="text-sm text-on-surface-variant">
+                {confirmAction.action === 'accept'
+                  ? `You'll be able to view and place a bid on "${confirmAction.title}".`
+                  : `Are you sure you want to decline the invite for "${confirmAction.title}"?`}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmAction(null)}
+                className="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleConfirm}
+                className={`flex-1 py-2.5 text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all ${confirmAction.action === 'accept' ? 'bg-green-600' : 'bg-red-500'}`}>
+                {confirmAction.action === 'accept' ? 'Accept' : 'Decline'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold animate-fade-in ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-500 text-white'}`}>
+          <span className="material-symbols-outlined text-[18px]">
+            {toast.type === 'success' ? 'check_circle' : 'error'}
+          </span>
+          {toast.message}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Sub-components ──────────────────────────────────────────────
+
+function InviteCard({
+  inv,
+  isProcessing,
+  error,
+  dimmed,
+  onAccept,
+  onDecline,
+  onViewBid,
+}: {
+  inv: InviteWithJobResponse;
+  isProcessing: boolean;
+  error?: string;
+  dimmed?: boolean;
+  onAccept?: () => void;
+  onDecline?: () => void;
+  onViewBid?: () => void;
+}) {
+  const skills = parseSkills(inv.requiredSkills);
+
+  return (
+    <article className={['tonal-card rounded-xl overflow-hidden transition-all', dimmed ? 'opacity-50' : 'hover:shadow-md group'].join(' ')}>
+      <div className="p-6 flex flex-col md:flex-row md:items-start gap-6">
+        <div className="flex-1 min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold flex items-center gap-1">
+              <span className="material-symbols-outlined text-[13px]">lock</span>Invite Only
+            </span>
+            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{inv.category}</span>
+            <span className="px-2.5 py-1 bg-secondary/10 text-secondary rounded-full text-xs font-semibold">
+              {inv.budgetType === 'HOURLY' ? 'Hourly' : 'Fixed Price'}
+            </span>
+            {inv.inviteStatus === 'ACCEPTED' && (
+              <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold flex items-center gap-1">
+                <span className="material-symbols-outlined text-[13px]">check_circle</span>Accepted
+              </span>
+            )}
+            {inv.inviteStatus === 'DECLINED' && (
+              <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-semibold flex items-center gap-1">
+                <span className="material-symbols-outlined text-[13px]">cancel</span>Declined
+              </span>
+            )}
+          </div>
+          <h3 className={['text-lg font-bold text-on-surface', !dimmed ? 'group-hover:text-secondary transition-colors' : ''].join(' ')}>{inv.title}</h3>
+          <p className="text-sm text-on-surface-variant line-clamp-2">{inv.description}</p>
+          {skills.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {skills.slice(0, 5).map(s => (
+                <span key={s} className="px-2.5 py-1 bg-slate-100 border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
+              ))}
+              {skills.length > 5 && <span className="text-xs text-on-surface-variant px-2">+{skills.length - 5} more</span>}
+            </div>
+          )}
+          {error && (
+            <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">error</span>{error}
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col gap-3 md:items-end flex-shrink-0 w-full md:w-auto">
+          <div className="md:text-right">
+            <p className="text-xs text-on-surface-variant mb-0.5">Budget</p>
+            <p className="text-lg font-bold text-secondary">{formatBudget(inv.budgetMin, inv.budgetMax, inv.budgetType)}</p>
+          </div>
+          {inv.deadline && (
+            <div className="md:text-right">
+              <p className="text-xs text-on-surface-variant mb-0.5">Deadline</p>
+              <p className="text-sm font-semibold text-on-surface">
+                {new Date(inv.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            </div>
+          )}
+          <div className="flex flex-col gap-2 md:items-end">
+            {inv.inviteStatus === 'INVITED' && (
+              <>
+                <button
+                  onClick={onAccept}
+                  disabled={isProcessing}
+                  className="w-full md:w-auto flex items-center justify-center gap-1.5 px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all">
+                  {isProcessing ? (
+                    <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                  ) : (
+                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                  )}
+                  Accept
+                </button>
+                <button
+                  onClick={onDecline}
+                  disabled={isProcessing}
+                  className="w-full md:w-auto flex items-center justify-center gap-1.5 px-5 py-2 border border-outline-variant text-on-surface-variant text-sm font-semibold rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-600 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] transition-all">
+                  <span className="material-symbols-outlined text-[16px]">cancel</span>
+                  Decline
+                </button>
+              </>
+            )}
+            {inv.inviteStatus === 'ACCEPTED' && (
+              <button onClick={onViewBid}
+                className="w-full md:w-auto flex items-center justify-center gap-1.5 px-5 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                <span className="material-symbols-outlined text-[16px]">gavel</span>
+                View &amp; Bid
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PaginationBar({ page, totalPages, onPageChange }: { page: number; totalPages: number; onPageChange: (p: number) => void }) {
+  return (
+    <div className="flex items-center justify-center gap-2 pt-2">
+      <button
+        disabled={page === 0}
+        onClick={() => onPageChange(page - 1)}
+        className="flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+        <span className="material-symbols-outlined text-[18px]">chevron_left</span>Prev
+      </button>
+      <div className="flex gap-1">
+        {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+          let p: number;
+          if (totalPages <= 7) {
+            p = i;
+          } else if (page < 4) {
+            p = i < 5 ? i : i === 5 ? -1 : totalPages - 1;
+          } else if (page >= totalPages - 4) {
+            p = i === 0 ? 0 : i === 1 ? -1 : totalPages - 7 + i;
+          } else {
+            p = i === 0 ? 0 : i === 1 ? -1 : i === 5 ? -1 : i === 6 ? totalPages - 1 : page - 2 + (i - 2);
+          }
+          if (p === -1) return <span key={`ellipsis-${i}`} className="px-2 py-2 text-on-surface-variant text-sm">…</span>;
+          return (
+            <button key={p} onClick={() => onPageChange(p)}
+              className={['w-9 h-9 rounded-lg text-sm font-semibold transition-colors', p === page ? 'bg-secondary text-white' : 'border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+              {p + 1}
+            </button>
+          );
+        })}
+      </div>
+      <button
+        disabled={page >= totalPages - 1}
+        onClick={() => onPageChange(page + 1)}
+        className="flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+        Next<span className="material-symbols-outlined text-[18px]">chevron_right</span>
+      </button>
     </div>
   );
 }

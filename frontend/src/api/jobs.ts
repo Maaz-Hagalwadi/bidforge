@@ -1,5 +1,5 @@
 import api from './axiosInstance';
-import type { CreateJobPayload, InviteWithJobResponse, JobResponse, SpringPage } from '@/types/job';
+import type { BidResponse, CreateBidPayload, CreateJobPayload, InviteWithJobResponse, JobInviteStatus, JobResponse, SpringPage } from '@/types/job';
 
 export const jobsApi = {
   create: (payload: CreateJobPayload) =>
@@ -28,4 +28,25 @@ export const jobsApi = {
 
   declineInvite: (inviteId: string) =>
     api.post<string>(`/jobs/invites/${inviteId}/decline`).then(r => r.data),
+
+  getJobInvites: (jobId: string) =>
+    api.get<JobInviteStatus[]>(`/jobs/${jobId}/invites`).then(r => r.data),
+
+  getAllClientInvites: () =>
+    api.get<JobInviteStatus[]>('/jobs/all-invites').then(r => r.data),
+
+  getJobBids: (jobId: string) =>
+    api.get<BidResponse[]>(`/jobs/${jobId}/bids`).then(r => r.data),
+
+  createBid: (jobId: string, payload: CreateBidPayload) =>
+    api.post<BidResponse>(`/jobs/${jobId}/bids`, payload).then(r => r.data),
+
+  acceptBid: (bidId: string) =>
+    api.post<string>(`/bids/${bidId}/accept`).then(r => r.data),
+
+  declineBid: (bidId: string) =>
+    api.post<string>(`/bids/${bidId}/decline`).then(r => r.data),
+
+  getMyBids: () =>
+    api.get<BidResponse[]>('/bids/my').then(r => r.data),
 };

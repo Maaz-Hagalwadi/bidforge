@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { CLIENT_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
 import { usersApi, type FreelancerSearchResult } from '@/api/users';
@@ -7,15 +8,8 @@ import { Navbar } from '@/components/Navbar';
 import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
-import type { JobResponse } from '@/types/job';
+import type { JobInviteStatus, JobResponse } from '@/types/job';
 
-const SIDEBAR_LINKS = [
-  { icon: 'dashboard',    label: 'Dashboard',    short: 'Dashboard', active: false, path: '/client/dashboard' },
-  { icon: 'work',         label: 'My Jobs',      short: 'My Jobs',   active: true,  path: '/client/jobs'      },
-  { icon: 'receipt_long', label: 'My Contracts', short: 'Contracts', active: false, path: ''                  },
-  { icon: 'chat',         label: 'Messages',     short: 'Messages',  active: false, path: ''                  },
-  { icon: 'payments',     label: 'Payments',     short: 'Payments',  active: false, path: ''                  },
-];
 
 const SIDEBAR_BG = '#0A192F';
 
@@ -61,7 +55,14 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
   const [selected, setSelected] = useState<FreelancerSearchResult | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [alreadyInvitedIds, setAlreadyInvitedIds] = useState<Set<number>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    jobsApi.getJobInvites(job.id)
+      .then(invitees => setAlreadyInvitedIds(new Set(invitees.map(i => i.freelancerId))))
+      .catch(() => {});
+  }, [job.id]);
 
   const search = useCallback((q: string) => {
     if (!q.trim()) { setResults([]); return; }
@@ -78,8 +79,10 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query, search]);
 
+  const isAlreadyInvited = selected ? alreadyInvitedIds.has(selected.id) : false;
+
   const handleInvite = async () => {
-    if (!selected) return;
+    if (!selected || isAlreadyInvited) return;
     setStatus('loading');
     setErrorMsg('');
     try {
@@ -181,6 +184,12 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
                   )}
                 </div>
               )}
+              {isAlreadyInvited && (
+                <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <span className="material-symbols-outlined text-amber-600 text-[15px]">info</span>
+                  <p className="text-xs text-amber-700 font-medium">This freelancer has already been invited to this job.</p>
+                </div>
+              )}
               {errorMsg && <p className="text-xs text-red-500">{errorMsg}</p>}
             </div>
 
@@ -188,7 +197,7 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
               <button onClick={onClose} className="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
                 Cancel
               </button>
-              <button onClick={handleInvite} disabled={!selected || status === 'loading'}
+              <button onClick={handleInvite} disabled={!selected || status === 'loading' || isAlreadyInvited}
                 className="flex-1 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60">
                 {status === 'loading' ? 'Sending…' : 'Send Invite'}
               </button>
@@ -200,11 +209,130 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
   );
 }
 
+// ── InviteesModal ──────────────────────────────────────────────
+
+const STATUS_BADGE: Record<string, { label: string; cls: string; icon: string }> = {
+  INVITED:  { label: 'Pending',  cls: 'bg-amber-50 text-amber-700',   icon: 'schedule'      },
+  ACCEPTED: { label: 'Accepted', cls: 'bg-green-100 text-green-700',  icon: 'check_circle'  },
+  DECLINED: { label: 'Declined', cls: 'bg-slate-100 text-slate-500',  icon: 'cancel'        },
+};
+
+type InviteTab = 'ALL' | 'ACCEPTED' | 'INVITED' | 'DECLINED';
+
+const INVITE_TABS: { key: InviteTab; label: string }[] = [
+  { key: 'ALL',      label: 'All'      },
+  { key: 'ACCEPTED', label: 'Accepted' },
+  { key: 'INVITED',  label: 'Pending'  },
+  { key: 'DECLINED', label: 'Declined' },
+];
+
+function InviteesModal({ job, onClose }: { job: JobResponse; onClose: () => void }) {
+  const [invitees, setInvitees] = useState<JobInviteStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<InviteTab>('ALL');
+
+  useEffect(() => {
+    jobsApi.getJobInvites(job.id)
+      .then(setInvitees)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [job.id]);
+
+  const tabCounts: Record<InviteTab, number> = {
+    ALL:      invitees.length,
+    ACCEPTED: invitees.filter(i => i.status === 'ACCEPTED').length,
+    INVITED:  invitees.filter(i => i.status === 'INVITED').length,
+    DECLINED: invitees.filter(i => i.status === 'DECLINED').length,
+  };
+
+  const visible = tab === 'ALL' ? invitees : invitees.filter(i => i.status === tab);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="p-6 border-b border-outline-variant flex items-start justify-between gap-4 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-on-surface">Invite Responses</h2>
+            <p className="text-sm text-on-surface-variant mt-0.5 line-clamp-1">{job.title}</p>
+          </div>
+          <button onClick={onClose} className="p-1 text-on-surface-variant hover:text-on-surface transition-colors flex-shrink-0">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        {/* Status tabs */}
+        {!loading && invitees.length > 0 && (
+          <div className="px-4 pt-4 flex gap-1.5 flex-wrap flex-shrink-0">
+            {INVITE_TABS.map(({ key, label }) => (
+              <button key={key} onClick={() => setTab(key)}
+                className={['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', tab === key ? 'bg-secondary text-white' : 'bg-slate-100 text-on-surface-variant hover:bg-slate-200'].join(' ')}>
+                {label}
+                <span className={['text-[10px] px-1.5 py-0.5 rounded-full font-bold', tab === key ? 'bg-white/20 text-white' : 'bg-white text-on-surface-variant'].join(' ')}>
+                  {tabCounts[key]}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {loading ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-on-surface-variant text-sm">
+              <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
+              Loading…
+            </div>
+          ) : invitees.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <span className="material-symbols-outlined text-4xl text-slate-300">group</span>
+              <p className="text-sm text-on-surface-variant">No freelancers invited yet.</p>
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <span className="material-symbols-outlined text-3xl text-slate-300">person_search</span>
+              <p className="text-sm text-on-surface-variant">No invitees with this status.</p>
+            </div>
+          ) : (
+            visible.map(inv => {
+              const badge = STATUS_BADGE[inv.status] ?? STATUS_BADGE.INVITED;
+              return (
+                <div key={inv.inviteId} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-outline-variant bg-slate-50">
+                  <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                    {inv.freelancerName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-on-surface truncate">{inv.freelancerName}</p>
+                    <p className="text-xs text-on-surface-variant truncate">{inv.freelancerEmail}</p>
+                  </div>
+                  <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${badge.cls}`}>
+                    <span className="material-symbols-outlined text-[12px]">{badge.icon}</span>
+                    {badge.label}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="p-4 border-t border-outline-variant flex-shrink-0">
+          <button onClick={onClose}
+            className="w-full py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── MyJobs ─────────────────────────────────────────────────────
 
 export default function MyJobs() {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const sidebarLinks = withActive(CLIENT_SIDEBAR, pathname);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -214,6 +342,7 @@ export default function MyJobs() {
   const [visibilityFilter, setVisibilityFilter] = useState<'ALL' | 'PUBLIC' | 'INVITE_ONLY'>('ALL');
   const [search, setSearch] = useState('');
   const [inviteJob, setInviteJob] = useState<JobResponse | null>(null);
+  const [inviteesJob, setInviteesJob] = useState<JobResponse | null>(null);
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 5;
 
@@ -285,7 +414,7 @@ export default function MyJobs() {
             </button>
           </div>
           <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-            {SIDEBAR_LINKS.map(({ icon, label, active, path }) => (
+            {sidebarLinks.map(({ icon, label, active, path }) => (
               <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
                 className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white font-medium' : 'text-white/30 cursor-default font-medium'].join(' ')}>
                 <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
@@ -435,17 +564,32 @@ export default function MyJobs() {
                               <p className="text-sm font-semibold text-on-surface">{formatDate(job.deadline)}</p>
                             </div>
                           )}
-                          <div className="flex flex-col gap-2 md:items-end">
-                            <button onClick={() => navigate(`/jobs/${job.id}`)}
-                              className="w-full md:w-auto flex items-center justify-center gap-1.5 px-4 py-2 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface-variant hover:border-secondary/40 hover:text-secondary transition-colors">
-                              <span className="material-symbols-outlined text-[15px]">open_in_new</span>
-                              View Details
+                          {/* Action buttons — compact horizontal row */}
+                          <div className="flex items-center gap-2 flex-wrap md:justify-end">
+                            <button onClick={() => navigate(`/jobs/${job.id}`)} title="View Details"
+                              className="flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface-variant hover:border-secondary/40 hover:text-secondary transition-colors">
+                              <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                              Details
                             </button>
+                            {(job.status === 'OPEN' || job.status === 'ASSIGNED') && (
+                              <button onClick={() => navigate(`/client/jobs/${job.id}/bids`)} title="View Bids"
+                                className="flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface-variant hover:border-secondary/40 hover:text-secondary transition-colors">
+                                <span className="material-symbols-outlined text-[14px]">gavel</span>
+                                Bids
+                              </button>
+                            )}
                             {isInviteOnly && job.status === 'OPEN' && (
-                              <button onClick={() => setInviteJob(job)}
-                                className="w-full md:w-auto flex items-center justify-center gap-1.5 px-4 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                                <span className="material-symbols-outlined text-[15px]">person_add</span>
-                                Invite Freelancer
+                              <button onClick={() => setInviteJob(job)} title="Invite Freelancer"
+                                className="flex items-center gap-1 px-3 py-1.5 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                                <span className="material-symbols-outlined text-[14px]">person_add</span>
+                                Invite
+                              </button>
+                            )}
+                            {isInviteOnly && (
+                              <button onClick={() => setInviteesJob(job)} title="View Invitees"
+                                className="flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface-variant hover:border-secondary/40 hover:text-secondary transition-colors">
+                                <span className="material-symbols-outlined text-[14px]">group</span>
+                                Invitees
                               </button>
                             )}
                           </div>
@@ -514,7 +658,7 @@ export default function MyJobs() {
       </div>
 
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {SIDEBAR_LINKS.map(({ icon, short, active, path }) => (
+        {sidebarLinks.map(({ icon, short, active, path }) => (
           <button key={short} onClick={() => path && navigate(path)}
             className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
             <span className="material-symbols-outlined text-[22px]">{icon}</span>
@@ -524,6 +668,7 @@ export default function MyJobs() {
       </nav>
 
       {inviteJob && <InviteModal job={inviteJob} onClose={() => setInviteJob(null)} />}
+      {inviteesJob && <InviteesModal job={inviteesJob} onClose={() => setInviteesJob(null)} />}
     </div>
   );
 }
