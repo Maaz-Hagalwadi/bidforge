@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { CLIENT_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { dashboardApi } from '@/api/dashboard';
 import { Navbar } from '@/components/Navbar';
@@ -8,15 +9,6 @@ import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import type { ClientDashboardData, RecentProject } from '@/types/dashboard';
 
-// ── Sidebar links ─────────────────────────────────────────────
-
-const SIDEBAR_LINKS = [
-  { icon: 'dashboard',    label: 'Dashboard',    short: 'Dashboard', active: true,  path: '/client/dashboard' },
-  { icon: 'work',         label: 'My Jobs',      short: 'My Jobs',   active: false, path: '/client/jobs'      },
-  { icon: 'receipt_long', label: 'My Contracts', short: 'Contracts', active: false, path: ''                  },
-  { icon: 'chat',         label: 'Messages',     short: 'Messages',  active: false, path: ''                  },
-  { icon: 'payments',     label: 'Payments',     short: 'Payments',  active: false, path: ''                  },
-];
 
 const SIDEBAR_BG = '#0A192F';
 
@@ -137,6 +129,8 @@ function TalentCard({ name, specialty, rating, reviews }: { name: string; specia
 export default function ClientDashboard() {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const sidebarLinks = withActive(CLIENT_SIDEBAR, pathname);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -231,7 +225,7 @@ export default function ClientDashboard() {
           </div>
 
           <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-            {SIDEBAR_LINKS.map(({ icon, label, active, path }) => (
+            {sidebarLinks.map(({ icon, label, active, path }) => (
               <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
                 className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : 'text-white/60 hover:bg-white/10 hover:text-white font-medium', !path ? 'opacity-50 cursor-default' : ''].join(' ')}>
                 <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
@@ -339,7 +333,7 @@ export default function ClientDashboard() {
 
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {SIDEBAR_LINKS.map(({ icon, short, active, path }) => (
+        {sidebarLinks.map(({ icon, short, active, path }) => (
           <button key={short} onClick={() => path && navigate(path)}
             className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
             <span className="material-symbols-outlined text-[22px]">{icon}</span>

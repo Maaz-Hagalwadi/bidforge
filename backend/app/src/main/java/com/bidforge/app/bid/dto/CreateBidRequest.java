@@ -1,5 +1,6 @@
 package com.bidforge.app.bid.dto;
 
+import com.bidforge.app.bid.BidStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -17,4 +18,6 @@ public class CreateBidRequest {
 
     @NotNull
     private Integer deliveryDays;
+
+
 }

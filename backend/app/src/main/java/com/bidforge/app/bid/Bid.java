@@ -42,6 +42,9 @@ public class Bid {
     @ManyToOne(fetch = FetchType.LAZY)
     private User freelancer;
 
+    @Enumerated(EnumType.STRING)
+    private BidStatus status;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

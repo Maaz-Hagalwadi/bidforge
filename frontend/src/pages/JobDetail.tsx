@@ -1,22 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
 import { Navbar } from '@/components/Navbar';
 import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
-import type { JobResponse } from '@/types/job';
+import { PlaceBidModal } from '@/components/PlaceBidModal';
+import { Toast } from '@/components/Toast';
+import type { BidResponse, JobResponse } from '@/types/job';
 
 const SIDEBAR_BG = '#0A192F';
 
-const SIDEBAR_LINKS = [
-  { icon: 'dashboard',    label: 'Dashboard',    short: 'Dashboard', path: 'DASHBOARD'  },
-  { icon: 'search',       label: 'Browse Jobs',  short: 'Browse',    path: '/browse'    },
-  { icon: 'receipt_long', label: 'My Contracts', short: 'Contracts', path: ''           },
-  { icon: 'chat',         label: 'Messages',     short: 'Messages',  path: ''           },
-  { icon: 'payments',     label: 'Payments',     short: 'Payments',  path: ''           },
-];
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   DRAFT:     { label: 'Draft',     cls: 'bg-slate-100 text-slate-600'    },
@@ -44,6 +40,8 @@ export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromPage = (location.state as { from?: string } | null)?.from ?? null;
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -53,11 +51,12 @@ export default function JobDetail() {
 
   const profileRef = useRef<HTMLDivElement>(null);
 
-  const dashboardPath = user?.role === 'CLIENT'
-    ? '/client/dashboard'
-    : user?.role === 'FREELANCER'
-    ? '/freelancer/dashboard'
-    : '';
+  const sidebarLinks = user?.role === 'FREELANCER' ? FREELANCER_SIDEBAR : CLIENT_SIDEBAR;
+
+  const activeLabel = fromPage === 'invites' ? 'My Invites'
+    : fromPage === 'browse'  ? 'Browse Jobs'
+    : fromPage === 'myjobs'  ? 'My Jobs'
+    : null;
 
   useEffect(() => {
     if (!id) return;
@@ -120,11 +119,11 @@ export default function JobDetail() {
             </button>
           </div>
           <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-            {SIDEBAR_LINKS.map(({ icon, label, path }) => {
-              const resolved = path === 'DASHBOARD' ? dashboardPath : path;
+            {sidebarLinks.map(({ icon, label, path }) => {
+              const active = label === activeLabel;
               return (
-                <button key={label} onClick={() => resolved && navigate(resolved)} title={!sidebarOpen ? label : undefined}
-                  className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', resolved ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
+                  className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
                   <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
                   {sidebarOpen && <span className="text-sm truncate">{label}</span>}
                 </button>
@@ -192,11 +191,11 @@ export default function JobDetail() {
 
       {user && (
         <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-          {SIDEBAR_LINKS.map(({ icon, short, path }) => {
-            const resolved = path === 'DASHBOARD' ? (user.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard') : path;
+          {sidebarLinks.map(({ icon, short, label, path }) => {
+            const active = label === activeLabel;
             return (
-              <button key={short} onClick={() => resolved && navigate(resolved)}
-                className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', resolved ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+              <button key={short} onClick={() => path && navigate(path)}
+                className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
                 <span className="material-symbols-outlined text-[22px]">{icon}</span>
                 <span className="text-[10px] font-semibold leading-none">{short}</span>
               </button>
@@ -208,15 +207,25 @@ export default function JobDetail() {
   );
 }
 
+const BID_STATUS_CFG = {
+  PENDING:  { label: 'Pending',  cls: 'bg-amber-50 text-amber-700',  icon: 'schedule'     },
+  ACCEPTED: { label: 'Accepted', cls: 'bg-green-100 text-green-700', icon: 'check_circle' },
+  REJECTED: { label: 'Rejected', cls: 'bg-slate-100 text-slate-500', icon: 'cancel'       },
+};
+
 function JobDetailContent({
   job,
   user,
   navigate,
 }: {
   job: JobResponse;
-  user: { role: string } | null;
+  user: { role: string; id: number } | null;
   navigate: (path: string) => void;
 }) {
+  const [showBidModal, setShowBidModal] = useState(false);
+  const [myBid, setMyBid] = useState<BidResponse | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
   const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
   const skills = parseSkills(job.requiredSkills);
 
@@ -259,12 +268,36 @@ function JobDetailContent({
           </div>
         </div>
 
-        {/* CTA */}
+        {/* CTA — Freelancer bid section */}
         {user?.role === 'FREELANCER' && job.status === 'OPEN' && (
-          <button className="flex items-center gap-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-            <span className="material-symbols-outlined text-[18px]">gavel</span>
-            Place a Bid
-          </button>
+          myBid ? (
+            <div className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${myBid.status === 'ACCEPTED' ? 'bg-green-50 border-green-200' : myBid.status === 'REJECTED' ? 'bg-slate-50 border-slate-200' : 'bg-amber-50 border-amber-200'}`}>
+              <span className={`material-symbols-outlined text-[20px] flex-shrink-0 mt-0.5 ${myBid.status === 'ACCEPTED' ? 'text-green-600' : myBid.status === 'REJECTED' ? 'text-slate-400' : 'text-amber-600'}`}>
+                {BID_STATUS_CFG[myBid.status]?.icon ?? 'gavel'}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-bold text-on-surface">Your Bid</p>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${BID_STATUS_CFG[myBid.status]?.cls}`}>
+                    {BID_STATUS_CFG[myBid.status]?.label}
+                  </span>
+                </div>
+                <p className="text-sm text-on-surface-variant mt-0.5">
+                  <span className="font-semibold text-secondary">${myBid.amount.toLocaleString()}</span>
+                  {' · '}
+                  {myBid.deliveryDays} day{myBid.deliveryDays !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowBidModal(true)}
+              className="flex items-center gap-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all"
+            >
+              <span className="material-symbols-outlined text-[18px]">gavel</span>
+              Place a Bid
+            </button>
+          )
         )}
         {!user && job.status === 'OPEN' && (
           <button onClick={() => navigate('/login')}
@@ -273,6 +306,20 @@ function JobDetailContent({
             Log in to Bid
           </button>
         )}
+
+        {showBidModal && (
+          <PlaceBidModal
+            jobId={job.id}
+            onSuccess={bid => {
+              setMyBid(bid);
+              setShowBidModal(false);
+              setToast({ message: 'Bid placed successfully!', type: 'success' });
+            }}
+            onClose={() => setShowBidModal(false)}
+          />
+        )}
+
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>
 
       {/* Description */}

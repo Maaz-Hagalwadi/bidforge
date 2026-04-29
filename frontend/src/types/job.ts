@@ -24,6 +24,17 @@ export interface CreateJobPayload {
 
 export type InviteStatus = 'INVITED' | 'ACCEPTED' | 'DECLINED';
 
+export interface JobInviteStatus {
+  inviteId: string;
+  jobId: string;
+  jobTitle: string;
+  freelancerId: number;
+  freelancerName: string;
+  freelancerEmail: string;
+  status: InviteStatus;
+  invitedAt: string;
+}
+
 export interface InviteWithJobResponse {
   inviteId: string;
   inviteStatus: InviteStatus;
@@ -42,6 +53,29 @@ export interface InviteWithJobResponse {
   clientId: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export type BidStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED';
+
+export interface BidResponse {
+  id: string;
+  amount: number;
+  proposal: string;
+  deliveryDays: number;
+  jobId: string;
+  jobTitle: string;
+  jobStatus: string;
+  freelancerId: number;
+  freelancerName: string;
+  status: BidStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBidPayload {
+  amount: number;
+  proposal: string;
+  deliveryDays: number;
 }
 
 export interface JobResponse {
