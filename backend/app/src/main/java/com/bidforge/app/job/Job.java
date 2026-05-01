@@ -1,8 +1,6 @@
 package com.bidforge.app.job;
 
-import com.bidforge.app.job.enums.BudgetType;
-import com.bidforge.app.job.enums.JobStatus;
-import com.bidforge.app.job.enums.Visibility;
+import com.bidforge.app.job.enums.*;
 import com.bidforge.app.user.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -39,6 +37,12 @@ public class Job {
 
     private Double budgetMin;
     private Double budgetMax;
+
+    @Enumerated(EnumType.STRING)
+    private ExperienceLevel experienceLevel;
+
+    @Enumerated(EnumType.STRING)
+    private UrgencyLevel urgencyLevel;
 
     @Enumerated(EnumType.STRING)
     private JobStatus status;

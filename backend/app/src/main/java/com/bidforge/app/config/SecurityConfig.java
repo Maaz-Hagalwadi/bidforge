@@ -49,6 +49,9 @@ public class SecurityConfig {
                         .requestMatchers("/auth/login", "/auth/register",
                                 "/auth/refresh", "/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/jobs", "/jobs/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/users/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/users/search").hasRole("CLIENT")
+                        .requestMatchers(HttpMethod.GET, "/users/*").permitAll()
                         .requestMatchers("/client/**").hasRole("CLIENT")
                         .requestMatchers("/freelancer/**").hasRole("FREELANCER")
                         .anyRequest().authenticated()

@@ -8,6 +8,9 @@ export interface SpringPage<T> {
   last: boolean;
 }
 
+export type ExperienceLevel = 'ENTRY' | 'INTERMEDIATE' | 'EXPERT';
+export type UrgencyLevel = 'LOW' | 'NORMAL' | 'HIGH';
+
 export interface CreateJobPayload {
   title: string;
   category: string;
@@ -20,6 +23,8 @@ export interface CreateJobPayload {
   attachmentUrl?: string;
   visibility: 'PUBLIC' | 'INVITE_ONLY';
   draft: boolean;
+  experienceLevel?: ExperienceLevel;
+  urgencyLevel?: UrgencyLevel;
 }
 
 export type InviteStatus = 'INVITED' | 'ACCEPTED' | 'DECLINED';
@@ -94,4 +99,6 @@ export interface JobResponse {
   clientId: number;
   createdAt: string;
   updatedAt: string;
+  experienceLevel?: ExperienceLevel;
+  urgencyLevel?: UrgencyLevel;
 }

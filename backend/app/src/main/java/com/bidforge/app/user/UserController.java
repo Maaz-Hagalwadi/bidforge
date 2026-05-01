@@ -27,6 +27,11 @@ public class UserController {
         return userService.getCurrentUser();
     }
 
+    @GetMapping("/{id}")
+    public UserResponse getUserById(@PathVariable Long id) {
+        return userService.getUserById(id);
+    }
+
     @PatchMapping("/me")
     public UserResponse updateProfile(@Valid @RequestBody UpdateUserRequest request) {
         return userService.updateCurrentUser(request);

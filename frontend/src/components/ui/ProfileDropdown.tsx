@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { userApi } from '@/api/user';
 import type { UserProfile } from '@/types/user';
 
@@ -39,14 +40,28 @@ export function ProfileDropdown({ user, onUpdated, onLogout }: {
         <div className="min-w-0">
           <p className="font-semibold text-slate-900 truncate">{user.name}</p>
           <p className="text-sm text-slate-500 truncate">{user.email}</p>
-          <span className="mt-1 inline-block px-2 py-0.5 bg-secondary/10 text-secondary text-xs font-semibold rounded-full">
-            {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
-          </span>
+          {user.phoneNumber && (
+            <p className="text-xs text-slate-400 truncate mt-0.5">{user.phoneNumber}</p>
+          )}
+          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+            <span className="inline-block px-2 py-0.5 bg-secondary/10 text-secondary text-xs font-semibold rounded-full">
+              {user.role.charAt(0) + user.role.slice(1).toLowerCase()}
+            </span>
+            {user.rating != null && (
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 bg-amber-50 text-amber-700 text-xs font-semibold rounded-full">
+                <span className="material-symbols-outlined text-[11px]">star</span>
+                {user.rating.toFixed(1)}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {mode === 'view' && (
         <div className="p-2">
+          <Link to={`/profile/${user.id}`} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-slate-400">person</span> View Profile
+          </Link>
           <button onClick={() => setMode('name')} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left">
             <span className="material-symbols-outlined text-[20px] text-slate-400">edit</span> Edit Name
           </button>

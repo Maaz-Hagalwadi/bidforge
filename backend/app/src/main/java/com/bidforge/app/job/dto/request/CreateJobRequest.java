@@ -1,6 +1,8 @@
 package com.bidforge.app.job.dto.request;
 
 import com.bidforge.app.job.enums.BudgetType;
+import com.bidforge.app.job.enums.ExperienceLevel;
+import com.bidforge.app.job.enums.UrgencyLevel;
 import com.bidforge.app.job.enums.Visibility;
 import jakarta.validation.constraints.*;
 import lombok.*;
@@ -32,6 +34,12 @@ public class CreateJobRequest {
 
     @NotNull
     private Double budgetMin;
+
+    @NotNull(message = "Experience level is required")
+    private ExperienceLevel experienceLevel;
+
+    @NotNull(message = "Urgency level is required")
+    private UrgencyLevel urgencyLevel;
 
     @NotNull
     private Double budgetMax;

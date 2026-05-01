@@ -4,12 +4,31 @@ import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/side
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
 import { Navbar } from '@/components/Navbar';
-import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
+import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import type { JobResponse, SpringPage } from '@/types/job';
 
 const SIDEBAR_BG = '#0A192F';
+
+const EXP_CFG: Record<string, { label: string; cls: string }> = {
+  ENTRY:        { label: 'Entry Level',   cls: 'bg-green-50 text-green-700'   },
+  INTERMEDIATE: { label: 'Intermediate',  cls: 'bg-secondary/10 text-secondary' },
+  EXPERT:       { label: 'Expert Level',  cls: 'bg-purple-50 text-purple-700' },
+};
+
+const STATUS_CFG: Record<string, { label: string; cls: string }> = {
+  OPEN:      { label: 'Open',        cls: 'bg-secondary/10 text-secondary'  },
+  ASSIGNED:  { label: 'Assigned',    cls: 'bg-green-100 text-green-700'     },
+  DRAFT:     { label: 'Draft',       cls: 'bg-slate-100 text-slate-500'     },
+  COMPLETED: { label: 'Completed',   cls: 'bg-blue-50 text-blue-600'        },
+  CANCELLED: { label: 'Cancelled',   cls: 'bg-red-100 text-red-500'         },
+};
+
+const VIS_CFG: Record<string, { label: string; cls: string; icon: string }> = {
+  PUBLIC:      { label: 'Public',      cls: 'bg-slate-100 text-slate-600', icon: 'public'      },
+  INVITE_ONLY: { label: 'Invite Only', cls: 'bg-amber-50 text-amber-700',  icon: 'lock'        },
+};
 
 const CATEGORIES = [
   'All Categories',
@@ -50,8 +69,54 @@ function getInitials(name: string) {
 
 const PAGE_SIZE = 10;
 
-type AppliedFilters = { keyword: string; category: string; skills: string; minBudget: string; maxBudget: string };
-const EMPTY: AppliedFilters = { keyword: '', category: '', skills: '', minBudget: '', maxBudget: '' };
+const BUDGET_RANGES = [
+  { label: 'Any Budget',        min: '',    max: ''    },
+  { label: 'Under $500',        min: '',    max: '500' },
+  { label: '$500 – $2,000',     min: '500', max: '2000' },
+  { label: '$2,000 – $5,000',   min: '2000',max: '5000' },
+  { label: '$5,000 – $10,000',  min: '5000',max: '10000' },
+  { label: '$10,000+',          min: '10000', max: '' },
+];
+
+const POSTED_DATE_OPTIONS = [
+  { label: 'Any Time',      value: '' },
+  { label: 'Last 24 hours', days: 1   },
+  { label: 'Last 7 days',   days: 7   },
+  { label: 'Last 30 days',  days: 30  },
+  { label: 'Last 3 months', days: 90  },
+] as const;
+
+function postedAfterISO(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().slice(0, 19);
+}
+
+const SAVED_KEY = 'bidforge_saved_jobs';
+
+function loadSaved(): Map<string, JobResponse> {
+  try {
+    const raw = localStorage.getItem(SAVED_KEY);
+    if (!raw) return new Map();
+    const arr: JobResponse[] = JSON.parse(raw);
+    return new Map(arr.map(j => [j.id, j]));
+  } catch { return new Map(); }
+}
+
+function persistSaved(m: Map<string, JobResponse>) {
+  localStorage.setItem(SAVED_KEY, JSON.stringify([...m.values()]));
+}
+
+const SORT_OPTIONS = [
+  { label: 'Newest',              value: 'createdAt,desc'  },
+  { label: 'Oldest',             value: 'createdAt,asc'   },
+  { label: 'Budget: Low → High', value: 'budgetMin,asc'   },
+  { label: 'Budget: High → Low', value: 'budgetMin,desc'  },
+];
+
+type AppliedFilters = { keyword: string; category: string; skills: string; minBudget: string; maxBudget: string; postedAfter: string };
+const EMPTY: AppliedFilters = { keyword: '', category: '', skills: '', minBudget: '', maxBudget: '', postedAfter: '' };
 
 export default function BrowseJobs() {
   const { user, logout, refreshUser } = useAuth();
@@ -67,16 +132,29 @@ export default function BrowseJobs() {
   // Live form-input state
   const [keyword, setKeyword] = useState('');
   const [category, setCategory] = useState('');
-  const [minBudget, setMinBudget] = useState('');
-  const [maxBudget, setMaxBudget] = useState('');
+  const [budgetRange, setBudgetRange] = useState('');
+  const [postedDate, setPostedDate] = useState('');
   const [skills, setSkills] = useState('');
 
   // Applied state — only updated on Search / Clear click
   const [applied, setApplied] = useState<AppliedFilters>(EMPTY);
 
+  const [activeTab, setActiveTab] = useState<'browse' | 'saved'>('browse');
+  const [sortBy, setSortBy] = useState('createdAt,desc');
   const [page, setPage] = useState(0);
   const [result, setResult] = useState<SpringPage<JobResponse> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [savedJobs, setSavedJobs] = useState<Map<string, JobResponse>>(loadSaved);
+
+  const toggleSave = (job: JobResponse) => {
+    setSavedJobs(prev => {
+      const next = new Map(prev);
+      if (next.has(job.id)) next.delete(job.id);
+      else next.set(job.id, job);
+      persistSaved(next);
+      return next;
+    });
+  };
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -85,17 +163,19 @@ export default function BrowseJobs() {
     const params: Record<string, string | number | undefined> = {
       page: p,
       size: PAGE_SIZE,
+      sort: sortBy,
       keyword: applied.keyword || undefined,
       category: applied.category || undefined,
       minBudget: applied.minBudget ? Number(applied.minBudget) : undefined,
       maxBudget: applied.maxBudget ? Number(applied.maxBudget) : undefined,
       skills: applied.skills || undefined,
+      postedAfter: applied.postedAfter || undefined,
     };
     jobsApi.getAll(params)
       .then(setResult)
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [applied]);
+  }, [applied, sortBy]);
 
   useEffect(() => { fetchJobs(page); }, [fetchJobs, page]);
 
@@ -109,12 +189,18 @@ export default function BrowseJobs() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    setApplied({ keyword, category, skills, minBudget, maxBudget });
+    const range = BUDGET_RANGES.find(r => r.label === budgetRange) ?? BUDGET_RANGES[0];
+    const postedAfterVal = (() => {
+      const opt = POSTED_DATE_OPTIONS.find(o => o.label === postedDate);
+      if (!opt || !('days' in opt)) return '';
+      return postedAfterISO(opt.days);
+    })();
+    setApplied({ keyword, category, skills, minBudget: range.min, maxBudget: range.max, postedAfter: postedAfterVal });
     setPage(0);
   };
 
   const handleClear = () => {
-    setKeyword(''); setCategory(''); setMinBudget(''); setMaxBudget(''); setSkills('');
+    setKeyword(''); setCategory(''); setBudgetRange(''); setPostedDate(''); setSkills('');
     setApplied(EMPTY);
     setPage(0);
   };
@@ -197,91 +283,171 @@ export default function BrowseJobs() {
           <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             {/* Header */}
-            <div>
-              <h1 className="text-h1 font-bold text-on-surface">Browse Jobs</h1>
-              <p className="text-body-md text-on-surface-variant mt-1">Find projects that match your skills and expertise.</p>
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div>
+                <h1 className="text-h1 font-bold text-on-surface">Browse Jobs</h1>
+                <p className="text-body-md text-on-surface-variant mt-1">Find projects that match your skills and expertise.</p>
+              </div>
+              {user?.role === 'FREELANCER' && (
+                <div className="flex items-center gap-1 bg-surface-container rounded-xl p-1 self-start sm:self-auto border border-outline-variant">
+                  <button
+                    onClick={() => setActiveTab('browse')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'browse' ? 'bg-secondary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                    <span className="material-symbols-outlined text-[18px]">search</span>
+                    Browse
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('saved')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'saved' ? 'bg-secondary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                    <span className="material-symbols-outlined text-[18px]">bookmark</span>
+                    Saved
+                    {savedJobs.size > 0 && (
+                      <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'saved' ? 'bg-white/20 text-white' : 'bg-secondary/10 text-secondary'}`}>
+                        {savedJobs.size}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Filters */}
-            <form onSubmit={handleSearch} className="tonal-card rounded-xl p-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-2">
-                  <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Keyword</label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-                    <input
-                      type="text"
-                      value={keyword}
-                      onChange={e => setKeyword(e.target.value)}
-                      placeholder="Search job titles, descriptions…"
-                      className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                    />
+            {activeTab === 'saved' && (
+              <div className="space-y-4">
+                {savedJobs.size === 0 ? (
+                  <div className="tonal-card rounded-xl flex flex-col items-center gap-4 py-20 text-center border border-outline-variant">
+                    <span className="material-symbols-outlined text-5xl text-slate-300">bookmark</span>
+                    <p className="text-on-surface font-semibold">No saved jobs yet</p>
+                    <p className="text-sm text-on-surface-variant max-w-xs">Browse jobs and click Save to keep track of opportunities you're interested in.</p>
+                    <button onClick={() => setActiveTab('browse')}
+                      className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
+                      Browse Jobs
+                    </button>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Category</label>
-                  <select
-                    value={category}
-                    onChange={e => setCategory(e.target.value === 'All Categories' ? '' : e.target.value)}
-                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                  >
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Skills</label>
+                ) : [...savedJobs.values()].map(job => {
+                  const skillList = parseSkills(job.requiredSkills);
+                  const statusCfg = STATUS_CFG[job.status] ?? STATUS_CFG.OPEN;
+                  const visCfg = VIS_CFG[job.visibility];
+                  return (
+                    <article key={job.id} className="tonal-card rounded-xl border border-outline-variant hover:border-secondary/20 hover:shadow-md transition-all group">
+                      <div className="flex flex-col md:flex-row md:items-start p-5 gap-5">
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <span className="text-xs text-on-surface-variant flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">schedule</span>
+                            {job.createdAt ? timeAgo(job.createdAt) : ''}
+                          </span>
+                          <h3 className="text-base font-bold text-on-surface group-hover:text-secondary transition-colors">{job.title}</h3>
+                          <p className="text-sm text-on-surface-variant line-clamp-1">{job.description}</p>
+                          {skillList.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {skillList.slice(0, 4).map(s => (
+                                <span key={s} className="px-2 py-0.5 bg-surface-container border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
+                              ))}
+                              {skillList.length > 4 && <span className="px-2 py-0.5 text-xs text-on-surface-variant">+{skillList.length - 4} more</span>}
+                            </div>
+                          )}
+                          <p className="text-base font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
+                        </div>
+                        <div className="shrink-0 flex flex-col items-stretch gap-2 w-36">
+                          <div className="flex flex-row flex-wrap items-center justify-end gap-1.5 mb-1">
+                            <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
+                            <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
+                              <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
+                              {visCfg.label}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-h-[3rem]" />
+                          <button onClick={() => navigate(`/jobs/${job.id}`)}
+                            className="w-full py-2 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all text-center">
+                            View &amp; Bid
+                          </button>
+                          <button onClick={() => toggleSave(job)}
+                            className="w-full py-1.5 rounded-lg text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center gap-1">
+                            <span className="material-symbols-outlined text-[15px]">bookmark_remove</span>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Filters */}
+            {activeTab === 'browse' && <form onSubmit={handleSearch} className="tonal-card rounded-xl p-5 space-y-4">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
                   <input
                     type="text"
-                    value={skills}
-                    onChange={e => setSkills(e.target.value)}
-                    placeholder="React, Python, AWS…"
-                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
+                    value={keyword}
+                    onChange={e => setKeyword(e.target.value)}
+                    placeholder="Search for jobs, skills, or companies…"
+                    className="w-full pl-10 pr-4 py-3 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white"
                   />
-                </div>
-              </div>
-              <div className="flex flex-col sm:flex-row items-end gap-4">
-                <div className="flex gap-3 flex-1">
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Min Budget ($)</label>
-                    <input
-                      type="number"
-                      value={minBudget}
-                      onChange={e => setMinBudget(e.target.value)}
-                      placeholder="0"
-                      min="0"
-                      className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Max Budget ($)</label>
-                    <input
-                      type="number"
-                      value={maxBudget}
-                      onChange={e => setMaxBudget(e.target.value)}
-                      placeholder="Any"
-                      min="0"
-                      className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                    />
-                  </div>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
                   <button type="button" onClick={handleClear}
-                    className="px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
+                    className="px-4 py-3 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
                     Clear
                   </button>
                   <button type="submit"
-                    className="px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                    Search
+                    className="flex items-center gap-2 px-5 py-3 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                    <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                    Search Jobs
                   </button>
                 </div>
               </div>
-            </form>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-on-surface-variant px-1">Category</label>
+                  <select value={category} onChange={e => setCategory(e.target.value === 'All Categories' ? '' : e.target.value)}
+                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-on-surface-variant px-1">Budget Range</label>
+                  <select value={budgetRange} onChange={e => setBudgetRange(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                    {BUDGET_RANGES.map(r => <option key={r.label} value={r.label}>{r.label}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-on-surface-variant px-1">Skills</label>
+                  <input type="text" value={skills} onChange={e => setSkills(e.target.value)}
+                    placeholder="e.g. React, Python"
+                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-on-surface-variant px-1">Posted Date</label>
+                  <select value={postedDate} onChange={e => setPostedDate(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                    {POSTED_DATE_OPTIONS.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            </form>}
 
-            {/* Results count */}
+            {activeTab === 'browse' && <>
+            {/* Header & count */}
             {!loading && result && (
-              <p className="text-sm text-on-surface-variant">
-                Showing <span className="font-semibold text-on-surface">{jobs.length}</span> of <span className="font-semibold text-on-surface">{totalElements}</span> jobs
-              </p>
+              <div className="flex justify-between items-center px-1">
+                <h2 className="text-xl font-bold text-on-surface">
+                  Available Projects{' '}
+                  <span className="text-on-surface-variant font-normal text-base ml-1">({totalElements})</span>
+                </h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-on-surface-variant font-medium">Sort by</span>
+                  <select
+                    value={sortBy}
+                    onChange={e => { setSortBy(e.target.value); setPage(0); }}
+                    className="px-3 py-1.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface bg-white focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all"
+                  >
+                    {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
             )}
 
             {/* Content */}
@@ -301,42 +467,119 @@ export default function BrowseJobs() {
               <div className="space-y-4">
                 {jobs.map(job => {
                   const skillList = parseSkills(job.requiredSkills);
+                  const isUrgent = job.urgencyLevel === 'HIGH';
+                  const expCfg = job.experienceLevel ? EXP_CFG[job.experienceLevel] : null;
+                  const statusCfg = STATUS_CFG[job.status] ?? STATUS_CFG.OPEN;
+                  const visCfg = VIS_CFG[job.visibility];
+
+                  const isSaved = savedJobs.has(job.id);
+
+                  if (isUrgent) {
+                    return (
+                      <article key={job.id} className="rounded-xl border-l-4 border-l-secondary overflow-hidden hover:shadow-lg transition-all group"
+                        style={{ backgroundColor: '#d8e2ff' }}>
+                        <div className="flex flex-col md:flex-row md:items-start p-6 gap-6">
+                          <div className="flex-1 min-w-0 space-y-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="px-2.5 py-1 bg-secondary text-white rounded text-xs font-bold uppercase tracking-wider">
+                                Urgent Hiring
+                              </span>
+                              {expCfg && (
+                                <span className="px-2.5 py-1 bg-white/50 text-secondary rounded text-xs font-semibold uppercase tracking-wider">
+                                  {expCfg.label}
+                                </span>
+                              )}
+                              <span className="text-xs text-secondary/70 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">schedule</span>
+                                {job.createdAt ? timeAgo(job.createdAt) : ''}
+                              </span>
+                            </div>
+                            <h3 className="text-lg font-bold text-secondary group-hover:opacity-80 transition-opacity">{job.title}</h3>
+                            <p className="text-sm text-secondary/70 line-clamp-2">{job.description}</p>
+                            {skillList.length > 0 && (
+                              <div className="flex flex-wrap gap-2">
+                                {skillList.slice(0, 6).map(s => (
+                                  <span key={s} className="px-2.5 py-1 bg-white/40 border border-secondary/20 rounded-full text-xs text-secondary font-medium">{s}</span>
+                                ))}
+                                {skillList.length > 6 && <span className="px-2.5 py-1 text-xs text-secondary/70">+{skillList.length - 6} more</span>}
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs text-secondary/60 mb-0.5">Budget</p>
+                              <p className="text-lg font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
+                            </div>
+                          </div>
+                          <div className="shrink-0 flex flex-col items-stretch gap-2 w-36">
+                            <div className="flex flex-row flex-wrap items-center justify-end gap-1.5 mb-1">
+                              <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
+                              <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
+                                <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
+                                {visCfg.label}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-h-[3rem]" />
+                            <button onClick={() => navigate(`/jobs/${job.id}`)}
+                              className="w-full py-2.5 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all text-center">
+                              View &amp; Bid
+                            </button>
+                            <button onClick={() => toggleSave(job)}
+                              className={`w-full py-2 rounded-lg text-sm font-semibold border transition-all flex items-center justify-center gap-1.5 ${isSaved ? 'bg-secondary/15 border-secondary text-secondary' : 'border-secondary/30 text-secondary hover:bg-secondary/10'}`}>
+                              <span className="material-symbols-outlined text-[18px]">{isSaved ? 'bookmark_added' : 'bookmark'}</span>
+                              {isSaved ? 'Saved' : 'Save'}
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  }
+
                   return (
-                    <article key={job.id} className="tonal-card rounded-xl overflow-hidden hover:shadow-md transition-all group">
-                      <div className="p-6 flex flex-col md:flex-row md:items-start gap-6">
+                    <article key={job.id} className="tonal-card rounded-xl overflow-hidden hover:border-secondary/20 hover:shadow-md transition-all group border border-outline-variant">
+                      <div className="flex flex-col md:flex-row md:items-start p-6 gap-6">
                         <div className="flex-1 min-w-0 space-y-3">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{job.category}</span>
-                            <span className="px-2.5 py-1 bg-secondary/10 text-secondary rounded-full text-xs font-semibold">{job.budgetType === 'HOURLY' ? 'Hourly' : 'Fixed Price'}</span>
-                            <span className="text-xs text-on-surface-variant">{job.createdAt ? timeAgo(job.createdAt) : ''}</span>
+                            {expCfg ? (
+                              <span className={`px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider ${expCfg.cls}`}>{expCfg.label}</span>
+                            ) : (
+                              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded text-xs font-semibold">{job.category}</span>
+                            )}
+                            <span className="text-xs text-on-surface-variant flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px]">schedule</span>
+                              {job.createdAt ? timeAgo(job.createdAt) : ''}
+                            </span>
                           </div>
                           <h3 className="text-lg font-bold text-on-surface group-hover:text-secondary transition-colors">{job.title}</h3>
                           <p className="text-sm text-on-surface-variant line-clamp-2">{job.description}</p>
                           {skillList.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                               {skillList.slice(0, 6).map(s => (
-                                <span key={s} className="px-2.5 py-1 bg-slate-100 border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
+                                <span key={s} className="px-2.5 py-1 bg-surface-container border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
                               ))}
                               {skillList.length > 6 && <span className="px-2.5 py-1 text-xs text-on-surface-variant">+{skillList.length - 6} more</span>}
                             </div>
                           )}
-                        </div>
-                        <div className="flex md:flex-col items-start gap-4 md:items-end flex-shrink-0">
-                          <div className="text-right">
+                          <div>
                             <p className="text-xs text-on-surface-variant mb-0.5">Budget</p>
                             <p className="text-lg font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
                           </div>
-                          {job.deadline && (
-                            <div className="text-right">
-                              <p className="text-xs text-on-surface-variant mb-0.5">Deadline</p>
-                              <p className="text-sm font-semibold text-on-surface">{new Date(job.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                            </div>
-                          )}
-                          <button
-                            onClick={() => navigate(`/jobs/${job.id}`)}
-                            className="flex items-center gap-1.5 px-5 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                            <span className="material-symbols-outlined text-[16px]">gavel</span>
+                        </div>
+                        <div className="shrink-0 flex flex-col items-stretch gap-2 w-36">
+                          <div className="flex flex-row flex-wrap items-center justify-end gap-1.5 mb-1">
+                            <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
+                            <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
+                              <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
+                              {visCfg.label}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-h-[3rem]" />
+                          <button onClick={() => navigate(`/jobs/${job.id}`)}
+                            className="w-full py-2.5 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all text-center">
                             View &amp; Bid
+                          </button>
+                          <button onClick={() => toggleSave(job)}
+                            className={`w-full py-2 rounded-lg text-sm font-semibold border transition-all flex items-center justify-center gap-1.5 ${isSaved ? 'bg-secondary/10 border-secondary text-secondary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'}`}>
+                            <span className="material-symbols-outlined text-[18px]">{isSaved ? 'bookmark_added' : 'bookmark'}</span>
+                            {isSaved ? 'Saved' : 'Save'}
                           </button>
                         </div>
                       </div>
@@ -386,19 +629,10 @@ export default function BrowseJobs() {
                 </button>
               </div>
             )}
+            </>}
           </div>
 
-          <footer className="py-8 px-8 border-t border-white/10 mt-auto" style={{ backgroundColor: '#0A192F' }}>
-            <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-4">
-              <BidForgeLogo variant="light" />
-              <div className="flex flex-wrap justify-center gap-8">
-                {['Privacy Policy', 'Terms of Service', 'Help Center'].map(l => (
-                  <a key={l} href="#" className="text-slate-400 hover:text-white transition-colors text-xs">{l}</a>
-                ))}
-              </div>
-              <span className="text-slate-500 text-xs">© 2026 BidForge Inc.</span>
-            </div>
-          </footer>
+          <Footer />
         </main>
       </div>
 

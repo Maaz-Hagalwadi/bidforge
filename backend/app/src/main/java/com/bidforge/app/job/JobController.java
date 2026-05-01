@@ -48,12 +48,13 @@ public class JobController {
             @RequestParam(required = false) String skills,
             @RequestParam(required = false) String deadline,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String postedAfter,
             Pageable pageable,
             Authentication authentication
     ) {
         return jobService.getBrowseJobs(
                 resolveOptionalUser(authentication),
-                category, minBudget, maxBudget, skills, deadline, keyword,
+                category, minBudget, maxBudget, skills, deadline, keyword, postedAfter,
                 pageable
         );
     }

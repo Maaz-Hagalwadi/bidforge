@@ -44,6 +44,8 @@ public class JobService {
                 .deadline(request.getDeadline())
                 .attachmentUrl(request.getAttachmentUrl())
                 .visibility(request.getVisibility())
+                .experienceLevel(request.getExperienceLevel())
+                .urgencyLevel(request.getUrgencyLevel())
                 .status(status)
                 .client(client)
                 .build();
@@ -73,6 +75,7 @@ public class JobService {
             String skills,
             String deadline,
             String keyword,
+            String postedAfter,
             Pageable pageable
     ) {
         Specification<Job> spec;
@@ -111,6 +114,9 @@ public class JobService {
         }
         if (keyword != null && !keyword.isBlank()) {
             spec = spec.and(JobSpecification.keywordSearch(keyword));
+        }
+        if (postedAfter != null && !postedAfter.isBlank()) {
+            spec = spec.and(JobSpecification.postedAfter(java.time.LocalDateTime.parse(postedAfter)));
         }
 
         return jobRepository.findAll(spec, pageable).map(this::mapToResponse);
@@ -205,6 +211,8 @@ public class JobService {
                 .attachmentUrl(job.getAttachmentUrl())
                 .visibility(job.getVisibility())
                 .status(job.getStatus())
+                .experienceLevel(job.getExperienceLevel())
+                .urgencyLevel(job.getUrgencyLevel())
                 .clientId(job.getClient().getId())
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())

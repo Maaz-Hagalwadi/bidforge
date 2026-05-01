@@ -4,7 +4,7 @@ import { CLIENT_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
 import { Navbar } from '@/components/Navbar';
-import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
+import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import type { JobInviteStatus } from '@/types/job';
@@ -136,7 +136,7 @@ export default function ClientInvites() {
               <div className="tonal-card rounded-xl flex flex-col items-center gap-4 py-20 text-center">
                 <span className="material-symbols-outlined text-5xl text-slate-300">mail_outline</span>
                 <p className="text-on-surface font-semibold">No invites sent yet</p>
-                <p className="text-sm text-on-surface-variant max-w-xs">Invite freelancers to your jobs from the My Jobs page.</p>
+                <p className="text-sm text-on-surface-variant max-w-xs">Invite freelancers to your jobs from the My Projects page.</p>
                 <button onClick={() => navigate('/client/post-job')}
                   className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
                   Post a Job
@@ -223,12 +223,7 @@ export default function ClientInvites() {
             )}
           </div>
 
-          <footer className="py-8 px-8 border-t border-white/10 mt-auto" style={{ backgroundColor: '#0A192F' }}>
-            <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-4">
-              <BidForgeLogo variant="light" />
-              <span className="text-slate-500 text-xs">© 2026 BidForge Inc.</span>
-            </div>
-          </footer>
+          <Footer />
         </main>
       </div>
 

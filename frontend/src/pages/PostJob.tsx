@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
 import { usersApi, type FreelancerSearchResult } from '@/api/users';
 import { Navbar } from '@/components/Navbar';
-import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
+import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { postJobSchema, type PostJobFormValues } from '@/lib/schemas';
 
@@ -145,9 +145,11 @@ export default function PostJob() {
         attachmentUrl: values.attachmentUrl || undefined,
         visibility: values.visibility,
         draft: draftRef.current,
+        experienceLevel: values.experienceLevel || undefined,
+        urgencyLevel: values.urgencyLevel || undefined,
       });
       if (invitees.length > 0) {
-        await Promise.allSettled(invitees.map(f => jobsApi.inviteFreelancer(job.id, f.id)));
+        await jobsApi.inviteFreelancers(job.id, invitees.map(f => f.id));
       }
       navigate('/client/dashboard');
     } catch {
@@ -331,6 +333,34 @@ export default function PostJob() {
                         {(errors.budgetMin || errors.budgetMax) && (
                           <p className="text-xs text-red-500 mt-1">{errors.budgetMin?.message ?? errors.budgetMax?.message}</p>
                         )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Experience Level</label>
+                        <div className="relative">
+                          <select {...register('experienceLevel')}
+                            className="w-full px-4 py-2.5 border border-outline-variant rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all">
+                            <option value="">Any Level</option>
+                            <option value="ENTRY">Entry Level</option>
+                            <option value="INTERMEDIATE">Intermediate</option>
+                            <option value="EXPERT">Expert</option>
+                          </select>
+                          <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">expand_more</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Urgency Level</label>
+                        <div className="relative">
+                          <select {...register('urgencyLevel')}
+                            className="w-full px-4 py-2.5 border border-outline-variant rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all">
+                            <option value="">Normal</option>
+                            <option value="LOW">Low</option>
+                            <option value="NORMAL">Normal</option>
+                            <option value="HIGH">High — Urgent Hiring</option>
+                          </select>
+                          <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">expand_more</span>
+                        </div>
                       </div>
                     </div>
 
@@ -527,18 +557,7 @@ export default function PostJob() {
             </div>
           </div>
 
-          {/* Footer */}
-          <footer className="py-8 px-8 border-t border-white/10 mt-auto" style={{ backgroundColor: '#0A192F' }}>
-            <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-4">
-              <BidForgeLogo variant="light" />
-              <div className="flex flex-wrap justify-center gap-8">
-                {['Privacy Policy', 'Terms of Service', 'Help Center'].map(l => (
-                  <a key={l} href="#" className="text-slate-400 hover:text-white transition-colors text-xs">{l}</a>
-                ))}
-              </div>
-              <span className="text-slate-500 text-xs">© 2026 BidForge Inc.</span>
-            </div>
-          </footer>
+          <Footer />
         </main>
       </div>
 

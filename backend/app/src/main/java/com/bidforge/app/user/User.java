@@ -41,6 +41,20 @@ public class User {
 
     private Double rating;
 
+    @Column(length = 200)
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+
+    @Column(length = 200)
+    private String location;
+
+    private Double hourlyRate;
+
+    @Column(columnDefinition = "TEXT")
+    private String skills;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

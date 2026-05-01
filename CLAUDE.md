@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, full job module (post, browse, invite-only visibility, per-freelancer invitations), and bidding. Planned: Chat, Payment, Notification modules.
+**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, full job module (post, browse, invite-only visibility, per-freelancer invitations), bidding, and dashboards. Planned: Chat, Payment, Notification modules.
 
 ---
 
@@ -22,6 +22,8 @@ All Maven commands run from `backend/app/`:
 
 **Prerequisites**: PostgreSQL on `localhost:5433`, database `bidforge`, user `admin`, password `admin`.  
 Override with env vars `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`.
+
+`spring.jpa.hibernate.ddl-auto=update` — schema is auto-updated on startup. Tests use H2 in-memory with `create-drop`.
 
 ### Package structure (`com.bidforge.app`)
 
@@ -85,6 +87,8 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/users/me` | Yes | Current user profile |
 | PATCH | `/users/me` | Yes | Update `name` or `profileImageUrl` |
 | GET | `/users/search?q=` | CLIENT | Search freelancers by name/email (max 10 results) |
+| GET | `/client/dashboard` | CLIENT | Aggregated client stats |
+| GET | `/freelancer/dashboard` | FREELANCER | Aggregated freelancer stats |
 | POST | `/jobs` | CLIENT | Create job; `draft: true` → `DRAFT` status, else `OPEN` |
 | GET | `/jobs` | Public | Browse; paginated, filterable by keyword/category/skills/budget/deadline |
 | GET | `/jobs/my` | CLIENT | All jobs owned by caller (all statuses) |
@@ -99,7 +103,9 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/jobs/all-invites` | CLIENT | All invites across all client's jobs (aggregated) |
 | GET | `/jobs/{jobId}/bids` | CLIENT | All bids on a job (owner only) |
 | POST | `/jobs/{jobId}/bids` | FREELANCER | Submit a bid (`amount`, `proposal`, `deliveryDays`) |
+| GET | `/bids/my` | FREELANCER | All bids placed by the caller |
 | POST | `/bids/{bidId}/accept` | CLIENT | Accept a bid; sets job to IN_PROGRESS, rejects all other bids |
+| POST | `/bids/{bidId}/decline` | CLIENT | Decline a specific bid |
 
 ### Exception → HTTP mapping
 
@@ -125,6 +131,7 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 - **Unit tests** (`AuthServiceTest`, `JwtServiceTest`): `@ExtendWith(MockitoExtension.class)`. `JwtServiceTest` uses `ReflectionTestUtils` to inject `@Value` fields.
 - **Integration tests** (`AuthControllerTest`): `@SpringBootTest` + `@AutoConfigureMockMvc` + `@ActiveProfiles("test")` + `@Transactional`. H2 in-memory DB (`application-test.properties`). `rate-limit.max-requests=1000` prevents 429s.
 - Do **not** use `@WebMvcTest` — `SecurityConfig` pulls in JPA-dependent filters that break the slice context.
+- Only auth is covered by tests; job/bid/invite modules have no tests yet.
 
 ---
 
@@ -133,11 +140,12 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 ```bash
 npm run dev      # Vite dev server on :5173
 npm run build    # tsc + vite build
+npm run preview  # preview the production build locally
 npm run lint     # ESLint
 npm run format   # Prettier
 ```
 
-**Backend must be running** (`localhost:8080`). Override with `VITE_API_BASE_URL`.
+**Backend must be running** (`localhost:8080`). Override with `VITE_API_BASE_URL` (see `.env.example`). No frontend test runner is configured.
 
 ### Stack
 
@@ -154,10 +162,14 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 | `/client/post-job` | `PostJob` | `ClientRoute` |
 | `/client/jobs` | `MyJobs` | `ClientRoute` |
 | `/client/invites` | `ClientInvites` | `ClientRoute` |
+| `/client/bids` | `ClientBids` | `ClientRoute` |
+| `/client/jobs/:jobId/bids` | `ClientJobBids` | `ClientRoute` |
 | `/freelancer/dashboard` | `FreelancerDashboard` | `FreelancerRoute` |
 | `/freelancer/invites` | `FreelancerInvites` | `FreelancerRoute` |
+| `/freelancer/bids` | `FreelancerBids` | `FreelancerRoute` |
 | `/browse` | `BrowseJobs` | — (public) |
 | `/jobs/:id` | `JobDetail` | — (public*) |
+| `/dashboard` | redirect → `/client/dashboard` | — |
 
 `ClientRoute` / `FreelancerRoute` (in `src/components/ProtectedRoute.tsx`) extend `ProtectedRoute` and additionally check `user.role`; redirect to the correct dashboard if wrong role.
 
@@ -167,11 +179,14 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 
 **Auto-refresh** (`src/api/axiosInstance.ts`): Response interceptor catches 401s, calls `/auth/refresh`, retries the original request, and queues concurrent 401s. On failure, clears tokens and redirects to `/login`.
 
-**Auth context** (`src/context/AuthContext.tsx`): `isAuthenticated`, `isLoading`, `login()`, `register()`, `logout()`, `refreshUser()`. `register()` does **not** auto-login.
+**Auth context** (`src/context/AuthContext.tsx`): `isAuthenticated`, `isLoading`, `login()`, `register()`, `logout()`, `refreshUser()`. `register()` does **not** auto-login. Consumed via the `useAuth()` hook.
 
 **API layer** (`src/api/`):
-- `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, inviteFreelancer (single), getInvites, acceptInvite, declineInvite, getJobInvites, getAllClientInvites, getInvitedJobs, and bid endpoints (createBid, getJobBids, acceptBid)
-- `users.ts` — `usersApi`: searchFreelancers
+- `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, inviteFreelancer (single), getInvites, acceptInvite, declineInvite, getJobInvites, getAllClientInvites, getInvitedJobs, createBid, getJobBids, acceptBid, declineBid, getMyBids
+- `user.ts` — `userApi`: `getMe()`, `updateMe()`
+- `users.ts` — `usersApi`: `searchFreelancers()`
+- `dashboard.ts` — `dashboardApi`: `getClientDashboard()`, `getFreelancerDashboard()`
+- `auth.ts` — auth calls (login, register, refresh, logout)
 
 **Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR` and `FREELANCER_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. Placeholder entries (Contracts, Payments) have no `path` yet. `withActive()` marks the active route.
 
@@ -189,6 +204,8 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `ProtectedRoute` / `ClientRoute` / `FreelancerRoute` — auth + role guards
 - `ProfileDropdown` — avatar menu with profile edit and logout
 - `PageLoader` — full-area spinner with message
+- `Toast` — auto-dismiss success/error notification
+- `PlaceBidModal` — modal dialog for submitting a bid with form validation
 
 **Path alias**: `@/` → `src/` (configured in `vite.config.ts` and `tsconfig.json`).
 
@@ -196,4 +213,5 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 
 Custom spacing: `xs`=4px, `sm`=8px, `md`=16px, `lg`=24px, `xl`=32px, `2xl`=48px, `3xl`=64px.  
 Key colors: `dark-navy`=`#0A192F`, `secondary`=`#0059bb`, `secondary-container`=`#0070ea`, `primary-container`=`#0d1c32`.  
-`max-w-8xl` = 1280px (standard page container). `tonal-card` utility class used for elevated card surfaces.
+`max-w-8xl` = 1280px (standard page container). `tonal-card` utility class used for elevated card surfaces.  
+Font: `Plus Jakarta Sans`. Typography scale follows Material 3 (`h1`–`h4`, `body-sm/md/lg`, `label-sm/md`).

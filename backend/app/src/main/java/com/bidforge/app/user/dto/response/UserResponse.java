@@ -3,6 +3,8 @@ package com.bidforge.app.user.dto.response;
 import com.bidforge.app.user.Role;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,4 +19,10 @@ public class UserResponse {
     private Role role;
     private Double rating;
     private String profileImageUrl;
+    private String title;
+    private String bio;
+    private String location;
+    private Double hourlyRate;
+    private String skills;
+    private LocalDateTime createdAt;
 }
