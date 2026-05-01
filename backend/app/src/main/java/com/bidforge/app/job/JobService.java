@@ -32,6 +32,7 @@ public class JobService {
 
     private final JobRepository jobRepository;
     private final JobInviteRepository jobInviteRepository;
+    private final JobInvitationRepository jobInvitationRepository;
     private final UserRepository userRepository;
     private final BidRepository bidRepository;
     private final ContractRepository contractRepository;
@@ -208,6 +209,7 @@ public class JobService {
         jobInviteRepository.save(invite);
     }
 
+    @Transactional
     public JobResponse updateJob(UUID id, UpdateJobRequest request, User client) {
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new JobNotFoundException("Job not found"));
@@ -235,6 +237,7 @@ public class JobService {
         return mapToResponse(jobRepository.save(job));
     }
 
+    @Transactional
     public void archiveJob(UUID id, User client) {
         Job job = jobRepository.findById(id)
                 .orElseThrow(() -> new JobNotFoundException("Job not found"));
@@ -248,6 +251,36 @@ public class JobService {
 
         job.setStatus(JobStatus.CANCELLED);
         jobRepository.save(job);
+    }
+
+    @Transactional
+    public JobResponse repostJob(UUID id, User client) {
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new JobNotFoundException("Job not found"));
+        if (!job.getClient().getId().equals(client.getId())) {
+            throw new AccessDeniedException("You do not own this job");
+        }
+        if (job.getStatus() != JobStatus.CANCELLED) {
+            throw new IllegalStateException("Only archived jobs can be reposted");
+        }
+        job.setStatus(JobStatus.OPEN);
+        return mapToResponse(jobRepository.save(job));
+    }
+
+    @Transactional
+    public void deleteJob(UUID id, User client) {
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new JobNotFoundException("Job not found"));
+        if (!job.getClient().getId().equals(client.getId())) {
+            throw new AccessDeniedException("You do not own this job");
+        }
+        if (job.getStatus() != JobStatus.CANCELLED) {
+            throw new IllegalStateException("Only archived jobs can be deleted");
+        }
+        bidRepository.deleteAll(bidRepository.findByJob(job));
+        jobInviteRepository.deleteAll(jobInviteRepository.findByJob(job));
+        jobInvitationRepository.deleteAll(jobInvitationRepository.findByJob(job));
+        jobRepository.delete(job);
     }
 
     public List<JobResponse> getAllJobsAdmin() {

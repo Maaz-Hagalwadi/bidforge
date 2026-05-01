@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, full job module (post, browse, invite-only visibility, per-freelancer invitations), bidding, and dashboards. Planned: Chat, Payment, Notification modules.
+**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, and dashboards. Planned: Chat, Payment, Notification modules.
 
 ---
 
@@ -38,8 +38,10 @@ user/          User (entity), Role (enum: CLIENT/FREELANCER/ADMIN),
                dto/response/ UserResponse
 job/           Job (entity), JobController, JobService, JobRepository,
                JobSpecification, JobInvitation (entity), JobInvitationRepository
-               enums/  BudgetType, JobStatus, Visibility
-               dto/request/  CreateJobRequest
+               enums/  BudgetType, JobStatus (DRAFT/OPEN/ASSIGNED/COMPLETED/CANCELLED),
+                       Visibility, ExperienceLevel (ENTRY/INTERMEDIATE/EXPERT),
+                       UrgencyLevel (LOW/NORMAL/HIGH)
+               dto/request/  CreateJobRequest, UpdateJobRequest
                dto/response/ JobResponse
 job_invite/    JobInvite (entity), JobInviteController, JobInviteService,
                JobInviteRepository, InviteStatus (enum: INVITED/ACCEPTED/DECLINED)
@@ -47,6 +49,9 @@ job_invite/    JobInvite (entity), JobInviteController, JobInviteService,
 bid/           Bid (entity), BidController, BidService, BidRepository,
                BidStatus (enum: PENDING/ACCEPTED/REJECTED)
                dto/  CreateBidRequest, BidResponse
+contract/      Contract (entity), ContractController, ContractService, ContractRepository,
+               ContractStatus (enum: ACTIVE/SUBMITTED/COMPLETED)
+               dto/  ContractResponse, SubmitWorkRequest
 dashboard/     DashboardController, DashboardService (stats aggregation)
 config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler
 common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
@@ -70,9 +75,17 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 - `JobInvite` — status-tracked invite (`INVITED`/`ACCEPTED`/`DECLINED`), used by `JobInviteController.inviteFreelancers()` for the bulk invite flow from `PostJob`, and by `getMyInvites()` to show the freelancer's inbox.
 
 **Browse visibility rules** (`JobService.getBrowseJobs`):
-- Unauthenticated / CLIENT (non-owner) → `OPEN + PUBLIC` only
+- Unauthenticated → `OPEN + PUBLIC` only
 - Freelancer → `OPEN + PUBLIC` **plus** `OPEN + INVITE_ONLY` where a `JobInvite` record exists for them
+- CLIENT → `OPEN + PUBLIC`, excluding their own jobs
 - Applied via `JobSpecification` (JPA `Specification` + `JpaSpecificationExecutor`)
+- Note: `GET /jobs` controller has `@PreAuthorize("hasRole('FREELANCER') or isAnonymous()")` — authenticated CLIENTs are blocked at the controller level (403); the CLIENT branch in the service is dead code.
+
+**Job lifecycle**: `DRAFT` → `OPEN` (on publish) → `ASSIGNED` (on bid accept, contract created) → `COMPLETED` (on contract complete). `OPEN`/`DRAFT` jobs can be archived → `CANCELLED`. Edit (`PUT /jobs/{id}`) is allowed while `OPEN` or `DRAFT`.
+
+**Contract flow**: Accepting a bid (via `BidService`) creates a `Contract` with status `ACTIVE` and sets the job to `ASSIGNED`. Freelancer calls `PATCH /contracts/{id}/submit-work` → `SUBMITTED`. Client calls `PATCH /contracts/{id}/complete` → `COMPLETED`, job moves to `COMPLETED`.
+
+**`JobResponse` enrichment**: `getClientJobs` (i.e. `GET /jobs/my`) additionally sets `bidsCount` (count from BidRepository) and `assignedFreelancerName` (from ContractRepository) for `ASSIGNED`/`COMPLETED` jobs. These fields are `null` on all other endpoints.
 
 **Pagination**: `GET /jobs` returns `Page<JobResponse>` (Spring Data). All other job endpoints return `List<JobResponse>`.
 
@@ -90,10 +103,14 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/client/dashboard` | CLIENT | Aggregated client stats |
 | GET | `/freelancer/dashboard` | FREELANCER | Aggregated freelancer stats |
 | POST | `/jobs` | CLIENT | Create job; `draft: true` → `DRAFT` status, else `OPEN` |
-| GET | `/jobs` | Public | Browse; paginated, filterable by keyword/category/skills/budget/deadline |
-| GET | `/jobs/my` | CLIENT | All jobs owned by caller (all statuses) |
+| GET | `/jobs` | FREELANCER / anon | Browse; paginated, filterable by keyword/category/skills/budget/deadline/postedAfter |
+| GET | `/jobs/my` | CLIENT | All jobs owned by caller (all statuses); enriched with bidsCount + assignedFreelancerName |
 | GET | `/jobs/invited` | FREELANCER | Full `JobResponse[]` for invited jobs |
 | GET | `/jobs/{id}` | Public* | *INVITE_ONLY requires ownership or active invite |
+| PUT | `/jobs/{id}` | CLIENT | Update an owned job (OPEN or DRAFT only) |
+| PATCH | `/jobs/{id}/archive` | CLIENT | Archive (cancel) an owned job; forbidden on COMPLETED |
+| POST | `/jobs/{id}/repost` | CLIENT | Repost an archived job → status back to OPEN |
+| DELETE | `/jobs/{id}` | CLIENT | Permanently delete an archived (CANCELLED) job; cascades bids/invites |
 | POST | `/jobs/{jobId}/invite/{freelancerId}` | CLIENT | Single-freelancer invite (owner + INVITE_ONLY only) |
 | POST | `/jobs/{jobId}/invite` | CLIENT | Bulk invite via `{ freelancerIds: [...] }` |
 | GET | `/jobs/invites` | FREELANCER | All invites with status + full job data (`InviteWithJobResponse[]`) |
@@ -104,8 +121,12 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/jobs/{jobId}/bids` | CLIENT | All bids on a job (owner only) |
 | POST | `/jobs/{jobId}/bids` | FREELANCER | Submit a bid (`amount`, `proposal`, `deliveryDays`) |
 | GET | `/bids/my` | FREELANCER | All bids placed by the caller |
-| POST | `/bids/{bidId}/accept` | CLIENT | Accept a bid; sets job to IN_PROGRESS, rejects all other bids |
+| POST | `/bids/{bidId}/accept` | CLIENT | Accept a bid; sets job to ASSIGNED, creates Contract (ACTIVE), rejects others |
 | POST | `/bids/{bidId}/decline` | CLIENT | Decline a specific bid |
+| GET | `/contracts/client` | CLIENT | All contracts where caller is the client |
+| GET | `/contracts/freelancer` | FREELANCER | All contracts assigned to caller |
+| PATCH | `/contracts/{id}/submit-work` | FREELANCER | Submit work (`submissionNote`, `submissionUrl`); contract → SUBMITTED |
+| PATCH | `/contracts/{id}/complete` | CLIENT | Mark contract complete; contract → COMPLETED, job → COMPLETED |
 
 ### Exception → HTTP mapping
 
@@ -120,6 +141,7 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | `BidAlreadyExistsException` | 400 | `BAD_REQUEST` (freelancer already bid on job) |
 | `InviteNotFoundException` | 404 | `NOT_FOUND` |
 | `InviteAlreadyProcessedException` | 400 | `BAD_REQUEST` |
+| `ContractNotFoundException` | 404 | `NOT_FOUND` |
 | `AccessDeniedException` | 403 | `ACCESS_DENIED` |
 | `MethodArgumentNotValidException` | 400 | `VALIDATION_ERROR` (+ `errors[]`) |
 | `HttpMessageNotReadableException` | 400 | `MALFORMED_REQUEST` |
@@ -169,6 +191,9 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 | `/freelancer/bids` | `FreelancerBids` | `FreelancerRoute` |
 | `/browse` | `BrowseJobs` | — (public) |
 | `/jobs/:id` | `JobDetail` | — (public*) |
+| `/client/archived-jobs` | `ArchivedJobs` | `ClientRoute` |
+| `/contracts` | `Contracts` | `ProtectedRoute` |
+| `/contracts/:contractId` | `Contracts` | `ProtectedRoute` |
 | `/dashboard` | redirect → `/client/dashboard` | — |
 
 `ClientRoute` / `FreelancerRoute` (in `src/components/ProtectedRoute.tsx`) extend `ProtectedRoute` and additionally check `user.role`; redirect to the correct dashboard if wrong role.
@@ -182,13 +207,14 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 **Auth context** (`src/context/AuthContext.tsx`): `isAuthenticated`, `isLoading`, `login()`, `register()`, `logout()`, `refreshUser()`. `register()` does **not** auto-login. Consumed via the `useAuth()` hook.
 
 **API layer** (`src/api/`):
-- `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, inviteFreelancer (single), getInvites, acceptInvite, declineInvite, getJobInvites, getAllClientInvites, getInvitedJobs, createBid, getJobBids, acceptBid, declineBid, getMyBids
+- `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, inviteFreelancer (single), inviteFreelancers (bulk), getInvites, acceptInvite, declineInvite, getJobInvites, getAllClientInvites, getInvitedJobs, createBid, getJobBids, acceptBid, declineBid, getMyBids, updateJob, archiveJob, **repostJob**, **deleteJob**
+- `contracts.ts` — `contractsApi`: `getClientContracts()`, `getFreelancerContracts()`, `submitWork(contractId, payload)`, `completeContract(contractId)`
 - `user.ts` — `userApi`: `getMe()`, `updateMe()`
 - `users.ts` — `usersApi`: `searchFreelancers()`
 - `dashboard.ts` — `dashboardApi`: `getClientDashboard()`, `getFreelancerDashboard()`
 - `auth.ts` — auth calls (login, register, refresh, logout)
 
-**Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR` and `FREELANCER_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. Placeholder entries (Contracts, Payments) have no `path` yet. `withActive()` marks the active route.
+**Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR` and `FREELANCER_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. The Contracts entry now links to `/contracts`; Payments is still a placeholder with no `path`. `withActive()` marks the active route.
 
 **Pagination pattern**: `BrowseJobs` uses server-side pagination (`SpringPage<JobResponse>` from `GET /jobs`). `MyJobs` and `FreelancerInvites` fetch all records once and paginate client-side (10 per page). `SpringPage<T>` is defined in `src/types/job.ts`.
 
@@ -206,6 +232,8 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `PageLoader` — full-area spinner with message
 - `Toast` — auto-dismiss success/error notification
 - `PlaceBidModal` — modal dialog for submitting a bid with form validation
+
+**Inline modals in `MyJobs`**: `EditJobModal` (edit OPEN/DRAFT job fields), `InviteModal` (search + single-invite a freelancer), `InviteesModal` (view all invitees + statuses for a job), archive confirmation dialog — all defined in the same file rather than as separate component files. `MyJobs` also supports list/grid view toggle and client-side pagination (10 per page).
 
 **Path alias**: `@/` → `src/` (configured in `vite.config.ts` and `tsconfig.json`).
 
