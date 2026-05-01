@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/context/AuthContext';
-import { ClientRoute, FreelancerRoute } from '@/components/ProtectedRoute';
+import { ProtectedRoute, ClientRoute, FreelancerRoute } from '@/components/ProtectedRoute';
 import Landing from '@/pages/Landing';
 import Register from '@/pages/Register';
 import Login from '@/pages/Login';
@@ -15,6 +15,8 @@ import ClientInvites from '@/pages/ClientInvites';
 import ClientJobBids from '@/pages/ClientJobBids';
 import ClientBids from '@/pages/ClientBids';
 import FreelancerBids from '@/pages/FreelancerBids';
+import Profile from '@/pages/Profile';
+import Messages from '@/pages/Messages';
 
 export default function App() {
   return (
@@ -54,8 +56,10 @@ export default function App() {
             path="/client/jobs/:jobId/bids"
             element={<ClientRoute><ClientJobBids /></ClientRoute>}
           />
+          <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
           <Route path="/browse" element={<BrowseJobs />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
+          <Route path="/profile/:id" element={<Profile />} />
           <Route
             path="/freelancer/invites"
             element={<FreelancerRoute><FreelancerInvites /></FreelancerRoute>}

@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { FormField } from '@/components/ui/FormField';
 import { RoleSelector } from '@/components/ui/RoleSelector';
 import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 import type { ApiError } from '@/types/auth';
 
 // Professional freelancer at modern workspace
@@ -220,18 +221,7 @@ export default function Register() {
         </section>
       </main>
 
-      <footer className="bg-dark-navy border-t border-white/10 flex justify-between items-center px-8 py-3 flex-shrink-0">
-        <span className="text-[10px] uppercase tracking-widest text-slate-500">
-          © 2026 BidForge Inc.
-        </span>
-        <div className="flex gap-lg">
-          {['Privacy', 'Terms', 'Help'].map((link) => (
-            <a key={link} href="#" className="text-[10px] uppercase tracking-widest text-slate-500 hover:text-white transition-colors">
-              {link}
-            </a>
-          ))}
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 package com.bidforge.app.user;
 
+import com.bidforge.app.common.exception.UserNotFoundException;
 import com.bidforge.app.user.dto.request.UpdateUserRequest;
 import com.bidforge.app.user.dto.response.UserResponse;
 import lombok.RequiredArgsConstructor;
@@ -24,17 +25,21 @@ public class UserService {
 
         User user = getAuthenticatedUser();
 
-        if (request.getName() != null) {
-            user.setName(request.getName());
-        }
+        if (request.getName() != null) user.setName(request.getName());
+        if (request.getProfileImageUrl() != null) user.setProfileImageUrl(request.getProfileImageUrl());
+        if (request.getTitle() != null) user.setTitle(request.getTitle());
+        if (request.getBio() != null) user.setBio(request.getBio());
+        if (request.getLocation() != null) user.setLocation(request.getLocation());
+        if (request.getHourlyRate() != null) user.setHourlyRate(request.getHourlyRate());
+        if (request.getSkills() != null) user.setSkills(request.getSkills());
 
-        if (request.getProfileImageUrl() != null) {
-            user.setProfileImageUrl(request.getProfileImageUrl());
-        }
+        return mapToResponse(userRepository.save(user));
+    }
 
-        User updated = userRepository.save(user);
-
-        return mapToResponse(updated);
+    public UserResponse getUserById(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        return mapToResponse(user);
     }
 
     public List<UserResponse> searchFreelancers(String q) {
@@ -60,6 +65,12 @@ public class UserService {
                 .role(user.getRole())
                 .rating(user.getRating())
                 .profileImageUrl(user.getProfileImageUrl())
+                .title(user.getTitle())
+                .bio(user.getBio())
+                .location(user.getLocation())
+                .hourlyRate(user.getHourlyRate())
+                .skills(user.getSkills())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 }

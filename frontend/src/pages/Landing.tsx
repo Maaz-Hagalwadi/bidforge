@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 
 // Professional Unsplash images
 const IMAGES = {
@@ -207,37 +208,7 @@ export default function Landing() {
         </section>
       </main>
 
-      {/* ── Footer ── */}
-      <footer className="flex flex-col items-center gap-4 bg-dark-navy py-12 px-8 text-xs border-t border-white/10">
-        <div className="w-full max-w-8xl flex flex-col md:flex-row justify-between items-center gap-8 border-b border-white/10 pb-8">
-          <div className="flex flex-col items-center md:items-start gap-2">
-            <span className="text-white font-bold text-lg">BidForge</span>
-            <p className="text-slate-400 text-center md:text-left">
-              High-velocity freelance marketplace for professionals.
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-6">
-            {['Privacy Policy', 'Terms of Service', 'Help Center', 'API Reference'].map((link) => (
-              <a key={link} href="#" className="text-slate-400 hover:text-white transition-colors">
-                {link}
-              </a>
-            ))}
-          </div>
-        </div>
-        <div className="w-full max-w-8xl flex flex-col md:flex-row justify-between items-center gap-4 pt-4">
-          <span className="text-slate-500">© 2026 BidForge Inc. All rights reserved.</span>
-          <div className="flex gap-4">
-            {['language', 'shield', 'contact_support'].map((icon) => (
-              <span
-                key={icon}
-                className="material-symbols-outlined text-slate-500 cursor-pointer hover:text-white transition-colors"
-              >
-                {icon}
-              </span>
-            ))}
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

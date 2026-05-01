@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
 import { usersApi, type FreelancerSearchResult } from '@/api/users';
 import { Navbar } from '@/components/Navbar';
-import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
+import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import type { JobInviteStatus, JobResponse } from '@/types/job';
@@ -643,17 +643,7 @@ export default function MyJobs() {
             )}
           </div>
 
-          <footer className="py-8 px-8 border-t border-white/10 mt-auto" style={{ backgroundColor: '#0A192F' }}>
-            <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-4">
-              <BidForgeLogo variant="light" />
-              <div className="flex flex-wrap justify-center gap-8">
-                {['Privacy Policy', 'Terms of Service', 'Help Center'].map(l => (
-                  <a key={l} href="#" className="text-slate-400 hover:text-white transition-colors text-xs">{l}</a>
-                ))}
-              </div>
-              <span className="text-slate-500 text-xs">© 2026 BidForge Inc.</span>
-            </div>
-          </footer>
+          <Footer />
         </main>
       </div>
 

@@ -73,4 +73,9 @@ public class JobSpecification {
                 cb.like(cb.lower(root.get("description")), "%" + keyword.toLowerCase() + "%")
         );
     }
+
+    public static Specification<Job> postedAfter(java.time.LocalDateTime date) {
+        return (root, query, cb) ->
+                cb.greaterThanOrEqualTo(root.get("createdAt"), date);
+    }
 }

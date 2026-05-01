@@ -4,7 +4,7 @@ import { CLIENT_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
 import { Navbar } from '@/components/Navbar';
-import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
+import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import type { BidResponse, BidStatus, JobResponse } from '@/types/job';
@@ -165,7 +165,7 @@ export default function ClientJobBids() {
             <button onClick={() => navigate('/client/jobs')}
               className="flex items-center gap-1.5 text-sm font-semibold text-on-surface-variant hover:text-on-surface transition-colors">
               <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-              Back to My Jobs
+              Back to My Projects
             </button>
 
             {loading ? (
@@ -176,7 +176,7 @@ export default function ClientJobBids() {
                 <p className="text-on-surface font-semibold">{loadError}</p>
                 <button onClick={() => navigate('/client/jobs')}
                   className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
-                  Back to My Jobs
+                  Back to My Projects
                 </button>
               </div>
             ) : (
@@ -323,12 +323,7 @@ export default function ClientJobBids() {
             )}
           </div>
 
-          <footer className="py-8 px-8 border-t border-white/10 mt-auto" style={{ backgroundColor: '#0A192F' }}>
-            <div className="max-w-[1280px] mx-auto flex flex-col items-center gap-4">
-              <BidForgeLogo variant="light" />
-              <span className="text-slate-500 text-xs">© 2026 BidForge Inc.</span>
-            </div>
-          </footer>
+          <Footer />
         </main>
       </div>
 
