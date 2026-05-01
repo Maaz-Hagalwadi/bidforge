@@ -1,5 +1,5 @@
 import api from './axiosInstance';
-import type { BidResponse, CreateBidPayload, CreateJobPayload, InviteWithJobResponse, JobInviteStatus, JobResponse, SpringPage } from '@/types/job';
+import type { BidResponse, CreateBidPayload, CreateJobPayload, UpdateJobPayload, InviteWithJobResponse, JobInviteStatus, JobResponse, SpringPage } from '@/types/job';
 
 export const jobsApi = {
   create: (payload: CreateJobPayload) =>
@@ -52,4 +52,10 @@ export const jobsApi = {
 
   getMyBids: () =>
     api.get<BidResponse[]>('/bids/my').then(r => r.data),
+
+  updateJob: (id: string, payload: UpdateJobPayload) =>
+    api.put<JobResponse>(`/jobs/${id}`, payload).then(r => r.data),
+
+  archiveJob: (id: string) =>
+    api.patch(`/jobs/${id}/archive`).then(r => r.data),
 };
