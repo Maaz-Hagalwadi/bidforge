@@ -1,114 +1,131 @@
-import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
+import { contractsApi } from '@/api/contracts';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
+import { PageLoader } from '@/components/ui/PageLoader';
+import type { ContractResponse } from '@/types/contract';
 
 const SIDEBAR_BG = '#0A192F';
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
+type MilestoneState = 'completed' | 'active' | 'pending';
 
-interface Milestone {
-  label: string;
-  status: 'completed' | 'active' | 'pending';
+const MILESTONE_LABELS = ['Contract Started', 'Work in Progress', 'Work Submitted', 'Completed'];
+
+function getMilestoneStates(status: ContractResponse['status']): MilestoneState[] {
+  switch (status) {
+    case 'ACTIVE':    return ['completed', 'active',     'pending',   'pending'  ];
+    case 'SUBMITTED': return ['completed', 'completed',  'active',    'pending'  ];
+    case 'COMPLETED': return ['completed', 'completed',  'completed', 'completed'];
+    case 'CANCELLED': return ['completed', 'pending',    'pending',   'pending'  ];
+  }
 }
 
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: string;
-  uploadedAt: string;
-}
-
-const MILESTONES: Milestone[] = [
-  { label: 'Discovery',      status: 'completed' },
-  { label: 'Wireframes',     status: 'completed' },
-  { label: 'Final UI Design', status: 'active'   },
-  { label: 'Handover',       status: 'pending'   },
-];
-
-const SEED_FILES: UploadedFile[] = [
-  { id: 'f1', name: 'Wireframe_V2_Final.pdf', size: '4.2 MB', uploadedAt: '2 hours ago' },
-  { id: 'f2', name: 'UI_Assets_Pack.zip',    size: '18.7 MB', uploadedAt: '1 day ago'   },
-];
+const STATUS_CFG: Record<ContractResponse['status'], { label: string; cls: string; icon: string }> = {
+  ACTIVE:    { label: 'Active',    cls: 'bg-secondary/10 text-secondary',    icon: 'work'           },
+  SUBMITTED: { label: 'Submitted', cls: 'bg-amber-50 text-amber-700',        icon: 'pending_actions'},
+  COMPLETED: { label: 'Completed', cls: 'bg-emerald-50 text-emerald-700',    icon: 'task_alt'       },
+  CANCELLED: { label: 'Cancelled', cls: 'bg-red-50 text-red-600',            icon: 'cancel'         },
+};
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+function formatCurrency(n: number) {
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatDate(d?: string) {
+  if (!d) return 'N/A';
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function shortId(id: string) {
+  return `#BF-${id.slice(-4).toUpperCase()}`;
+}
 
 export default function Contracts() {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const { contractId } = useParams<{ contractId: string }>();
 
   const sidebarLinks = withActive(
     user?.role === 'FREELANCER' ? FREELANCER_SIDEBAR : CLIENT_SIDEBAR,
     pathname
   );
 
-  const [sidebarOpen, setSidebarOpen]   = useState(true);
-  const [profileOpen, setProfileOpen]   = useState(false);
-  const [files, setFiles]               = useState<UploadedFile[]>(SEED_FILES);
-  const [isDragOver, setIsDragOver]     = useState(false);
-  const [toast, setToast]               = useState<string | null>(null);
-  const [marked, setMarked]             = useState(false);
+  const [sidebarOpen,  setSidebarOpen]  = useState(true);
+  const [profileOpen,  setProfileOpen]  = useState(false);
+  const [contracts,    setContracts]    = useState<ContractResponse[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [toast,        setToast]        = useState<string | null>(null);
+  const [submitNote,   setSubmitNote]   = useState('');
+  const [submitUrl,    setSubmitUrl]    = useState('');
+  const [submitting,   setSubmitting]   = useState(false);
+  const [completing,   setCompleting]   = useState(false);
+  const [showForm,     setShowForm]     = useState(false);
 
-  const profileRef  = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  const fetchContracts = useCallback(async () => {
+    try {
+      const data = user?.role === 'CLIENT'
+        ? await contractsApi.getClientContracts()
+        : await contractsApi.getFreelancerContracts();
+      setContracts(data);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
+  }, [user?.role]);
+
+  useEffect(() => { fetchContracts(); }, [fetchContracts]);
 
   useEffect(() => {
-    function onMouseDown(e: MouseEvent) {
+    function onDown(e: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
   }, []);
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
+    const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
 
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
   const initials = user ? getInitials(user.name) : '?';
 
-  // ── File handling ───────────────────────────────────────────────────────────
-
-  const addFiles = (fileList: FileList) => {
-    const newFiles: UploadedFile[] = Array.from(fileList).map(f => ({
-      id: `f${Date.now()}-${f.name}`,
-      name: f.name,
-      size: `${(f.size / 1024 / 1024).toFixed(1)} MB`,
-      uploadedAt: 'Just now',
-    }));
-    setFiles(prev => [...newFiles, ...prev]);
-    setToast(`${newFiles.length} file${newFiles.length > 1 ? 's' : ''} uploaded successfully`);
+  const handleSubmitWork = async (contract: ContractResponse) => {
+    if (!submitNote.trim() || !submitUrl.trim()) { setToast('Please fill in both fields.'); return; }
+    setSubmitting(true);
+    try {
+      await contractsApi.submitWork(contract.id, { submissionNote: submitNote, submissionUrl: submitUrl });
+      setToast('Work submitted! Awaiting client review.');
+      setShowForm(false); setSubmitNote(''); setSubmitUrl('');
+      await fetchContracts();
+    } catch { setToast('Failed to submit work. Please try again.'); }
+    finally { setSubmitting(false); }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+  const handleComplete = async (contract: ContractResponse) => {
+    setCompleting(true);
+    try {
+      await contractsApi.completeContract(contract.id);
+      setToast('Contract completed! Payment released.');
+      await fetchContracts();
+    } catch { setToast('Failed to complete contract. Please try again.'); }
+    finally { setCompleting(false); }
   };
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.length) addFiles(e.target.files);
-    e.target.value = '';
-  };
+  const selected = contractId ? contracts.find(c => c.id === contractId) : null;
 
-  const removeFile = (id: string) => setFiles(prev => prev.filter(f => f.id !== id));
-
-  // ── Milestone helpers ───────────────────────────────────────────────────────
-
-  const completedCount = MILESTONES.filter(m => m.status === 'completed').length;
-  const progressPct = (completedCount / (MILESTONES.length - 1)) * 100;
-
-  // ── Nav right ──────────────────────────────────────────────────────────────
+  // ── Navbar right ────────────────────────────────────────────────────────────
 
   const navRight = (
     <div className="flex items-center gap-1">
@@ -119,7 +136,7 @@ export default function Contracts() {
         <button onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen} aria-label="Profile menu"
           className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-white/10 transition-colors">
           {user?.profileImageUrl ? (
-            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-white/20" alt={user?.name} />
+            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-white/20" alt={user.name} />
           ) : (
             <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-sm font-bold select-none">{initials}</div>
           )}
@@ -130,305 +147,590 @@ export default function Contracts() {
     </div>
   );
 
+  // ── Sidebar ──────────────────────────────────────────────────────────────────
+
+  const sidebar = (
+    <aside
+      className={[user ? 'hidden lg:flex' : 'hidden', 'flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden flex-shrink-0', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
+      style={{ backgroundColor: SIDEBAR_BG }}
+    >
+      <div className={`flex items-center h-14 border-b border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
+        {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 select-none">Menu</span>}
+        <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+          <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
+        </button>
+      </div>
+      <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
+        {sidebarLinks.map(({ icon, label, active, path }) => (
+          <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
+            className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+            <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
+            {sidebarOpen && <span className="text-sm truncate">{label}</span>}
+          </button>
+        ))}
+      </nav>
+      <div className="p-3 space-y-2 border-t border-white/10 flex-shrink-0">
+        {sidebarOpen && (
+          <div className="bg-white/5 border border-white/10 text-white rounded-xl p-4">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">PRO PLAN</p>
+            <p className="text-xs font-semibold leading-relaxed mb-3 text-white/80">Unlimited active contracts and priority support.</p>
+            <button className="w-full py-2 bg-secondary rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
+          </div>
+        )}
+        <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
+          className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
+          <span className="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>
+          {sidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
+        </button>
+      </div>
+    </aside>
+  );
+
+  // ── List view ────────────────────────────────────────────────────────────────
+
+  const listView = (
+    <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
+      <div>
+        <h1 className="text-h1 font-bold text-on-surface">My Contracts</h1>
+        <p className="text-body-md text-on-surface-variant mt-1">
+          {contracts.length} contract{contracts.length !== 1 ? 's' : ''} found
+        </p>
+      </div>
+
+      {contracts.length === 0 ? (
+        <div className="tonal-card rounded-xl flex flex-col items-center gap-4 py-20 text-center border border-outline-variant">
+          <span className="material-symbols-outlined text-5xl text-slate-300">receipt_long</span>
+          <p className="text-on-surface font-semibold">No contracts yet</p>
+          <p className="text-sm text-on-surface-variant max-w-xs">
+            {user?.role === 'FREELANCER'
+              ? 'When a client accepts your bid, a contract will appear here.'
+              : 'When you accept a freelancer\'s bid, a contract will appear here.'}
+          </p>
+          <button
+            onClick={() => navigate(user?.role === 'FREELANCER' ? '/browse' : '/client/jobs')}
+            className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
+            {user?.role === 'FREELANCER' ? 'Browse Jobs' : 'My Projects'}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {contracts.map(c => {
+            const cfg = STATUS_CFG[c.status];
+            const party = user?.role === 'CLIENT' ? c.freelancerName : c.clientName;
+            const partyLabel = user?.role === 'CLIENT' ? 'Freelancer' : 'Client';
+            return (
+              <article key={c.id}
+                className="bg-white rounded-xl border border-outline-variant hover:border-secondary/30 hover:shadow-md transition-all group cursor-pointer"
+                onClick={() => navigate(`/contracts/${c.id}`)}>
+                <div className="flex flex-col md:flex-row md:items-center p-5 gap-4">
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold ${cfg.cls}`}>
+                        <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
+                        {cfg.label}
+                      </span>
+                      <span className="text-xs text-on-surface-variant font-medium">{shortId(c.id)}</span>
+                      <span className="text-xs text-on-surface-variant">· {formatDate(c.createdAt)}</span>
+                    </div>
+                    <h3 className="text-base font-bold text-on-surface group-hover:text-secondary transition-colors leading-snug">{c.jobTitle}</h3>
+                    <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-secondary text-[16px]">payments</span>
+                        <strong className="text-on-surface">{formatCurrency(c.amount)}</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[16px]">person</span>
+                        {partyLabel}: <strong className="text-on-surface ml-0.5">{party}</strong>
+                      </span>
+                      {c.deadline && (
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[16px]">calendar_today</span>
+                          Due: <strong className="text-on-surface ml-0.5">{formatDate(c.deadline)}</strong>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-2">
+                    <button
+                      onClick={e => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                      View Details
+                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    </button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Detail view ──────────────────────────────────────────────────────────────
+
+  function detailView(contract: ContractResponse) {
+    const isFreelancer = user?.role === 'FREELANCER';
+    const isClient = user?.role === 'CLIENT';
+    const milestoneStates = getMilestoneStates(contract.status);
+    const completedCount = milestoneStates.filter(s => s === 'completed').length;
+    const progressPct = Math.min(completedCount / (MILESTONE_LABELS.length - 1), 1) * 100;
+    const party = isClient ? contract.freelancerName : contract.clientName;
+    const partyLabel = isClient ? 'Freelancer' : 'Client';
+    const partyInitials = getInitials(party);
+
+    const escrowBanner = (() => {
+      if (contract.status === 'COMPLETED') return {
+        bg: 'bg-emerald-50 border-emerald-100', iconBg: 'bg-emerald-500', icon: 'task_alt',
+        title: 'Contract Completed', titleCls: 'text-emerald-900',
+        desc: 'This contract has been completed and payment has been released.', descCls: 'text-emerald-700',
+        badge: 'bg-white text-emerald-600 border-emerald-100', badgeText: 'Completed',
+      };
+      if (contract.status === 'SUBMITTED') return {
+        bg: 'bg-amber-50 border-amber-100', iconBg: 'bg-amber-500', icon: 'pending_actions',
+        title: 'Work Submitted – Awaiting Review', titleCls: 'text-amber-900',
+        desc: isClient ? 'The freelancer has submitted their work. Review and release payment.' : 'Your work has been submitted. The client will review it shortly.',
+        descCls: 'text-amber-700',
+        badge: 'bg-white text-amber-600 border-amber-100', badgeText: 'Under Review',
+      };
+      if (contract.status === 'CANCELLED') return {
+        bg: 'bg-red-50 border-red-100', iconBg: 'bg-red-500', icon: 'cancel',
+        title: 'Contract Cancelled', titleCls: 'text-red-900',
+        desc: 'This contract has been cancelled.', descCls: 'text-red-700',
+        badge: 'bg-white text-red-600 border-red-100', badgeText: 'Cancelled',
+      };
+      return {
+        bg: 'bg-emerald-50 border-emerald-100', iconBg: 'bg-emerald-500', icon: 'verified_user',
+        title: 'Funds Held in Escrow', titleCls: 'text-emerald-900',
+        desc: `Project payment of ${formatCurrency(contract.amount)} is secured and will be released upon completion.`,
+        descCls: 'text-emerald-700',
+        badge: 'bg-white text-emerald-600 border-emerald-100', badgeText: 'Status: Secured',
+      };
+    })();
+
+    return (
+      <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
+
+        {/* Back */}
+        <button onClick={() => navigate('/contracts')}
+          className="flex items-center gap-1.5 text-sm font-semibold text-on-surface-variant hover:text-secondary transition-colors">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          All Contracts
+        </button>
+
+        {/* Escrow banner */}
+        <div className={`rounded-xl p-4 flex items-center justify-between shadow-sm border ${escrowBanner.bg}`}>
+          <div className="flex items-center gap-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0 ${escrowBanner.iconBg}`}>
+              <span className="material-symbols-outlined text-[22px]">{escrowBanner.icon}</span>
+            </div>
+            <div>
+              <h4 className={`text-base font-bold ${escrowBanner.titleCls}`}>{escrowBanner.title}</h4>
+              <p className={`text-sm ${escrowBanner.descCls}`}>{escrowBanner.desc}</p>
+            </div>
+          </div>
+          <span className={`hidden sm:inline-flex px-4 py-1.5 text-sm font-semibold rounded-lg border ${escrowBanner.badge}`}>
+            {escrowBanner.badgeText}
+          </span>
+        </div>
+
+        {/* Bento grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          {/* ── Left 8 cols ── */}
+          <section className="lg:col-span-8 space-y-6">
+
+            {/* Contract header card */}
+            <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+                <div className="min-w-0">
+                  <span className="inline-block px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold rounded-full mb-3">
+                    Active Contract {shortId(contract.id)}
+                  </span>
+                  <h1 className="text-2xl font-bold text-on-surface leading-tight">{contract.jobTitle}</h1>
+                  <div className="flex flex-wrap gap-5 mt-4">
+                    <div className="flex items-center gap-1.5 text-on-surface-variant text-sm">
+                      <span className="material-symbols-outlined text-secondary text-[18px]">payments</span>
+                      Agreed Amount: <strong className="text-on-surface ml-0.5">{formatCurrency(contract.amount)}</strong>
+                    </div>
+                    {contract.deadline && (
+                      <div className="flex items-center gap-1.5 text-on-surface-variant text-sm">
+                        <span className="material-symbols-outlined text-secondary text-[18px]">calendar_today</span>
+                        Deadline: <strong className="text-on-surface ml-0.5">{formatDate(contract.deadline)}</strong>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5 text-on-surface-variant text-sm">
+                      <span className="material-symbols-outlined text-secondary text-[18px]">person</span>
+                      {partyLabel}: <strong className="text-on-surface ml-0.5">{party}</strong>
+                    </div>
+                  </div>
+                </div>
+                <button onClick={() => navigate('/messages')}
+                  className="flex items-center gap-2 text-secondary text-sm font-semibold hover:bg-secondary/5 px-4 py-2 rounded-lg transition-colors flex-shrink-0 border border-secondary/20">
+                  <span className="material-symbols-outlined text-[18px]">chat</span>
+                  Open Chat
+                </button>
+              </div>
+
+              {/* Milestone timeline */}
+              <div className="border-t border-slate-100 pt-6">
+                <h3 className="text-lg font-bold text-on-surface mb-6">Contract Progress</h3>
+                <div className="relative">
+                  <div className="absolute top-5 left-0 w-full h-[2px] bg-slate-100 rounded-full" />
+                  <div className="absolute top-5 left-0 h-[2px] bg-secondary rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
+                  <div className="relative flex justify-between">
+                    {MILESTONE_LABELS.map((label, i) => {
+                      const st = milestoneStates[i];
+                      return (
+                        <div key={label} className="flex flex-col items-center">
+                          {st === 'completed' ? (
+                            <div className="w-10 h-10 rounded-full bg-secondary text-white flex items-center justify-center z-10 shadow-md shadow-secondary/30">
+                              <span className="material-symbols-outlined text-[20px]">check</span>
+                            </div>
+                          ) : st === 'active' ? (
+                            <div className="w-10 h-10 rounded-full bg-white border-2 border-secondary text-secondary flex items-center justify-center z-10 ring-4 ring-secondary/10">
+                              <span className="text-sm font-bold">{i + 1}</span>
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-white border-2 border-slate-200 text-slate-400 flex items-center justify-center z-10">
+                              <span className="text-sm font-bold">{i + 1}</span>
+                            </div>
+                          )}
+                          <p className={`mt-3 text-xs font-bold text-center leading-tight ${st === 'pending' ? 'text-on-surface-variant' : st === 'active' ? 'text-secondary' : 'text-on-surface'}`}>
+                            {label}
+                          </p>
+                          <p className={`text-[11px] mt-0.5 font-medium ${st === 'completed' ? 'text-emerald-600' : st === 'active' ? 'text-secondary' : 'text-slate-400'}`}>
+                            {st === 'completed' ? 'Done' : st === 'active' ? 'In Progress' : 'Pending'}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Submission section */}
+            <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
+
+              {/* FREELANCER + ACTIVE: submit work form */}
+              {isFreelancer && contract.status === 'ACTIVE' && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-on-surface">Submit Your Work</h3>
+                    <span className="text-xs text-on-surface-variant">Provide a note and a link to your deliverables</span>
+                  </div>
+                  {!showForm ? (
+                    <button onClick={() => setShowForm(true)}
+                      className="w-full border-2 border-dashed border-slate-200 rounded-xl p-10 flex flex-col items-center gap-3 cursor-pointer hover:border-secondary hover:bg-secondary/5 transition-all group">
+                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                        <span className="material-symbols-outlined text-secondary text-4xl">upload_file</span>
+                      </div>
+                      <p className="text-lg font-bold text-on-surface">Ready to submit?</p>
+                      <p className="text-sm text-on-surface-variant">Click here to add your submission details</p>
+                    </button>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-on-surface-variant px-1">Submission Note</label>
+                        <textarea
+                          value={submitNote}
+                          onChange={e => setSubmitNote(e.target.value)}
+                          rows={4}
+                          placeholder="Describe what you've completed, any important notes for the client…"
+                          className="w-full px-4 py-3 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all resize-none bg-white"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-on-surface-variant px-1">Deliverable Link</label>
+                        <input
+                          type="url"
+                          value={submitUrl}
+                          onChange={e => setSubmitUrl(e.target.value)}
+                          placeholder="https://github.com/… or drive.google.com/… or figma.com/…"
+                          className="w-full px-4 py-3 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white"
+                        />
+                      </div>
+                      <div className="flex gap-3 pt-1">
+                        <button
+                          onClick={() => handleSubmitWork(contract)}
+                          disabled={submitting}
+                          className="flex-1 py-3 bg-secondary text-white rounded-lg text-sm font-bold hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                          {submitting ? (
+                            <><span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>Submitting…</>
+                          ) : (
+                            <><span className="material-symbols-outlined text-[18px]">send</span>Submit Work</>
+                          )}
+                        </button>
+                        <button onClick={() => { setShowForm(false); setSubmitNote(''); setSubmitUrl(''); }}
+                          className="px-4 py-3 border border-outline-variant text-on-surface-variant rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* FREELANCER + SUBMITTED or COMPLETED: show what was submitted */}
+              {isFreelancer && (contract.status === 'SUBMITTED' || contract.status === 'COMPLETED') && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-on-surface">Submitted Work</h3>
+                    <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${contract.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                      <span className="material-symbols-outlined text-[14px]">{contract.status === 'COMPLETED' ? 'task_alt' : 'pending_actions'}</span>
+                      {contract.status === 'COMPLETED' ? 'Approved' : 'Under Review'}
+                    </span>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-surface-container rounded-xl border border-outline-variant">
+                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Submission Note</p>
+                      <p className="text-sm text-on-surface leading-relaxed">{contract.submissionNote || '—'}</p>
+                    </div>
+                    {contract.submissionUrl && (
+                      <div className="flex items-center justify-between p-4 border border-slate-100 rounded-lg">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2 bg-secondary/10 text-secondary rounded-lg flex-shrink-0">
+                            <span className="material-symbols-outlined text-[22px]">link</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-on-surface truncate">Deliverable Link</p>
+                            <p className="text-xs text-on-surface-variant truncate">{contract.submissionUrl}</p>
+                          </div>
+                        </div>
+                        <a href={contract.submissionUrl} target="_blank" rel="noopener noreferrer"
+                          className="ml-3 flex-shrink-0 p-2 text-secondary hover:bg-secondary/5 rounded-lg transition-colors">
+                          <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                        </a>
+                      </div>
+                    )}
+                    {contract.submittedAt && (
+                      <p className="text-xs text-on-surface-variant">Submitted on {formatDate(contract.submittedAt)}</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* CLIENT + ACTIVE: waiting */}
+              {isClient && contract.status === 'ACTIVE' && (
+                <>
+                  <h3 className="text-lg font-bold text-on-surface mb-4">Deliverable</h3>
+                  <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center">
+                      <span className="material-symbols-outlined text-3xl text-on-surface-variant">hourglass_empty</span>
+                    </div>
+                    <p className="text-base font-semibold text-on-surface">Awaiting Submission</p>
+                    <p className="text-sm text-on-surface-variant max-w-xs">The freelancer is working on the project. Their submission will appear here when ready.</p>
+                  </div>
+                </>
+              )}
+
+              {/* CLIENT + SUBMITTED: review submission */}
+              {isClient && (contract.status === 'SUBMITTED' || contract.status === 'COMPLETED') && (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-bold text-on-surface">Review Submission</h3>
+                    {contract.status === 'COMPLETED' && (
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-semibold">
+                        <span className="material-symbols-outlined text-[14px]">task_alt</span>Approved
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    <div className="p-4 bg-surface-container rounded-xl border border-outline-variant">
+                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Freelancer's Note</p>
+                      <p className="text-sm text-on-surface leading-relaxed">{contract.submissionNote || '—'}</p>
+                    </div>
+                    {contract.submissionUrl && (
+                      <div className="flex items-center justify-between p-4 border border-slate-100 rounded-lg">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2 bg-secondary/10 text-secondary rounded-lg flex-shrink-0">
+                            <span className="material-symbols-outlined text-[22px]">link</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-on-surface truncate">Deliverable Link</p>
+                            <p className="text-xs text-on-surface-variant truncate">{contract.submissionUrl}</p>
+                          </div>
+                        </div>
+                        <a href={contract.submissionUrl} target="_blank" rel="noopener noreferrer"
+                          className="ml-3 flex-shrink-0 p-2 text-secondary hover:bg-secondary/5 rounded-lg transition-colors">
+                          <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                        </a>
+                      </div>
+                    )}
+                    {contract.submittedAt && (
+                      <p className="text-xs text-on-surface-variant">Submitted on {formatDate(contract.submittedAt)}</p>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* CANCELLED */}
+              {contract.status === 'CANCELLED' && (
+                <>
+                  <h3 className="text-lg font-bold text-on-surface mb-4">Contract Cancelled</h3>
+                  <div className="flex flex-col items-center gap-3 py-12 text-center">
+                    <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
+                      <span className="material-symbols-outlined text-3xl text-red-400">cancel</span>
+                    </div>
+                    <p className="text-base font-semibold text-on-surface">This contract was cancelled</p>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* ── Right 4 cols ── */}
+          <section className="lg:col-span-4 space-y-6">
+
+            {/* Actions card */}
+            <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
+              <h3 className="text-lg font-bold text-on-surface mb-5">Actions</h3>
+              <div className="space-y-3">
+
+                {/* Freelancer actions */}
+                {isFreelancer && contract.status === 'ACTIVE' && (
+                  <button onClick={() => setShowForm(true)}
+                    className="w-full bg-secondary text-white py-3.5 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg shadow-secondary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                    Submit Work
+                  </button>
+                )}
+                {isFreelancer && contract.status === 'SUBMITTED' && (
+                  <button disabled className="w-full bg-amber-100 text-amber-700 py-3.5 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">pending_actions</span>
+                    Awaiting Client Review
+                  </button>
+                )}
+                {isFreelancer && contract.status === 'COMPLETED' && (
+                  <button disabled className="w-full bg-emerald-100 text-emerald-700 py-3.5 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">task_alt</span>
+                    Contract Completed
+                  </button>
+                )}
+
+                {/* Client actions */}
+                {isClient && contract.status === 'SUBMITTED' && (
+                  <button onClick={() => handleComplete(contract)} disabled={completing}
+                    className="w-full bg-secondary text-white py-3.5 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg shadow-secondary/20 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {completing ? (
+                      <><span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>Processing…</>
+                    ) : (
+                      <><span className="material-symbols-outlined text-[18px]">verified</span>Approve &amp; Release Payment</>
+                    )}
+                  </button>
+                )}
+                {isClient && contract.status === 'ACTIVE' && (
+                  <button disabled className="w-full bg-slate-100 text-slate-400 py-3.5 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">hourglass_empty</span>
+                    Awaiting Submission
+                  </button>
+                )}
+                {isClient && contract.status === 'COMPLETED' && (
+                  <button disabled className="w-full bg-emerald-100 text-emerald-700 py-3.5 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">task_alt</span>
+                    Payment Released
+                  </button>
+                )}
+
+                <button className="w-full bg-white border border-outline-variant text-on-surface py-3.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">schedule</span>
+                  Request Extension
+                </button>
+              </div>
+              <div className="mt-6 pt-5 border-t border-slate-100 flex items-start gap-3">
+                <span className="material-symbols-outlined text-secondary text-[20px] flex-shrink-0 mt-0.5">info</span>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  {isFreelancer
+                    ? 'Submitting your work notifies the client to review and release the escrowed payment.'
+                    : 'Approving the submission releases the escrowed funds to the freelancer.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Contract party card */}
+            <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
+              <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-5">Contract Party</h3>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-white text-base font-bold flex-shrink-0">
+                  {partyInitials}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-on-surface">{party}</p>
+                  <p className="text-xs text-on-surface-variant capitalize">{partyLabel}</p>
+                </div>
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className="bg-surface-container rounded-lg p-3">
+                  <p className="text-xs text-on-surface-variant mb-1">Contract ID</p>
+                  <p className="text-sm font-bold text-on-surface font-mono">{shortId(contract.id)}</p>
+                </div>
+                <div className="bg-surface-container rounded-lg p-3">
+                  <p className="text-xs text-on-surface-variant mb-1">Amount</p>
+                  <p className="text-sm font-bold text-secondary">{formatCurrency(contract.amount)}</p>
+                </div>
+                <div className="bg-surface-container rounded-lg p-3">
+                  <p className="text-xs text-on-surface-variant mb-1">Status</p>
+                  <p className={`text-sm font-bold ${STATUS_CFG[contract.status].cls.split(' ')[1]}`}>{STATUS_CFG[contract.status].label}</p>
+                </div>
+                <div className="bg-surface-container rounded-lg p-3">
+                  <p className="text-xs text-on-surface-variant mb-1">Started</p>
+                  <p className="text-sm font-bold text-on-surface">{formatDate(contract.createdAt)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Security badge */}
+            <div className="bg-primary-container rounded-xl p-6 text-white relative overflow-hidden">
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>shield_with_heart</span>
+                  <h4 className="text-base font-bold">BidForge Protection</h4>
+                </div>
+                <p className="text-sm text-on-primary-container leading-relaxed mb-4">
+                  Your work is protected. We ensure payment security for every milestone through our verified escrow system.
+                </p>
+                <button className="px-4 py-2 bg-white text-primary-container text-xs font-bold rounded-lg hover:bg-surface-container-low transition-colors">
+                  Learn More
+                </button>
+              </div>
+              <div className="absolute -right-4 -bottom-4 opacity-10 pointer-events-none">
+                <span className="material-symbols-outlined text-[120px]">lock</span>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <div className="bg-surface min-h-screen flex flex-col">
       <Navbar variant="app" authRight={navRight} />
 
       <div className="flex flex-1 min-h-0">
-        {/* BidForge sidebar */}
-        <aside
-          className={[user ? 'hidden lg:flex' : 'hidden', 'flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden flex-shrink-0', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
-          style={{ backgroundColor: SIDEBAR_BG }}
-        >
-          <div className={`flex items-center h-14 border-b border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
-            {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 select-none">Menu</span>}
-            <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
-              <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
-            </button>
-          </div>
-          <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
-            {sidebarLinks.map(({ icon, label, active, path }) => (
-              <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
-                className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-                <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
-                {sidebarOpen && <span className="text-sm truncate">{label}</span>}
-              </button>
-            ))}
-          </nav>
-          <div className="p-3 space-y-2 border-t border-white/10 flex-shrink-0">
-            {sidebarOpen && (
-              <div className="bg-white/5 border border-white/10 text-white rounded-xl p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">PRO PLAN</p>
-                <p className="text-xs font-semibold leading-relaxed mb-3 text-white/80">Unlimited active contracts and priority support.</p>
-                <button className="w-full py-2 bg-secondary rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
-              </div>
-            )}
-            <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
-              className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
-              <span className="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>
-              {sidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
-            </button>
-          </div>
-        </aside>
+        {sidebar}
 
-        {/* Main */}
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col">
-          <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
-
-            {/* Escrow banner */}
-            <div className={`rounded-xl p-4 flex items-center justify-between shadow-sm border ${marked ? 'bg-blue-50 border-blue-100' : 'bg-emerald-50 border-emerald-100'}`}>
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0 ${marked ? 'bg-secondary' : 'bg-emerald-500'}`}>
-                  <span className="material-symbols-outlined text-[22px]">{marked ? 'task_alt' : 'verified_user'}</span>
-                </div>
-                <div>
-                  <h4 className={`text-base font-bold ${marked ? 'text-secondary' : 'text-emerald-900'}`}>
-                    {marked ? 'Completion Submitted' : 'Funds Held in Escrow'}
-                  </h4>
-                  <p className={`text-sm ${marked ? 'text-secondary/70' : 'text-emerald-700'}`}>
-                    {marked
-                      ? 'The client has been notified to review your work and release payment.'
-                      : 'Project payment of $4,500.00 is secured and will be released upon milestone approval.'}
-                  </p>
-                </div>
-              </div>
-              <span className={`hidden sm:inline-flex px-4 py-1.5 text-sm font-semibold rounded-lg border ${marked ? 'bg-white text-secondary border-secondary/20' : 'bg-white text-emerald-600 border-emerald-100'}`}>
-                {marked ? 'Awaiting Review' : 'Status: Secured'}
-              </span>
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <PageLoader message="Loading contracts…" />
             </div>
-
-            {/* Bento grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-              {/* ── Left 8 cols ── */}
-              <section className="lg:col-span-8 space-y-6">
-
-                {/* Contract header card */}
-                <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
-                    <div className="min-w-0">
-                      <span className="inline-block px-3 py-1 bg-secondary/10 text-secondary text-xs font-bold rounded-full mb-3">
-                        Active Contract #BF-9042
-                      </span>
-                      <h1 className="text-2xl font-bold text-on-surface leading-tight">
-                        Mobile App UI Redesign: Fintech Dashboard
-                      </h1>
-                      <div className="flex flex-wrap gap-5 mt-4">
-                        <div className="flex items-center gap-1.5 text-on-surface-variant text-sm">
-                          <span className="material-symbols-outlined text-secondary text-[18px]">payments</span>
-                          Agreed Amount: <strong className="text-on-surface ml-0.5">$4,500.00</strong>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-on-surface-variant text-sm">
-                          <span className="material-symbols-outlined text-secondary text-[18px]">calendar_today</span>
-                          Deadline: <strong className="text-on-surface ml-0.5">Oct 24, 2025</strong>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-on-surface-variant text-sm">
-                          <span className="material-symbols-outlined text-secondary text-[18px]">person</span>
-                          Client: <strong className="text-on-surface ml-0.5">Stellar Labs</strong>
-                        </div>
-                      </div>
-                    </div>
-                    <button onClick={() => navigate('/messages')}
-                      className="flex items-center gap-2 text-secondary text-sm font-semibold hover:bg-secondary/5 px-4 py-2 rounded-lg transition-colors flex-shrink-0 border border-secondary/20">
-                      <span className="material-symbols-outlined text-[18px]">chat</span>
-                      Open Chat
-                    </button>
-                  </div>
-
-                  {/* Milestone progress */}
-                  <div className="border-t border-slate-100 pt-6">
-                    <h3 className="text-lg font-bold text-on-surface mb-6">Milestone Progress</h3>
-                    <div className="relative">
-                      {/* Track */}
-                      <div className="absolute top-5 left-0 w-full h-[2px] bg-slate-100 rounded-full" />
-                      <div
-                        className="absolute top-5 left-0 h-[2px] bg-secondary rounded-full transition-all duration-700"
-                        style={{ width: `${progressPct}%` }}
-                      />
-                      {/* Steps */}
-                      <div className="relative flex justify-between">
-                        {MILESTONES.map((m, i) => (
-                          <div key={m.label} className="flex flex-col items-center">
-                            {m.status === 'completed' ? (
-                              <div className="w-10 h-10 rounded-full bg-secondary text-white flex items-center justify-center z-10 shadow-md shadow-secondary/30">
-                                <span className="material-symbols-outlined text-[20px]">check</span>
-                              </div>
-                            ) : m.status === 'active' ? (
-                              <div className="w-10 h-10 rounded-full bg-white border-2 border-secondary text-secondary flex items-center justify-center z-10 ring-4 ring-secondary/10">
-                                <span className="text-sm font-bold">{i + 1}</span>
-                              </div>
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-white border-2 border-slate-200 text-slate-400 flex items-center justify-center z-10">
-                                <span className="text-sm font-bold">{i + 1}</span>
-                              </div>
-                            )}
-                            <p className={`mt-3 text-sm font-bold text-center leading-tight ${m.status === 'pending' ? 'text-on-surface-variant' : m.status === 'active' ? 'text-secondary' : 'text-on-surface'}`}>
-                              {m.label}
-                            </p>
-                            <p className={`text-xs mt-0.5 font-medium ${m.status === 'completed' ? 'text-emerald-600' : m.status === 'active' ? 'text-secondary' : 'text-slate-400'}`}>
-                              {m.status === 'completed' ? 'Completed' : m.status === 'active' ? 'In Progress' : 'Pending'}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* File delivery card */}
-                <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-on-surface">File Delivery</h3>
-                    <span className="text-xs text-on-surface-variant">Accepted: .fig, .pdf, .zip (Max 500 MB)</span>
-                  </div>
-
-                  {/* Drop zone */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept=".fig,.pdf,.zip"
-                    className="hidden"
-                    onChange={handleFileInput}
-                  />
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
-                    onDragLeave={() => setIsDragOver(false)}
-                    onDrop={handleDrop}
-                    className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all group ${isDragOver ? 'border-secondary bg-secondary/5 scale-[1.01]' : 'border-slate-200 bg-slate-50/50 hover:bg-secondary/5 hover:border-secondary'}`}
-                  >
-                    <div className={`w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform ${isDragOver ? 'scale-110' : ''}`}>
-                      <span className="material-symbols-outlined text-secondary text-4xl">cloud_upload</span>
-                    </div>
-                    <p className="text-lg font-bold text-on-surface mb-1">
-                      {isDragOver ? 'Release to upload' : 'Drop files to upload'}
-                    </p>
-                    <p className="text-sm text-on-surface-variant">or click to browse your computer</p>
-                  </div>
-
-                  {/* Uploaded files */}
-                  {files.length > 0 && (
-                    <div className="mt-6 space-y-3">
-                      <h4 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Recently Uploaded</h4>
-                      {files.map(f => {
-                        const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-                        const iconColor = ext === 'pdf' ? 'bg-orange-100 text-orange-600'
-                          : ext === 'zip' ? 'bg-purple-100 text-purple-600'
-                          : 'bg-blue-100 text-secondary';
-                        const icon = ext === 'pdf' ? 'picture_as_pdf'
-                          : ext === 'zip' ? 'folder_zip'
-                          : 'description';
-                        return (
-                          <div key={f.id} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg hover:bg-slate-50 transition-colors group">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className={`p-2 rounded-lg flex-shrink-0 ${iconColor}`}>
-                                <span className="material-symbols-outlined text-[22px]">{icon}</span>
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-on-surface truncate">{f.name}</p>
-                                <p className="text-xs text-on-surface-variant">{f.size} · Uploaded {f.uploadedAt}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0 ml-3">
-                              <button className="p-1.5 text-on-surface-variant hover:text-secondary rounded-lg hover:bg-secondary/5 transition-colors opacity-0 group-hover:opacity-100">
-                                <span className="material-symbols-outlined text-[18px]">download</span>
-                              </button>
-                              <button onClick={() => removeFile(f.id)}
-                                className="p-1.5 text-on-surface-variant hover:text-error rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
-                                <span className="material-symbols-outlined text-[18px]">delete</span>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              {/* ── Right 4 cols ── */}
-              <section className="lg:col-span-4 space-y-6">
-
-                {/* Actions card */}
-                <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
-                  <h3 className="text-lg font-bold text-on-surface mb-5">Actions</h3>
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setMarked(true)}
-                      disabled={marked}
-                      className="w-full bg-secondary text-white py-3.5 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg shadow-secondary/20 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">{marked ? 'task_alt' : 'check_circle'}</span>
-                      {marked ? 'Completion Submitted' : 'Mark as Complete'}
-                    </button>
-                    <button className="w-full bg-white border border-outline-variant text-on-surface py-3.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                      <span className="material-symbols-outlined text-[18px]">schedule</span>
-                      Request Milestone Extension
-                    </button>
-                  </div>
-                  <div className="mt-6 pt-5 border-t border-slate-100 flex items-start gap-3">
-                    <span className="material-symbols-outlined text-secondary text-[20px] flex-shrink-0 mt-0.5">info</span>
-                    <p className="text-xs text-on-surface-variant leading-relaxed">
-                      Marking as complete will notify the client to review the files and release the escrowed funds.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Contract party card */}
-                <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
-                  <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-5">Contract Party</h3>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-white text-base font-bold flex-shrink-0">AC</div>
-                    <div>
-                      <p className="text-sm font-bold text-on-surface">Alex Chen</p>
-                      <p className="text-xs text-on-surface-variant">Director at Stellar Labs</p>
-                    </div>
-                  </div>
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="bg-surface-container rounded-lg p-3">
-                      <p className="text-xs text-on-surface-variant mb-1">Jobs Posted</p>
-                      <p className="text-sm font-bold text-on-surface">24</p>
-                    </div>
-                    <div className="bg-surface-container rounded-lg p-3">
-                      <p className="text-xs text-on-surface-variant mb-1">Rating</p>
-                      <div className="flex items-center gap-1">
-                        <p className="text-sm font-bold text-on-surface">4.9</p>
-                        <span className="material-symbols-outlined text-yellow-500 text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      </div>
-                    </div>
-                    <div className="bg-surface-container rounded-lg p-3">
-                      <p className="text-xs text-on-surface-variant mb-1">Hire Rate</p>
-                      <p className="text-sm font-bold text-on-surface">88%</p>
-                    </div>
-                    <div className="bg-surface-container rounded-lg p-3">
-                      <p className="text-xs text-on-surface-variant mb-1">Total Spent</p>
-                      <p className="text-sm font-bold text-on-surface">$200k+</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Security badge card */}
-                <div className="bg-primary-container rounded-xl p-6 text-white relative overflow-hidden">
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>shield_with_heart</span>
-                      <h4 className="text-base font-bold">BidForge Protection</h4>
-                    </div>
-                    <p className="text-sm text-on-primary-container leading-relaxed mb-4">
-                      Your work is protected. We ensure payment security for every milestone through our verified escrow system.
-                    </p>
-                    <button className="px-4 py-2 bg-white text-primary-container text-xs font-bold rounded-lg hover:bg-surface-container-low transition-colors">
-                      Learn More
-                    </button>
-                  </div>
-                  <div className="absolute -right-4 -bottom-4 opacity-10 pointer-events-none">
-                    <span className="material-symbols-outlined text-[120px]">lock</span>
-                  </div>
-                </div>
-              </section>
+          ) : contractId && !selected ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-8">
+              <span className="material-symbols-outlined text-5xl text-slate-300">search_off</span>
+              <p className="text-on-surface font-semibold">Contract not found</p>
+              <button onClick={() => navigate('/contracts')} className="px-5 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
+                Back to Contracts
+              </button>
             </div>
-          </div>
+          ) : contractId && selected ? (
+            detailView(selected)
+          ) : (
+            listView
+          )}
 
           <Footer />
         </main>
@@ -449,7 +751,7 @@ export default function Contracts() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-on-surface text-inverse-on-surface text-sm font-semibold rounded-xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-on-surface text-inverse-on-surface text-sm font-semibold rounded-xl shadow-xl flex items-center gap-2">
           <span className="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
           {toast}
         </div>

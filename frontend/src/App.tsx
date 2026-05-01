@@ -17,6 +17,7 @@ import ClientBids from '@/pages/ClientBids';
 import FreelancerBids from '@/pages/FreelancerBids';
 import Profile from '@/pages/Profile';
 import Messages from '@/pages/Messages';
+import Contracts from '@/pages/Contracts';
 
 export default function App() {
   return (
@@ -57,6 +58,8 @@ export default function App() {
             element={<ClientRoute><ClientJobBids /></ClientRoute>}
           />
           <Route path="/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+          <Route path="/contracts" element={<ProtectedRoute><Contracts /></ProtectedRoute>} />
+          <Route path="/contracts/:contractId" element={<ProtectedRoute><Contracts /></ProtectedRoute>} />
           <Route path="/browse" element={<BrowseJobs />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/profile/:id" element={<Profile />} />

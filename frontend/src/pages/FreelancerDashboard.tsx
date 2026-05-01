@@ -219,7 +219,7 @@ export default function FreelancerDashboard() {
                   <button onClick={() => navigate('/browse')} className="px-5 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
                     Browse Jobs
                   </button>
-                  <button className="px-5 py-2.5 border border-white/30 text-white text-sm font-semibold rounded-lg hover:bg-white/10 active:scale-[0.98] transition-all">
+                  <button onClick={() => navigate('/freelancer/bids')} className="px-5 py-2.5 border border-white/30 text-white text-sm font-semibold rounded-lg hover:bg-white/10 active:scale-[0.98] transition-all">
                     View My Bids
                   </button>
                 </div>
@@ -232,7 +232,7 @@ export default function FreelancerDashboard() {
               <div className="lg:col-span-2 tonal-card rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                   <h3 className="text-h3 font-semibold text-on-surface">Recent Activity</h3>
-                  <button className="text-secondary font-semibold text-sm hover:underline">View All</button>
+                  <button onClick={() => navigate('/freelancer/bids')} className="text-secondary font-semibold text-sm hover:underline">View All</button>
                 </div>
                 <div className="divide-y divide-slate-100">
                   {data?.recentActivities.length ? (
@@ -280,7 +280,8 @@ export default function FreelancerDashboard() {
                   </>
                 ) : null}
 
-                <button className="w-full py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all mt-auto">
+                <button onClick={() => user && navigate(`/profile/${user.id}`)}
+                  className="w-full py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all mt-auto">
                   Complete Profile
                 </button>
               </div>
