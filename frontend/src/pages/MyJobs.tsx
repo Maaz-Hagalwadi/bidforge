@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CLIENT_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
@@ -10,36 +10,275 @@ import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import type { JobInviteStatus, JobResponse } from '@/types/job';
 
-
 const SIDEBAR_BG = '#0A192F';
+
+const CATEGORIES = [
+  'Software Development', 'UI/UX Design', 'Digital Marketing', 'Data Science',
+  'Writing & Content', 'Video & Animation', 'Finance & Accounting', 'Legal',
+];
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   DRAFT:     { label: 'Draft',     cls: 'bg-slate-100 text-slate-600'    },
   OPEN:      { label: 'Open',      cls: 'bg-secondary/10 text-secondary' },
-  ASSIGNED:  { label: 'Assigned',  cls: 'bg-green-100 text-green-700'    },
-  COMPLETED: { label: 'Completed', cls: 'bg-blue-50 text-blue-600'       },
-  CANCELLED: { label: 'Cancelled', cls: 'bg-red-100 text-red-600'        },
+  ASSIGNED:  { label: 'Assigned',  cls: 'bg-amber-100 text-amber-700'    },
+  COMPLETED: { label: 'Completed', cls: 'bg-green-100 text-green-700'    },
+  CANCELLED: { label: 'Archived',  cls: 'bg-slate-100 text-slate-500'    },
 };
 
-const STATUS_TABS = ['ALL', 'OPEN', 'DRAFT', 'ASSIGNED', 'COMPLETED', 'CANCELLED'] as const;
+const ST_TOP: Record<string, string> = {
+  DRAFT:     'bg-slate-300',
+  OPEN:      'bg-secondary',
+  ASSIGNED:  'bg-amber-400',
+  COMPLETED: 'bg-green-500',
+  CANCELLED: 'bg-slate-300',
+};
+
+const STATUS_TABS = ['ALL', 'OPEN', 'DRAFT', 'ASSIGNED', 'COMPLETED'] as const;
 type StatusFilter = (typeof STATUS_TABS)[number];
+type ViewMode = 'list' | 'grid';
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
-
 function formatBudget(min: number, max: number, type: string) {
   const s = type === 'HOURLY' ? '/hr' : '';
   return `$${min.toLocaleString()}${s} – $${max.toLocaleString()}${s}`;
 }
-
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
-
 function parseSkills(str?: string): string[] {
   if (!str) return [];
   return str.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+// ── EditJobModal ───────────────────────────────────────────────
+
+function EditJobModal({ job, onClose, onSaved }: {
+  job: JobResponse;
+  onClose: () => void;
+  onSaved: (updated: JobResponse) => void;
+}) {
+  const [title, setTitle]           = useState(job.title);
+  const [category, setCategory]     = useState(job.category);
+  const [description, setDesc]      = useState(job.description);
+  const [budgetType, setBudgetType] = useState<'FIXED' | 'HOURLY'>(job.budgetType);
+  const [budgetMin, setBudgetMin]   = useState(String(job.budgetMin ?? ''));
+  const [budgetMax, setBudgetMax]   = useState(String(job.budgetMax ?? ''));
+  const [deadline, setDeadline]     = useState(job.deadline ? job.deadline.split('T')[0] : '');
+  const [skills, setSkills]         = useState<string[]>(parseSkills(job.requiredSkills));
+  const [skillInput, setSkillInput] = useState('');
+  const [expLevel, setExpLevel]     = useState(job.experienceLevel ?? '');
+  const [urgency, setUrgency]       = useState(job.urgencyLevel ?? '');
+  const [saving, setSaving]         = useState(false);
+  const [error, setError]           = useState('');
+
+  const addSkill = () => {
+    const s = skillInput.trim();
+    if (s && !skills.includes(s)) setSkills(p => [...p, s]);
+    setSkillInput('');
+  };
+  const onSkillKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSkill(); }
+  };
+
+  const handleSave = async () => {
+    if (!title.trim() || !category || !description.trim()) {
+      setError('Title, category and description are required.');
+      return;
+    }
+    const min = Number(budgetMin), max = Number(budgetMax);
+    if (!min || !max || min <= 0 || max <= 0 || max < min) {
+      setError('Enter valid budget values (max ≥ min).');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await jobsApi.updateJob(job.id, {
+        title: title.trim(),
+        category,
+        description: description.trim(),
+        requiredSkills: skills.length ? skills.join(', ') : undefined,
+        budgetType,
+        budgetMin: min,
+        budgetMax: max,
+        deadline: deadline ? `${deadline}T00:00:00` : undefined,
+        visibility: job.visibility,
+        experienceLevel: (expLevel as JobResponse['experienceLevel']) || undefined,
+        urgencyLevel: (urgency as JobResponse['urgencyLevel']) || undefined,
+      });
+      onSaved(updated);
+      onClose();
+    } catch {
+      setError('Failed to save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-bold text-on-surface">Edit Job</h2>
+            <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-1">{job.title}</p>
+          </div>
+          <button onClick={onClose} className="p-1 text-on-surface-variant hover:text-on-surface transition-colors">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg px-3 py-2">
+              <span className="material-symbols-outlined text-[15px]">error</span>{error}
+            </div>
+          )}
+
+          {/* Title */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Job Title <span className="text-red-500">*</span>
+            </label>
+            <input value={title} onChange={e => setTitle(e.target.value)} type="text"
+              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors" />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Category <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <select value={category} onChange={e => setCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary transition-colors">
+                <option value="">Select a category</option>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <span className="material-symbols-outlined absolute right-3 top-2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Description <span className="text-red-500">*</span>
+            </label>
+            <textarea value={description} onChange={e => setDesc(e.target.value)} rows={4}
+              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors resize-none" />
+          </div>
+
+          {/* Budget */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Budget Type</label>
+              <div className="flex p-0.5 bg-slate-100 rounded-lg">
+                {(['FIXED', 'HOURLY'] as const).map(bt => (
+                  <button key={bt} type="button" onClick={() => setBudgetType(bt)}
+                    className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${budgetType === bt ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
+                    {bt === 'FIXED' ? 'Fixed' : 'Hourly'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Budget Range (USD) <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-2">
+                <input value={budgetMin} onChange={e => setBudgetMin(e.target.value)} type="number" min="1" placeholder="Min"
+                  className="w-full px-2.5 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors" />
+                <span className="text-slate-400 flex-shrink-0 text-xs">–</span>
+                <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" min="1" placeholder="Max"
+                  className="w-full px-2.5 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors" />
+              </div>
+            </div>
+          </div>
+
+          {/* Experience + Urgency */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Experience Level</label>
+              <div className="relative">
+                <select value={expLevel} onChange={e => setExpLevel(e.target.value)}
+                  className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary transition-colors">
+                  <option value="">Any Level</option>
+                  <option value="ENTRY">Entry Level</option>
+                  <option value="INTERMEDIATE">Intermediate</option>
+                  <option value="EXPERT">Expert</option>
+                </select>
+                <span className="material-symbols-outlined absolute right-3 top-2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Urgency Level</label>
+              <div className="relative">
+                <select value={urgency} onChange={e => setUrgency(e.target.value)}
+                  className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary transition-colors">
+                  <option value="">Select urgency</option>
+                  <option value="LOW">Low — No rush</option>
+                  <option value="NORMAL">Normal</option>
+                  <option value="HIGH">High — Urgent Hiring</option>
+                </select>
+                <span className="material-symbols-outlined absolute right-3 top-2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Deadline */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Deadline</label>
+            <input value={deadline} onChange={e => setDeadline(e.target.value)} type="date"
+              min={new Date().toISOString().split('T')[0]}
+              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors" />
+          </div>
+
+          {/* Skills */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Required Skills</label>
+            {skills.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {skills.map(s => (
+                  <span key={s} className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/10 text-secondary rounded-full text-xs font-medium">
+                    {s}
+                    <button type="button" onClick={() => setSkills(p => p.filter(x => x !== s))}
+                      className="hover:text-secondary/60 transition-colors">
+                      <span className="material-symbols-outlined text-[12px]">close</span>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="relative">
+              <input value={skillInput} onChange={e => setSkillInput(e.target.value)} onKeyDown={onSkillKey}
+                type="text" placeholder="Type a skill and press Enter"
+                className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors pr-14" />
+              <button type="button" onClick={addSkill} disabled={!skillInput.trim()}
+                className="absolute right-1.5 top-1 px-2.5 py-1 bg-secondary text-white text-xs font-semibold rounded-md hover:brightness-110 disabled:opacity-40 transition-all">
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-3 flex-shrink-0">
+          <button onClick={onClose} className="px-5 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
+            Cancel
+          </button>
+          <button onClick={handleSave} disabled={saving}
+            className="px-6 py-2 bg-secondary text-white text-sm font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Invite Modal ───────────────────────────────────────────────
@@ -68,8 +307,7 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
     if (!q.trim()) { setResults([]); return; }
     setSearching(true);
     usersApi.searchFreelancers(q)
-      .then(setResults)
-      .catch(() => setResults([]))
+      .then(setResults).catch(() => setResults([]))
       .finally(() => setSearching(false));
   }, []);
 
@@ -106,7 +344,6 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
-
         {status === 'success' ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
@@ -114,72 +351,54 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
             </div>
             <p className="font-semibold text-on-surface">Invite sent!</p>
             <p className="text-sm text-on-surface-variant">{selected?.name} has been invited to this job.</p>
-            <button onClick={onClose} className="mt-2 px-6 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
-              Done
-            </button>
+            <button onClick={onClose} className="mt-2 px-6 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">Done</button>
           </div>
         ) : (
           <>
             <div className="space-y-2">
-              <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider">
-                Search Freelancer
-              </label>
-
+              <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Search Freelancer</label>
               {selected ? (
                 <div className="flex items-center gap-3 px-3 py-2.5 border border-secondary/40 bg-secondary/5 rounded-lg">
                   <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                    {selected.profileImageUrl
-                      ? <img src={selected.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt={selected.name} />
-                      : getInitialsFrom(selected.name)}
+                    {selected.profileImageUrl ? <img src={selected.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt={selected.name} /> : getInitialsFrom(selected.name)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-on-surface truncate">{selected.name}</p>
                     <p className="text-xs text-on-surface-variant truncate">{selected.email}</p>
                   </div>
-                  <button onClick={() => { setSelected(null); setQuery(''); setResults([]); }}
-                    className="p-1 text-on-surface-variant hover:text-on-surface transition-colors flex-shrink-0">
+                  <button onClick={() => { setSelected(null); setQuery(''); setResults([]); }} className="p-1 text-on-surface-variant hover:text-on-surface transition-colors flex-shrink-0">
                     <span className="material-symbols-outlined text-[18px]">close</span>
                   </button>
                 </div>
               ) : (
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    placeholder="Search by name or email…"
-                    autoFocus
-                    className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors"
-                  />
+                  <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+                    placeholder="Search by name or email…" autoFocus
+                    className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors" />
                   {(results.length > 0 || searching || query.trim()) && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-outline-variant rounded-lg shadow-lg z-10 overflow-hidden">
                       {searching ? (
                         <div className="px-4 py-3 text-sm text-on-surface-variant">Searching…</div>
                       ) : results.length === 0 ? (
                         <div className="px-4 py-3 text-sm text-on-surface-variant">No freelancers found.</div>
-                      ) : (
-                        results.map(r => (
-                          <button key={r.id} onClick={() => { setSelected(r); setResults([]); setQuery(''); }}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left">
-                            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                              {r.profileImageUrl
-                                ? <img src={r.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt={r.name} />
-                                : getInitialsFrom(r.name)}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-on-surface truncate">{r.name}</p>
-                              <p className="text-xs text-on-surface-variant truncate">{r.email}</p>
-                            </div>
-                            {r.rating && (
-                              <span className="flex items-center gap-0.5 text-xs text-amber-500 flex-shrink-0">
-                                <span className="material-symbols-outlined text-[13px]">star</span>
-                                {r.rating.toFixed(1)}
-                              </span>
-                            )}
-                          </button>
-                        ))
-                      )}
+                      ) : results.map(r => (
+                        <button key={r.id} onClick={() => { setSelected(r); setResults([]); setQuery(''); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left">
+                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                            {r.profileImageUrl ? <img src={r.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt={r.name} /> : getInitialsFrom(r.name)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-on-surface truncate">{r.name}</p>
+                            <p className="text-xs text-on-surface-variant truncate">{r.email}</p>
+                          </div>
+                          {r.rating && (
+                            <span className="flex items-center gap-0.5 text-xs text-amber-500 flex-shrink-0">
+                              <span className="material-symbols-outlined text-[13px]">star</span>{r.rating.toFixed(1)}
+                            </span>
+                          )}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -187,16 +406,13 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
               {isAlreadyInvited && (
                 <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
                   <span className="material-symbols-outlined text-amber-600 text-[15px]">info</span>
-                  <p className="text-xs text-amber-700 font-medium">This freelancer has already been invited to this job.</p>
+                  <p className="text-xs text-amber-700 font-medium">This freelancer has already been invited.</p>
                 </div>
               )}
               {errorMsg && <p className="text-xs text-red-500">{errorMsg}</p>}
             </div>
-
             <div className="flex gap-3 pt-1">
-              <button onClick={onClose} className="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
-                Cancel
-              </button>
+              <button onClick={onClose} className="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">Cancel</button>
               <button onClick={handleInvite} disabled={!selected || status === 'loading' || isAlreadyInvited}
                 className="flex-1 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60">
                 {status === 'loading' ? 'Sending…' : 'Send Invite'}
@@ -212,45 +428,35 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
 // ── InviteesModal ──────────────────────────────────────────────
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: string }> = {
-  INVITED:  { label: 'Pending',  cls: 'bg-amber-50 text-amber-700',   icon: 'schedule'      },
-  ACCEPTED: { label: 'Accepted', cls: 'bg-green-100 text-green-700',  icon: 'check_circle'  },
-  DECLINED: { label: 'Declined', cls: 'bg-slate-100 text-slate-500',  icon: 'cancel'        },
+  INVITED:  { label: 'Pending',  cls: 'bg-amber-50 text-amber-700',  icon: 'schedule'     },
+  ACCEPTED: { label: 'Accepted', cls: 'bg-green-100 text-green-700', icon: 'check_circle' },
+  DECLINED: { label: 'Declined', cls: 'bg-slate-100 text-slate-500', icon: 'cancel'       },
 };
 
 type InviteTab = 'ALL' | 'ACCEPTED' | 'INVITED' | 'DECLINED';
-
 const INVITE_TABS: { key: InviteTab; label: string }[] = [
-  { key: 'ALL',      label: 'All'      },
-  { key: 'ACCEPTED', label: 'Accepted' },
-  { key: 'INVITED',  label: 'Pending'  },
-  { key: 'DECLINED', label: 'Declined' },
+  { key: 'ALL', label: 'All' }, { key: 'ACCEPTED', label: 'Accepted' },
+  { key: 'INVITED', label: 'Pending' }, { key: 'DECLINED', label: 'Declined' },
 ];
 
 function InviteesModal({ job, onClose }: { job: JobResponse; onClose: () => void }) {
   const [invitees, setInvitees] = useState<JobInviteStatus[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<InviteTab>('ALL');
+  const [loading, setLoading]   = useState(true);
+  const [tab, setTab]           = useState<InviteTab>('ALL');
 
   useEffect(() => {
-    jobsApi.getJobInvites(job.id)
-      .then(setInvitees)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    jobsApi.getJobInvites(job.id).then(setInvitees).catch(console.error).finally(() => setLoading(false));
   }, [job.id]);
 
-  const tabCounts: Record<InviteTab, number> = {
-    ALL:      invitees.length,
-    ACCEPTED: invitees.filter(i => i.status === 'ACCEPTED').length,
-    INVITED:  invitees.filter(i => i.status === 'INVITED').length,
-    DECLINED: invitees.filter(i => i.status === 'DECLINED').length,
+  const counts: Record<InviteTab, number> = {
+    ALL: invitees.length, ACCEPTED: invitees.filter(i => i.status === 'ACCEPTED').length,
+    INVITED: invitees.filter(i => i.status === 'INVITED').length, DECLINED: invitees.filter(i => i.status === 'DECLINED').length,
   };
-
   const visible = tab === 'ALL' ? invitees : invitees.filter(i => i.status === tab);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        {/* Header */}
         <div className="p-6 border-b border-outline-variant flex items-start justify-between gap-4 flex-shrink-0">
           <div>
             <h2 className="text-base font-bold text-on-surface">Invite Responses</h2>
@@ -260,28 +466,21 @@ function InviteesModal({ job, onClose }: { job: JobResponse; onClose: () => void
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
-
-        {/* Status tabs */}
         {!loading && invitees.length > 0 && (
           <div className="px-4 pt-4 flex gap-1.5 flex-wrap flex-shrink-0">
             {INVITE_TABS.map(({ key, label }) => (
               <button key={key} onClick={() => setTab(key)}
                 className={['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', tab === key ? 'bg-secondary text-white' : 'bg-slate-100 text-on-surface-variant hover:bg-slate-200'].join(' ')}>
                 {label}
-                <span className={['text-[10px] px-1.5 py-0.5 rounded-full font-bold', tab === key ? 'bg-white/20 text-white' : 'bg-white text-on-surface-variant'].join(' ')}>
-                  {tabCounts[key]}
-                </span>
+                <span className={['text-[10px] px-1.5 py-0.5 rounded-full font-bold', tab === key ? 'bg-white/20 text-white' : 'bg-white text-on-surface-variant'].join(' ')}>{counts[key]}</span>
               </button>
             ))}
           </div>
         )}
-
-        {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {loading ? (
             <div className="flex items-center justify-center py-10 gap-2 text-on-surface-variant text-sm">
-              <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-              Loading…
+              <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>Loading…
             </div>
           ) : invitees.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
@@ -293,33 +492,26 @@ function InviteesModal({ job, onClose }: { job: JobResponse; onClose: () => void
               <span className="material-symbols-outlined text-3xl text-slate-300">person_search</span>
               <p className="text-sm text-on-surface-variant">No invitees with this status.</p>
             </div>
-          ) : (
-            visible.map(inv => {
-              const badge = STATUS_BADGE[inv.status] ?? STATUS_BADGE.INVITED;
-              return (
-                <div key={inv.inviteId} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-outline-variant bg-slate-50">
-                  <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                    {inv.freelancerName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-on-surface truncate">{inv.freelancerName}</p>
-                    <p className="text-xs text-on-surface-variant truncate">{inv.freelancerEmail}</p>
-                  </div>
-                  <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${badge.cls}`}>
-                    <span className="material-symbols-outlined text-[12px]">{badge.icon}</span>
-                    {badge.label}
-                  </span>
+          ) : visible.map(inv => {
+            const badge = STATUS_BADGE[inv.status] ?? STATUS_BADGE.INVITED;
+            return (
+              <div key={inv.inviteId} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-outline-variant bg-slate-50">
+                <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  {inv.freelancerName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
                 </div>
-              );
-            })
-          )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-on-surface truncate">{inv.freelancerName}</p>
+                  <p className="text-xs text-on-surface-variant truncate">{inv.freelancerEmail}</p>
+                </div>
+                <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${badge.cls}`}>
+                  <span className="material-symbols-outlined text-[12px]">{badge.icon}</span>{badge.label}
+                </span>
+              </div>
+            );
+          })}
         </div>
-
         <div className="p-4 border-t border-outline-variant flex-shrink-0">
-          <button onClick={onClose}
-            className="w-full py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
-            Close
-          </button>
+          <button onClick={onClose} className="w-full py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">Close</button>
         </div>
       </div>
     </div>
@@ -334,25 +526,27 @@ export default function MyJobs() {
   const { pathname } = useLocation();
   const sidebarLinks = withActive(CLIENT_SIDEBAR, pathname);
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [profileOpen, setProfileOpen] = useState(false);
-  const [jobs, setJobs] = useState<JobResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [sidebarOpen, setSidebarOpen]           = useState(true);
+  const [profileOpen, setProfileOpen]           = useState(false);
+  const [jobs, setJobs]                         = useState<JobResponse[]>([]);
+  const [loading, setLoading]                   = useState(true);
+  const [statusFilter, setStatusFilter]         = useState<StatusFilter>('ALL');
   const [visibilityFilter, setVisibilityFilter] = useState<'ALL' | 'PUBLIC' | 'INVITE_ONLY'>('ALL');
-  const [search, setSearch] = useState('');
-  const [inviteJob, setInviteJob] = useState<JobResponse | null>(null);
-  const [inviteesJob, setInviteesJob] = useState<JobResponse | null>(null);
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 5;
+  const [search, setSearch]                     = useState('');
+  const [inviteJob, setInviteJob]               = useState<JobResponse | null>(null);
+  const [inviteesJob, setInviteesJob]           = useState<JobResponse | null>(null);
+  const [editJob, setEditJob]                   = useState<JobResponse | null>(null);
+  const [archiveConfirmJob, setArchiveConfirmJob] = useState<JobResponse | null>(null);
+  const [archiveLoading, setArchiveLoading]     = useState(false);
+  const [archivedOpen, setArchivedOpen]         = useState(false);
+  const [page, setPage]                         = useState(0);
+  const [viewMode, setViewMode]                 = useState<ViewMode>('list');
+  const PAGE_SIZE = 10;
 
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    jobsApi.getMyJobs()
-      .then(setJobs)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    jobsApi.getMyJobs().then(setJobs).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -369,13 +563,105 @@ export default function MyJobs() {
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
   const initials = user ? getInitials(user.name) : '?';
 
-  const filtered = jobs
+  const handleJobUpdated = (updated: JobResponse) => {
+    setJobs(prev => prev.map(j => j.id === updated.id ? updated : j));
+  };
+
+  const handleArchive = async (job: JobResponse) => {
+    setArchiveLoading(true);
+    try {
+      await jobsApi.archiveJob(job.id);
+      setJobs(prev => prev.map(j => j.id === job.id ? { ...j, status: 'CANCELLED' } : j));
+    } catch {
+      /* silently fail — user sees no change */
+    } finally {
+      setArchiveLoading(false);
+      setArchiveConfirmJob(null);
+    }
+  };
+
+  // Active jobs (exclude CANCELLED)
+  const activeJobs = jobs.filter(j => j.status !== 'CANCELLED');
+  const filtered = activeJobs
     .filter(j => statusFilter === 'ALL' || j.status === statusFilter)
     .filter(j => visibilityFilter === 'ALL' || j.visibility === visibilityFilter)
     .filter(j => !search || j.title.toLowerCase().includes(search.toLowerCase()));
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const paginated  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  // Archived jobs
+  const archived = jobs.filter(j => j.status === 'CANCELLED');
+
+  // ── Action buttons builder ──────────────────────────────────
+  const buildActions = (job: JobResponse, compact = false) => {
+    const isInviteOnly = job.visibility === 'INVITE_ONLY';
+    const canEdit    = job.status === 'OPEN' || job.status === 'DRAFT';
+    const canArchive = job.status === 'OPEN' || job.status === 'DRAFT';
+    const px = compact ? 'px-2.5' : 'px-3';
+
+    return (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {job.status === 'OPEN' && <>
+          <button onClick={() => navigate(`/client/jobs/${job.id}/bids`)}
+            className={`bg-secondary text-white ${px} py-1.5 rounded-lg text-xs font-semibold hover:brightness-110 transition-all whitespace-nowrap`}>
+            View Bids
+          </button>
+          <button onClick={() => navigate(`/jobs/${job.id}`)}
+            className={`border border-slate-200 text-slate-600 ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors`}>
+            Details
+          </button>
+          {isInviteOnly && <>
+            <button onClick={() => setInviteJob(job)}
+              className={`border border-slate-200 text-slate-600 ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center gap-1`}>
+              <span className="material-symbols-outlined text-[13px]">person_add</span>Invite
+            </button>
+            <button onClick={() => setInviteesJob(job)} title="Invitees"
+              className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-on-surface hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-[16px]">group</span>
+            </button>
+          </>}
+        </>}
+        {job.status === 'ASSIGNED' && <>
+          <span className="px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-semibold border border-amber-200">Hired</span>
+          <button onClick={() => navigate('/contracts')}
+            className={`border border-slate-200 text-slate-600 ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors`}>
+            Manage
+          </button>
+          {isInviteOnly && (
+            <button onClick={() => setInviteesJob(job)} title="Invitees"
+              className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-on-surface hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-[16px]">group</span>
+            </button>
+          )}
+        </>}
+        {job.status === 'COMPLETED' && (
+          <button onClick={() => navigate(`/jobs/${job.id}`)}
+            className={`border border-secondary text-secondary ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-secondary hover:text-white transition-all`}>
+            Details
+          </button>
+        )}
+        {job.status === 'DRAFT' && (
+          <button onClick={() => navigate(`/jobs/${job.id}`)}
+            className={`border border-slate-200 text-slate-600 ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors`}>
+            Details
+          </button>
+        )}
+        {canEdit && (
+          <button onClick={() => setEditJob(job)} title="Edit job"
+            className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-secondary hover:border-secondary/40 transition-colors">
+            <span className="material-symbols-outlined text-[16px]">edit</span>
+          </button>
+        )}
+        {canArchive && (
+          <button onClick={() => setArchiveConfirmJob(job)} title="Archive job"
+            className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors">
+            <span className="material-symbols-outlined text-[16px]">archive</span>
+          </button>
+        )}
+      </div>
+    );
+  };
 
   const navRight = (
     <div className="flex items-center gap-1">
@@ -445,7 +731,7 @@ export default function MyJobs() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-h1 font-bold text-on-surface">My Posted Jobs</h1>
+                <h1 className="text-h1 font-bold text-on-surface">My Jobs</h1>
                 <p className="text-body-md text-on-surface-variant mt-1">Manage all jobs you've posted on BidForge.</p>
               </div>
               <button onClick={() => navigate('/client/post-job')}
@@ -456,30 +742,21 @@ export default function MyJobs() {
 
             {/* Filters */}
             <div className="tonal-card rounded-xl p-4 space-y-4">
-              {/* Search */}
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => { setSearch(e.target.value); setPage(0); }}
+                <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
                   placeholder="Search by job title…"
-                  className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                />
+                  className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white" />
               </div>
-
               <div className="flex flex-col sm:flex-row gap-4">
-                {/* Status tabs */}
                 <div className="flex gap-1 flex-wrap flex-1">
                   {STATUS_TABS.map(tab => (
                     <button key={tab} onClick={() => handleFilterChange(setStatusFilter)(tab)}
                       className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', statusFilter === tab ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
-                      {tab === 'ALL' ? `All (${jobs.length})` : `${STATUS_CFG[tab]?.label ?? tab} (${jobs.filter(j => j.status === tab).length})`}
+                      {tab === 'ALL' ? `All (${activeJobs.length})` : `${STATUS_CFG[tab]?.label ?? tab} (${activeJobs.filter(j => j.status === tab).length})`}
                     </button>
                   ))}
                 </div>
-
-                {/* Visibility filter */}
                 <div className="flex gap-1 flex-wrap flex-shrink-0">
                   {(['ALL', 'PUBLIC', 'INVITE_ONLY'] as const).map(v => (
                     <button key={v} onClick={() => handleFilterChange(setVisibilityFilter)(v)}
@@ -492,14 +769,29 @@ export default function MyJobs() {
               </div>
             </div>
 
-            {/* Results count */}
+            {/* Toolbar: count + view toggle */}
             {!loading && (
-              <p className="text-sm text-on-surface-variant">
-                Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of <span className="font-semibold text-on-surface">{filtered.length}</span> jobs
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-on-surface-variant">
+                  Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of{' '}
+                  <span className="font-semibold text-on-surface">{filtered.length}</span> active jobs
+                </p>
+                <div className="flex items-center gap-0.5 p-1 bg-slate-100 rounded-lg border border-slate-200">
+                  <button onClick={() => setViewMode('list')} title="List view"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                    <span className="material-symbols-outlined text-[17px]">view_list</span>
+                    <span className="text-xs font-semibold">List</span>
+                  </button>
+                  <button onClick={() => setViewMode('grid')} title="Grid view"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                    <span className="material-symbols-outlined text-[17px]">grid_view</span>
+                    <span className="text-xs font-semibold">Grid</span>
+                  </button>
+                </div>
+              </div>
             )}
 
-            {/* Content */}
+            {/* ── Content ── */}
             {loading ? (
               <PageLoader message="Loading your jobs…" />
             ) : filtered.length === 0 ? (
@@ -507,146 +799,265 @@ export default function MyJobs() {
                 <span className="material-symbols-outlined text-5xl text-slate-300">work_off</span>
                 <p className="text-on-surface font-semibold">No jobs found</p>
                 <p className="text-sm text-on-surface-variant max-w-xs">
-                  {jobs.length === 0
+                  {activeJobs.length === 0
                     ? "You haven't posted any jobs yet. Post your first job to start receiving bids."
                     : 'No jobs match your current filters.'}
                 </p>
-                {jobs.length === 0 ? (
+                {activeJobs.length === 0 ? (
                   <button onClick={() => navigate('/client/post-job')}
-                    className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
-                    Post a Job
-                  </button>
+                    className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">Post a Job</button>
                 ) : (
                   <button onClick={() => { setStatusFilter('ALL'); setVisibilityFilter('ALL'); setSearch(''); setPage(0); }}
-                    className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
-                    Clear Filters
-                  </button>
+                    className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">Clear Filters</button>
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
-                {paginated.map(job => {
-                  const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
-                  const skills = parseSkills(job.requiredSkills);
-                  const isInviteOnly = job.visibility === 'INVITE_ONLY';
-                  return (
-                    <article key={job.id} className="tonal-card rounded-xl overflow-hidden hover:shadow-md transition-all">
-                      <div className="p-6 flex flex-col md:flex-row md:items-start gap-6">
-                        <div className="flex-1 min-w-0 space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${st.cls}`}>{st.label}</span>
-                            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{job.category}</span>
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${isInviteOnly ? 'bg-amber-50 text-amber-700' : 'bg-secondary/10 text-secondary'}`}>
-                              <span className="material-symbols-outlined text-[13px]">{isInviteOnly ? 'lock' : 'public'}</span>
-                              {isInviteOnly ? 'Invite Only' : 'Public'}
-                            </span>
-                            <span className="text-xs text-on-surface-variant">{job.createdAt ? formatDate(job.createdAt) : ''}</span>
-                          </div>
-                          <h3 className="text-lg font-bold text-on-surface">{job.title}</h3>
-                          <p className="text-sm text-on-surface-variant line-clamp-2">{job.description}</p>
-                          {skills.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {skills.slice(0, 5).map(s => (
-                                <span key={s} className="px-2.5 py-1 bg-slate-100 border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
-                              ))}
-                              {skills.length > 5 && <span className="px-2.5 py-1 text-xs text-on-surface-variant">+{skills.length - 5} more</span>}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-3 md:items-end flex-shrink-0 w-full md:w-auto">
-                          <div className="md:text-right">
-                            <p className="text-xs text-on-surface-variant mb-0.5">Budget</p>
-                            <p className="text-lg font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
-                          </div>
-                          {job.deadline && (
-                            <div className="md:text-right">
-                              <p className="text-xs text-on-surface-variant mb-0.5">Deadline</p>
-                              <p className="text-sm font-semibold text-on-surface">{formatDate(job.deadline)}</p>
-                            </div>
-                          )}
-                          {/* Action buttons — compact horizontal row */}
-                          <div className="flex items-center gap-2 flex-wrap md:justify-end">
-                            <button onClick={() => navigate(`/jobs/${job.id}`)} title="View Details"
-                              className="flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface-variant hover:border-secondary/40 hover:text-secondary transition-colors">
-                              <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                              Details
-                            </button>
-                            {(job.status === 'OPEN' || job.status === 'ASSIGNED') && (
-                              <button onClick={() => navigate(`/client/jobs/${job.id}/bids`)} title="View Bids"
-                                className="flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface-variant hover:border-secondary/40 hover:text-secondary transition-colors">
-                                <span className="material-symbols-outlined text-[14px]">gavel</span>
-                                Bids
-                              </button>
-                            )}
-                            {isInviteOnly && job.status === 'OPEN' && (
-                              <button onClick={() => setInviteJob(job)} title="Invite Freelancer"
-                                className="flex items-center gap-1 px-3 py-1.5 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                                <span className="material-symbols-outlined text-[14px]">person_add</span>
-                                Invite
-                              </button>
-                            )}
-                            {isInviteOnly && (
-                              <button onClick={() => setInviteesJob(job)} title="View Invitees"
-                                className="flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-semibold text-on-surface-variant hover:border-secondary/40 hover:text-secondary transition-colors">
-                                <span className="material-symbols-outlined text-[14px]">group</span>
-                                Invitees
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
+              <>
+                {/* ── LIST VIEW ── */}
+                {viewMode === 'list' ? (
+                  <div className="space-y-3">
+                    {paginated.map(job => {
+                      const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
+                      const isInviteOnly = job.visibility === 'INVITE_ONLY';
+                      const skills = parseSkills(job.requiredSkills);
+                      return (
+                        <article key={job.id} className="group tonal-card rounded-xl overflow-hidden transition-all hover:shadow-md">
+                          <div className={`h-[3px] ${ST_TOP[job.status] ?? 'bg-slate-300'}`} />
+                          <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-start gap-5">
 
-            {/* Pagination */}
-            {!loading && totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-2">
-                <button
-                  disabled={page === 0}
-                  onClick={() => setPage(p => p - 1)}
-                  className="flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  <span className="material-symbols-outlined text-[18px]">chevron_left</span>Prev
-                </button>
+                            {/* Left: info */}
+                            <div className="flex-1 min-w-0 space-y-2.5">
+                              <div className="flex items-start gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="text-[15px] font-bold text-on-surface leading-snug">{job.title}</h3>
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${st.cls}`}>{st.label}</span>
+                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[11px] font-medium">{job.category}</span>
+                                    <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${isInviteOnly ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                                      <span className="material-symbols-outlined text-[11px]">{isInviteOnly ? 'lock' : 'public'}</span>
+                                      {isInviteOnly ? 'Invite Only' : 'Public'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
 
-                <div className="flex gap-1">
-                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                    let p: number;
-                    if (totalPages <= 7) {
-                      p = i;
-                    } else if (page < 4) {
-                      p = i < 5 ? i : i === 5 ? -1 : totalPages - 1;
-                    } else if (page >= totalPages - 4) {
-                      p = i === 0 ? 0 : i === 1 ? -1 : totalPages - 7 + i;
-                    } else {
-                      p = i === 0 ? 0 : i === 1 ? -1 : i === 5 ? -1 : i === 6 ? totalPages - 1 : page - 2 + (i - 2);
-                    }
-                    if (p === -1) return <span key={`ellipsis-${i}`} className="px-2 py-2 text-on-surface-variant text-sm">…</span>;
-                    return (
-                      <button key={p} onClick={() => setPage(p)}
-                        className={['w-9 h-9 rounded-lg text-sm font-semibold transition-colors', p === page ? 'bg-secondary text-white' : 'border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
-                        {p + 1}
+                              <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-2">{job.description}</p>
+
+                              {skills.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {skills.slice(0, 5).map(s => (
+                                    <span key={s} className="px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-500">{s}</span>
+                                  ))}
+                                  {skills.length > 5 && <span className="text-xs text-slate-400 self-center">+{skills.length - 5} more</span>}
+                                </div>
+                              )}
+
+                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5">
+                                <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                  <span className="material-symbols-outlined text-[13px]">calendar_today</span>
+                                  {formatDate(job.createdAt)}
+                                </span>
+                                {(job.status === 'OPEN' || job.status === 'ASSIGNED') && (
+                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                    <span className="material-symbols-outlined text-[13px]">gavel</span>
+                                    {job.bidsCount ?? 0} bids
+                                  </span>
+                                )}
+                                {job.status === 'ASSIGNED' && job.assignedFreelancerName && (
+                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                    <span className="material-symbols-outlined text-[13px]">person</span>
+                                    {job.assignedFreelancerName}
+                                  </span>
+                                )}
+                                {job.deadline && (
+                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                    <span className="material-symbols-outlined text-[13px]">event</span>
+                                    Due {formatDate(job.deadline)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right: actions → budget below */}
+                            <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-start gap-3 flex-shrink-0 sm:min-w-[160px]">
+                              {buildActions(job)}
+                              {/* Budget — below buttons */}
+                              <div className="sm:text-right">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-0.5">Budget</p>
+                                <p className="text-sm font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* ── GRID VIEW ── */
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {paginated.map(job => {
+                      const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
+                      const isInviteOnly = job.visibility === 'INVITE_ONLY';
+                      const skills = parseSkills(job.requiredSkills);
+                      return (
+                        <article key={job.id} className="group tonal-card rounded-xl overflow-hidden transition-all hover:shadow-md flex flex-col">
+                          <div className={`h-[3px] ${ST_TOP[job.status] ?? 'bg-slate-300'}`} />
+                          <div className="px-4 pt-3 pb-3 border-b border-slate-100">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${st.cls}`}>{st.label}</span>
+                              <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${isInviteOnly ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                                <span className="material-symbols-outlined text-[11px]">{isInviteOnly ? 'lock' : 'public'}</span>
+                                {isInviteOnly ? 'Invite Only' : 'Public'}
+                              </span>
+                            </div>
+                            <h3 className="text-[14px] font-bold text-on-surface leading-snug line-clamp-2">{job.title}</h3>
+                            <p className="text-[11px] text-on-surface-variant mt-0.5 font-medium">{job.category}</p>
+                          </div>
+                          <div className="px-4 py-3 flex-1 flex flex-col gap-3">
+                            <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-3">{job.description}</p>
+                            <div className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Budget</p>
+                              <p className="text-sm font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
+                            </div>
+                            <div className="space-y-1.5 text-xs text-on-surface-variant">
+                              <div className="flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                                {formatDate(job.createdAt)}
+                              </div>
+                              {(job.status === 'OPEN' || job.status === 'ASSIGNED') && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-[14px]">gavel</span>
+                                  {job.bidsCount ?? 0} bids received
+                                </div>
+                              )}
+                              {job.status === 'ASSIGNED' && job.assignedFreelancerName && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-[14px]">person</span>
+                                  {job.assignedFreelancerName}
+                                </div>
+                              )}
+                              {job.deadline && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-[14px]">event</span>
+                                  Due {formatDate(job.deadline)}
+                                </div>
+                              )}
+                            </div>
+                            {skills.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {skills.slice(0, 3).map(s => (
+                                  <span key={s} className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-500">{s}</span>
+                                ))}
+                                {skills.length > 3 && <span className="text-[11px] text-slate-400">+{skills.length - 3}</span>}
+                              </div>
+                            )}
+                            <div className="flex-1" />
+                            <div className="pt-3 border-t border-slate-100">
+                              {buildActions(job, true)}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-5">
+                    <p className="text-sm text-on-surface-variant">
+                      Page <span className="font-semibold text-on-surface">{page + 1}</span> of{' '}
+                      <span className="font-semibold text-on-surface">{totalPages}</span>
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
+                        className="w-9 h-9 flex items-center justify-center border border-outline-variant rounded-lg text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                       </button>
-                    );
-                  })}
-                </div>
+                      {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                        let p: number;
+                        if (totalPages <= 7) { p = i; }
+                        else if (page < 4) { p = i < 5 ? i : i === 5 ? -1 : totalPages - 1; }
+                        else if (page >= totalPages - 4) { p = i === 0 ? 0 : i === 1 ? -1 : totalPages - 7 + i; }
+                        else { p = i === 0 ? 0 : i === 1 ? -1 : i === 5 ? -1 : i === 6 ? totalPages - 1 : page - 2 + (i - 2); }
+                        if (p === -1) return <span key={`e-${i}`} className="w-9 text-center text-on-surface-variant text-sm">…</span>;
+                        return (
+                          <button key={p} onClick={() => setPage(p)}
+                            className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${p === page ? 'bg-secondary text-white' : 'border border-outline-variant text-on-surface-variant hover:border-secondary/40'}`}>
+                            {p + 1}
+                          </button>
+                        );
+                      })}
+                      <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}
+                        className="w-9 h-9 flex items-center justify-center border border-outline-variant rounded-lg text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
-                <button
-                  disabled={page >= totalPages - 1}
-                  onClick={() => setPage(p => p + 1)}
-                  className="flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:border-secondary/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-                  Next<span className="material-symbols-outlined text-[18px]">chevron_right</span>
+            {/* ── Archived Jobs Section ── */}
+            {!loading && archived.length > 0 && (
+              <div className="border-t border-slate-200 pt-6 mt-4">
+                <button onClick={() => setArchivedOpen(o => !o)}
+                  className="flex items-center gap-2 w-full text-left group mb-1">
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="material-symbols-outlined text-[20px] text-slate-400">inventory_2</span>
+                    <span className="text-sm font-semibold text-on-surface-variant group-hover:text-on-surface transition-colors">
+                      Archived Jobs
+                    </span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">{archived.length}</span>
+                  </div>
+                  <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200" style={{ transform: archivedOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+                    expand_more
+                  </span>
                 </button>
+                <p className="text-xs text-slate-400 mb-4 ml-7">Jobs that have been archived and are no longer active.</p>
+
+                {archivedOpen && (
+                  <div className="space-y-2">
+                    {archived.map(job => {
+                      const skills = parseSkills(job.requiredSkills);
+                      return (
+                        <div key={job.id} className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4 opacity-70 hover:opacity-90 transition-opacity">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="text-sm font-semibold text-slate-600 line-clamp-1">{job.title}</h3>
+                              <span className="px-2 py-0.5 bg-slate-200 text-slate-500 rounded-full text-[10px] font-bold flex-shrink-0">Archived</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                              <span className="flex items-center gap-1 text-xs text-slate-400">
+                                <span className="material-symbols-outlined text-[12px]">calendar_today</span>
+                                {formatDate(job.createdAt)}
+                              </span>
+                              <span className="text-xs text-slate-400">{job.category}</span>
+                              <span className="text-xs font-medium text-slate-500">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</span>
+                              {skills.slice(0, 3).map(s => (
+                                <span key={s} className="text-xs text-slate-400">{s}</span>
+                              ))}
+                            </div>
+                          </div>
+                          <button onClick={() => navigate(`/jobs/${job.id}`)}
+                            className="flex-shrink-0 border border-slate-300 text-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-white transition-colors">
+                            View
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
+
           </div>
 
           <Footer />
         </main>
       </div>
 
+      {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
         {sidebarLinks.map(({ icon, short, active, path }) => (
           <button key={short} onClick={() => path && navigate(path)}
@@ -657,8 +1068,40 @@ export default function MyJobs() {
         ))}
       </nav>
 
-      {inviteJob && <InviteModal job={inviteJob} onClose={() => setInviteJob(null)} />}
-      {inviteesJob && <InviteesModal job={inviteesJob} onClose={() => setInviteesJob(null)} />}
+      {/* Modals */}
+      {inviteJob    && <InviteModal job={inviteJob} onClose={() => setInviteJob(null)} />}
+      {inviteesJob  && <InviteesModal job={inviteesJob} onClose={() => setInviteesJob(null)} />}
+      {editJob      && <EditJobModal job={editJob} onClose={() => setEditJob(null)} onSaved={handleJobUpdated} />}
+
+      {/* Archive confirmation */}
+      {archiveConfirmJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => !archiveLoading && setArchiveConfirmJob(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-red-500 text-[20px]">archive</span>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-on-surface">Archive this job?</h3>
+                <p className="text-sm text-on-surface-variant mt-1 line-clamp-2">
+                  <span className="font-medium text-on-surface">"{archiveConfirmJob.title}"</span> will be removed from active listings and moved to your archives.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setArchiveConfirmJob(null)} disabled={archiveLoading}
+                className="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors disabled:opacity-60">
+                Cancel
+              </button>
+              <button onClick={() => handleArchive(archiveConfirmJob)} disabled={archiveLoading}
+                className="flex-1 py-2.5 bg-red-500 text-white text-sm font-bold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-60">
+                {archiveLoading ? 'Archiving…' : 'Archive Job'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

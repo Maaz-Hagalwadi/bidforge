@@ -131,7 +131,6 @@ export default function Profile() {
 
   const skills = parseSkills(profile.skills);
   const displayName = editing ? form.name : profile.name;
-  const displayTitle = editing ? form.title : (profile.title ?? '');
   const displayBio = editing ? form.bio : (profile.bio ?? '');
   const displayLocation = editing ? form.location : (profile.location ?? '');
   const displayPhoto = editing ? form.profileImageUrl : (profile.profileImageUrl ?? '');

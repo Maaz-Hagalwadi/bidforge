@@ -1,9 +1,12 @@
 package com.bidforge.app.job;
 
+import com.bidforge.app.bid.BidRepository;
 import com.bidforge.app.common.exception.AccessDeniedException;
 import com.bidforge.app.common.exception.JobNotFoundException;
 import com.bidforge.app.common.exception.UserNotFoundException;
+import com.bidforge.app.contract.ContractRepository;
 import com.bidforge.app.job.dto.request.CreateJobRequest;
+import com.bidforge.app.job.dto.request.UpdateJobRequest;
 import com.bidforge.app.job.dto.response.JobResponse;
 import com.bidforge.app.job.enums.JobStatus;
 import com.bidforge.app.job.enums.Visibility;
@@ -17,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.Pageable;
 import java.util.List;
@@ -29,6 +33,8 @@ public class JobService {
     private final JobRepository jobRepository;
     private final JobInviteRepository jobInviteRepository;
     private final UserRepository userRepository;
+    private final BidRepository bidRepository;
+    private final ContractRepository contractRepository;
 
     public JobResponse createJob(CreateJobRequest request, User client) {
         JobStatus status = request.isDraft() ? JobStatus.DRAFT : JobStatus.OPEN;
@@ -53,11 +59,20 @@ public class JobService {
         return mapToResponse(jobRepository.save(job));
     }
 
-    /** Returns all jobs owned by the client — newest first. */
+    /** Returns all jobs owned by the client — newest first, enriched with bid count and assigned freelancer. */
+    @Transactional(readOnly = true)
     public List<JobResponse> getClientJobs(User client) {
         return jobRepository.findByClientOrderByCreatedAtDesc(client)
                 .stream()
-                .map(this::mapToResponse)
+                .map(job -> {
+                    JobResponse r = mapToResponse(job);
+                    r.setBidsCount(bidRepository.findByJob(job).size());
+                    if (job.getStatus() == JobStatus.ASSIGNED || job.getStatus() == JobStatus.COMPLETED) {
+                        contractRepository.findByJob(job)
+                                .ifPresent(c -> r.setAssignedFreelancerName(c.getFreelancer().getName()));
+                    }
+                    return r;
+                })
                 .toList();
     }
 
@@ -191,6 +206,48 @@ public class JobService {
                 .build();
 
         jobInviteRepository.save(invite);
+    }
+
+    public JobResponse updateJob(UUID id, UpdateJobRequest request, User client) {
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new JobNotFoundException("Job not found"));
+
+        if (!job.getClient().getId().equals(client.getId())) {
+            throw new AccessDeniedException("You do not own this job");
+        }
+        if (job.getStatus() == JobStatus.COMPLETED || job.getStatus() == JobStatus.CANCELLED) {
+            throw new AccessDeniedException("Cannot edit a completed or archived job");
+        }
+
+        job.setTitle(request.getTitle());
+        job.setCategory(request.getCategory());
+        job.setDescription(request.getDescription());
+        job.setRequiredSkills(request.getRequiredSkills());
+        job.setBudgetType(request.getBudgetType());
+        job.setBudgetMin(request.getBudgetMin());
+        job.setBudgetMax(request.getBudgetMax());
+        job.setDeadline(request.getDeadline());
+        job.setAttachmentUrl(request.getAttachmentUrl());
+        if (request.getVisibility() != null) job.setVisibility(request.getVisibility());
+        job.setExperienceLevel(request.getExperienceLevel());
+        job.setUrgencyLevel(request.getUrgencyLevel());
+
+        return mapToResponse(jobRepository.save(job));
+    }
+
+    public void archiveJob(UUID id, User client) {
+        Job job = jobRepository.findById(id)
+                .orElseThrow(() -> new JobNotFoundException("Job not found"));
+
+        if (!job.getClient().getId().equals(client.getId())) {
+            throw new AccessDeniedException("You do not own this job");
+        }
+        if (job.getStatus() == JobStatus.COMPLETED) {
+            throw new AccessDeniedException("Cannot archive a completed job");
+        }
+
+        job.setStatus(JobStatus.CANCELLED);
+        jobRepository.save(job);
     }
 
     public List<JobResponse> getAllJobsAdmin() {

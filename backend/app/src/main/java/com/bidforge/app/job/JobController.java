@@ -1,6 +1,7 @@
 package com.bidforge.app.job;
 
 import com.bidforge.app.job.dto.request.CreateJobRequest;
+import com.bidforge.app.job.dto.request.UpdateJobRequest;
 import com.bidforge.app.job.dto.response.JobResponse;
 import com.bidforge.app.user.User;
 import jakarta.validation.Valid;
@@ -78,5 +79,20 @@ public class JobController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void inviteFreelancer(@PathVariable UUID jobId, @PathVariable Long freelancerId) {
         jobService.inviteFreelancer(jobId, freelancerId, getCurrentUser());
+    }
+
+    /** Update an owned job (OPEN or DRAFT only). */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('CLIENT')")
+    public JobResponse updateJob(@PathVariable UUID id, @Valid @RequestBody UpdateJobRequest request) {
+        return jobService.updateJob(id, request, getCurrentUser());
+    }
+
+    /** Archive (cancel) an owned job. */
+    @PatchMapping("/{id}/archive")
+    @PreAuthorize("hasRole('CLIENT')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void archiveJob(@PathVariable UUID id) {
+        jobService.archiveJob(id, getCurrentUser());
     }
 }

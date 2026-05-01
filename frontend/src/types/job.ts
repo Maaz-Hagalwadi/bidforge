@@ -11,6 +11,21 @@ export interface SpringPage<T> {
 export type ExperienceLevel = 'ENTRY' | 'INTERMEDIATE' | 'EXPERT';
 export type UrgencyLevel = 'LOW' | 'NORMAL' | 'HIGH';
 
+export interface UpdateJobPayload {
+  title: string;
+  category: string;
+  description: string;
+  requiredSkills?: string;
+  budgetType: 'FIXED' | 'HOURLY';
+  budgetMin: number;
+  budgetMax: number;
+  deadline?: string;
+  attachmentUrl?: string;
+  visibility?: 'PUBLIC' | 'INVITE_ONLY';
+  experienceLevel?: ExperienceLevel;
+  urgencyLevel?: UrgencyLevel;
+}
+
 export interface CreateJobPayload {
   title: string;
   category: string;
@@ -101,4 +116,6 @@ export interface JobResponse {
   updatedAt: string;
   experienceLevel?: ExperienceLevel;
   urgencyLevel?: UrgencyLevel;
+  bidsCount?: number;
+  assignedFreelancerName?: string;
 }

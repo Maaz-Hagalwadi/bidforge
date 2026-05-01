@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, type NavigateFunction } from 'react-router-dom';
 import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
@@ -233,7 +233,7 @@ function JobDetailContent({
 }: {
   job: JobResponse;
   user: { role: string; id: number; name: string; profileImageUrl?: string } | null;
-  navigate: (path: string | number) => void;
+  navigate: NavigateFunction;
 }) {
   const [bidAmount, setBidAmount] = useState('');
   const [deliveryOption, setDeliveryOption] = useState(DELIVERY_OPTIONS[2].label);

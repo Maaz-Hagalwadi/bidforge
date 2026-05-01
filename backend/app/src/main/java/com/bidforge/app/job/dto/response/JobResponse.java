@@ -28,4 +28,6 @@ public class JobResponse {
     private UrgencyLevel urgencyLevel;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Integer bidsCount;
+    private String assignedFreelancerName;
 }

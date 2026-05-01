@@ -9,6 +9,7 @@ import { usersApi, type FreelancerSearchResult } from '@/api/users';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
+import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { postJobSchema, type PostJobFormValues } from '@/lib/schemas';
 
 
@@ -52,6 +53,7 @@ export default function PostJob() {
   const [skillInput, setSkillInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
   const [activeStep, setActiveStep] = useState('job-details');
   const [invitees, setInvitees] = useState<FreelancerSearchResult[]>([]);
   const [inviteQuery, setInviteQuery] = useState('');
@@ -151,7 +153,8 @@ export default function PostJob() {
       if (invitees.length > 0) {
         await jobsApi.inviteFreelancers(job.id, invitees.map(f => f.id));
       }
-      navigate('/client/dashboard');
+      setSubmitted(true);
+      setTimeout(() => navigate('/client/jobs'), 2500);
     } catch {
       setSubmitError('Failed to submit. Please try again.');
     } finally {
@@ -350,17 +353,20 @@ export default function PostJob() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Urgency Level</label>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                          Urgency Level <span className="text-red-500">*</span>
+                        </label>
                         <div className="relative">
                           <select {...register('urgencyLevel')}
-                            className="w-full px-4 py-2.5 border border-outline-variant rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all">
-                            <option value="">Normal</option>
-                            <option value="LOW">Low</option>
+                            className={`w-full px-4 py-2.5 border rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all ${errors.urgencyLevel ? 'border-red-400' : 'border-outline-variant'}`}>
+                            <option value="">Select urgency level</option>
+                            <option value="LOW">Low — No rush</option>
                             <option value="NORMAL">Normal</option>
                             <option value="HIGH">High — Urgent Hiring</option>
                           </select>
                           <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">expand_more</span>
                         </div>
+                        {errors.urgencyLevel && <p className="text-xs text-red-500 mt-1">{errors.urgencyLevel.message}</p>}
                       </div>
                     </div>
 
@@ -560,6 +566,43 @@ export default function PostJob() {
           <Footer />
         </main>
       </div>
+
+      {/* Success overlay */}
+      {submitted && (
+        <>
+          <style>{`
+            @keyframes bf-pop {
+              0%   { opacity: 0; transform: scale(0.75) translateY(24px); }
+              100% { opacity: 1; transform: scale(1)    translateY(0);    }
+            }
+            @keyframes bf-check {
+              0%   { opacity: 0; transform: scale(0)    rotate(-20deg); }
+              60%  { opacity: 1; transform: scale(1.15) rotate(5deg);   }
+              100% { opacity: 1; transform: scale(1)    rotate(0deg);   }
+            }
+            .bf-pop   { animation: bf-pop   0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+            .bf-check { animation: bf-check 0.4s 0.25s cubic-bezier(0.34,1.56,0.64,1) both; }
+          `}</style>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 backdrop-blur-sm">
+            <div className="bf-pop bg-white rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-5 w-full max-w-[360px] mx-4 text-center">
+              <BidForgeLogo variant="dark" className="scale-110" />
+              <div className="bf-check w-[72px] h-[72px] rounded-full bg-green-50 border-2 border-green-200 flex items-center justify-center">
+                <span className="material-symbols-outlined text-green-500" style={{ fontSize: 42, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              </div>
+              <div>
+                <h2 className="text-[17px] font-bold text-on-surface">Job Posted Successfully!</h2>
+                <p className="text-sm text-on-surface-variant mt-1.5 leading-relaxed">
+                  Your job is now live and ready to receive bids from top freelancers.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
+                <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                Redirecting to dashboard…
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
