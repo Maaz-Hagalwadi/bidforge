@@ -538,7 +538,6 @@ export default function MyJobs() {
   const [editJob, setEditJob]                   = useState<JobResponse | null>(null);
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<JobResponse | null>(null);
   const [archiveLoading, setArchiveLoading]     = useState(false);
-  const [archivedOpen, setArchivedOpen]         = useState(false);
   const [page, setPage]                         = useState(0);
   const [viewMode, setViewMode]                 = useState<ViewMode>('list');
   const PAGE_SIZE = 10;
@@ -580,7 +579,6 @@ export default function MyJobs() {
     }
   };
 
-  // Active jobs (exclude CANCELLED)
   const activeJobs = jobs.filter(j => j.status !== 'CANCELLED');
   const filtered = activeJobs
     .filter(j => statusFilter === 'ALL' || j.status === statusFilter)
@@ -589,9 +587,6 @@ export default function MyJobs() {
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-
-  // Archived jobs
-  const archived = jobs.filter(j => j.status === 'CANCELLED');
 
   // ── Action buttons builder ──────────────────────────────────
   const buildActions = (job: JobResponse, compact = false) => {
@@ -996,59 +991,6 @@ export default function MyJobs() {
                   </div>
                 )}
               </>
-            )}
-
-            {/* ── Archived Jobs Section ── */}
-            {!loading && archived.length > 0 && (
-              <div className="border-t border-slate-200 pt-6 mt-4">
-                <button onClick={() => setArchivedOpen(o => !o)}
-                  className="flex items-center gap-2 w-full text-left group mb-1">
-                  <div className="flex items-center gap-2 flex-1">
-                    <span className="material-symbols-outlined text-[20px] text-slate-400">inventory_2</span>
-                    <span className="text-sm font-semibold text-on-surface-variant group-hover:text-on-surface transition-colors">
-                      Archived Jobs
-                    </span>
-                    <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-xs font-bold">{archived.length}</span>
-                  </div>
-                  <span className="material-symbols-outlined text-[18px] text-slate-400 transition-transform duration-200" style={{ transform: archivedOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                    expand_more
-                  </span>
-                </button>
-                <p className="text-xs text-slate-400 mb-4 ml-7">Jobs that have been archived and are no longer active.</p>
-
-                {archivedOpen && (
-                  <div className="space-y-2">
-                    {archived.map(job => {
-                      const skills = parseSkills(job.requiredSkills);
-                      return (
-                        <div key={job.id} className="bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4 opacity-70 hover:opacity-90 transition-opacity">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-sm font-semibold text-slate-600 line-clamp-1">{job.title}</h3>
-                              <span className="px-2 py-0.5 bg-slate-200 text-slate-500 rounded-full text-[10px] font-bold flex-shrink-0">Archived</span>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                              <span className="flex items-center gap-1 text-xs text-slate-400">
-                                <span className="material-symbols-outlined text-[12px]">calendar_today</span>
-                                {formatDate(job.createdAt)}
-                              </span>
-                              <span className="text-xs text-slate-400">{job.category}</span>
-                              <span className="text-xs font-medium text-slate-500">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</span>
-                              {skills.slice(0, 3).map(s => (
-                                <span key={s} className="text-xs text-slate-400">{s}</span>
-                              ))}
-                            </div>
-                          </div>
-                          <button onClick={() => navigate(`/jobs/${job.id}`)}
-                            className="flex-shrink-0 border border-slate-300 text-slate-500 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-white transition-colors">
-                            View
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
             )}
 
           </div>

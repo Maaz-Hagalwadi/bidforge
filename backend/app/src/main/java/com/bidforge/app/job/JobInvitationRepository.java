@@ -11,6 +11,8 @@ public interface JobInvitationRepository extends JpaRepository<JobInvitation, UU
 
     boolean existsByJobIdAndFreelancerId(UUID jobId, Long freelancerId);
 
+    List<JobInvitation> findByJob(Job job);
+
     @Query("SELECT i.job.id FROM JobInvitation i WHERE i.freelancer.id = :freelancerId")
     List<UUID> findJobIdsByFreelancerId(@Param("freelancerId") Long freelancerId);
 }

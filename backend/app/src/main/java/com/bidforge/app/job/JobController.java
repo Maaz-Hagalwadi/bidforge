@@ -95,4 +95,19 @@ public class JobController {
     public void archiveJob(@PathVariable UUID id) {
         jobService.archiveJob(id, getCurrentUser());
     }
+
+    /** Repost an archived (CANCELLED) job — sets status back to OPEN. */
+    @PostMapping("/{id}/repost")
+    @PreAuthorize("hasRole('CLIENT')")
+    public JobResponse repostJob(@PathVariable UUID id) {
+        return jobService.repostJob(id, getCurrentUser());
+    }
+
+    /** Permanently delete an archived (CANCELLED) job. */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('CLIENT')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteJob(@PathVariable UUID id) {
+        jobService.deleteJob(id, getCurrentUser());
+    }
 }

@@ -58,4 +58,10 @@ export const jobsApi = {
 
   archiveJob: (id: string) =>
     api.patch(`/jobs/${id}/archive`).then(r => r.data),
+
+  repostJob: (id: string) =>
+    api.post<JobResponse>(`/jobs/${id}/repost`).then(r => r.data),
+
+  deleteJob: (id: string) =>
+    api.delete(`/jobs/${id}`).then(r => r.data),
 };

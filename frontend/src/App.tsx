@@ -18,6 +18,7 @@ import FreelancerBids from '@/pages/FreelancerBids';
 import Profile from '@/pages/Profile';
 import Messages from '@/pages/Messages';
 import Contracts from '@/pages/Contracts';
+import ArchivedJobs from '@/pages/ArchivedJobs';
 
 export default function App() {
   return (
@@ -44,6 +45,10 @@ export default function App() {
           <Route
             path="/client/jobs"
             element={<ClientRoute><MyJobs /></ClientRoute>}
+          />
+          <Route
+            path="/client/archived-jobs"
+            element={<ClientRoute><ArchivedJobs /></ClientRoute>}
           />
           <Route
             path="/client/invites"
