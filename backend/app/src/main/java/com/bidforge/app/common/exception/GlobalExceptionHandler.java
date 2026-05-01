@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -21,6 +22,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleEmailAlreadyExists(
             EmailAlreadyExistsException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.BAD_REQUEST, "EMAIL_ALREADY_EXISTS", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ContractNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, Object> handleContractNotFound(ContractNotFoundException ex, HttpServletRequest request) {
+        return Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", 404,
+                "error", "NOT_FOUND",
+                "message", ex.getMessage(),
+                "path", request.getRequestURI()
+        );
     }
 
     @ExceptionHandler(BidNotFoundException.class)

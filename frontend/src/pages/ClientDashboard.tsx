@@ -112,7 +112,7 @@ function TalentCard({ name, specialty, rating, reviews }: { name: string; specia
   return (
     <div className="tonal-card p-4 rounded-xl flex gap-4">
       <div className="w-14 h-14 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary font-bold text-lg flex-shrink-0 select-none">{getInitials(name)}</div>
-      <div className="space-y-1">
+      <div className="space-y-1 flex-1 min-w-0">
         <p className="font-semibold text-sm text-on-surface">{name}</p>
         <p className="text-sm text-on-surface-variant">{specialty}</p>
         <div className="flex items-center gap-1 text-secondary">
@@ -279,7 +279,7 @@ export default function ClientDashboard() {
             <section className="tonal-card rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="text-h3 font-semibold text-on-surface">Recent Project Activity</h3>
-                <button onClick={() => navigate('/client/jobs')} className="text-secondary font-semibold text-sm hover:underline">View All Jobs</button>
+                <button onClick={() => navigate('/client/jobs')} className="text-secondary font-semibold text-sm hover:underline">View All →</button>
               </div>
               <div className="divide-y divide-slate-100">
                 {dashboardData?.recentProjects.length ? (

@@ -6,6 +6,9 @@ import com.bidforge.app.common.exception.AccessDeniedException;
 import com.bidforge.app.common.exception.BidAlreadyExistsException;
 import com.bidforge.app.common.exception.BidNotFoundException;
 import com.bidforge.app.common.exception.JobNotFoundException;
+import com.bidforge.app.contract.Contract;
+import com.bidforge.app.contract.ContractRepository;
+import com.bidforge.app.contract.ContractStatus;
 import com.bidforge.app.job.Job;
 import com.bidforge.app.job.JobRepository;
 import com.bidforge.app.job.enums.JobStatus;
@@ -28,6 +31,7 @@ public class BidService {
     private final BidRepository bidRepository;
     private final JobRepository jobRepository;
     private final JobInviteRepository jobInviteRepository;
+    private final ContractRepository contractRepository;
 
     public BidResponse createBid(UUID jobId, CreateBidRequest request, User freelancer) {
 
@@ -114,6 +118,8 @@ public class BidService {
     @Transactional
     public void acceptBid(UUID bidId, User client) {
 
+
+
         Bid bid = bidRepository.findById(bidId)
                 .orElseThrow(() -> new BidNotFoundException("Bid not found"));
 
@@ -133,6 +139,10 @@ public class BidService {
             throw new IllegalStateException("Job is not open");
         }
 
+        if (contractRepository.existsByJob(job)) {
+            throw new IllegalStateException("Contract already exists for this job");
+        }
+
 
         // Accept selected bid
         bid.setStatus(BidStatus.ACCEPTED);
@@ -149,6 +159,17 @@ public class BidService {
         job.setStatus(JobStatus.ASSIGNED);
 
         bidRepository.saveAll(allBids);
+
+        Contract contract = Contract.builder()
+                .job(job)
+                .client(job.getClient())
+                .freelancer(bid.getFreelancer())
+                .agreedAmount(bid.getAmount())
+                .deliveryDays(bid.getDeliveryDays())
+                .status(ContractStatus.ACTIVE)
+                .build();
+
+        contractRepository.save(contract);
     }
 
 
