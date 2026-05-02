@@ -1,4 +1,4 @@
-export type ContractStatus = 'ACTIVE' | 'SUBMITTED' | 'COMPLETED' | 'CANCELLED';
+export type ContractStatus = 'ACTIVE' | 'SUBMITTED' | 'COMPLETED' | 'REVISION_REQUESTED' | 'CANCELLED';
 
 export interface ContractResponse {
   id: string;
@@ -10,6 +10,8 @@ export interface ContractResponse {
   submissionNote?: string;
   submissionUrl?: string;
   submittedAt?: string;
+  revisionNote?: string;
+  revisionRequestedAt?: string;
   createdAt: string;
   jobTitle: string;
   deadline?: string;

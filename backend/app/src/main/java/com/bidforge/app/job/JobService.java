@@ -304,6 +304,7 @@ public class JobService {
                 .experienceLevel(job.getExperienceLevel())
                 .urgencyLevel(job.getUrgencyLevel())
                 .clientId(job.getClient().getId())
+                .clientName(job.getClient().getName())
                 .createdAt(job.getCreatedAt())
                 .updatedAt(job.getUpdatedAt())
                 .build();

@@ -13,7 +13,7 @@ export function Toast({ message, type, onClose }: ToastProps) {
   }, [onClose]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border animate-fade-in max-w-sm"
+    <div className="fixed top-6 right-6 z-[100] flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border animate-fade-in max-w-sm"
       style={{
         backgroundColor: type === 'success' ? '#f0fdf4' : '#fef2f2',
         borderColor: type === 'success' ? '#bbf7d0' : '#fecaca',

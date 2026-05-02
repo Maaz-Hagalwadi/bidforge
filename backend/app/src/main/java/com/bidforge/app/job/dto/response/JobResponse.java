@@ -24,6 +24,7 @@ public class JobResponse {
     private Visibility visibility;
     private JobStatus status;
     private Long clientId;
+    private String clientName;
     private ExperienceLevel experienceLevel;
     private UrgencyLevel urgencyLevel;
     private LocalDateTime createdAt;

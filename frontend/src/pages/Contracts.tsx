@@ -17,18 +17,20 @@ const MILESTONE_LABELS = ['Contract Started', 'Work in Progress', 'Work Submitte
 
 function getMilestoneStates(status: ContractResponse['status']): MilestoneState[] {
   switch (status) {
-    case 'ACTIVE':    return ['completed', 'active',     'pending',   'pending'  ];
-    case 'SUBMITTED': return ['completed', 'completed',  'active',    'pending'  ];
-    case 'COMPLETED': return ['completed', 'completed',  'completed', 'completed'];
-    case 'CANCELLED': return ['completed', 'pending',    'pending',   'pending'  ];
+    case 'ACTIVE':              return ['completed', 'active',     'pending',   'pending'  ];
+    case 'SUBMITTED':           return ['completed', 'completed',  'active',    'pending'  ];
+    case 'REVISION_REQUESTED':  return ['completed', 'active',     'pending',   'pending'  ];
+    case 'COMPLETED':           return ['completed', 'completed',  'completed', 'completed'];
+    case 'CANCELLED':           return ['completed', 'pending',    'pending',   'pending'  ];
   }
 }
 
 const STATUS_CFG: Record<ContractResponse['status'], { label: string; cls: string; icon: string }> = {
-  ACTIVE:    { label: 'Active',    cls: 'bg-secondary/10 text-secondary',    icon: 'work'           },
-  SUBMITTED: { label: 'Submitted', cls: 'bg-amber-50 text-amber-700',        icon: 'pending_actions'},
-  COMPLETED: { label: 'Completed', cls: 'bg-emerald-50 text-emerald-700',    icon: 'task_alt'       },
-  CANCELLED: { label: 'Cancelled', cls: 'bg-red-50 text-red-600',            icon: 'cancel'         },
+  ACTIVE:              { label: 'Active',             cls: 'bg-secondary/10 text-secondary',   icon: 'work'           },
+  SUBMITTED:           { label: 'Submitted',          cls: 'bg-amber-50 text-amber-700',       icon: 'pending_actions'},
+  REVISION_REQUESTED:  { label: 'Revision Requested', cls: 'bg-orange-50 text-orange-700',     icon: 'replay'         },
+  COMPLETED:           { label: 'Completed',          cls: 'bg-emerald-50 text-emerald-700',   icon: 'task_alt'       },
+  CANCELLED:           { label: 'Cancelled',          cls: 'bg-red-50 text-red-600',           icon: 'cancel'         },
 };
 
 function getInitials(name: string) {
@@ -63,12 +65,15 @@ export default function Contracts() {
   const [profileOpen,  setProfileOpen]  = useState(false);
   const [contracts,    setContracts]    = useState<ContractResponse[]>([]);
   const [loading,      setLoading]      = useState(true);
-  const [toast,        setToast]        = useState<string | null>(null);
+  const [toast,        setToast]        = useState<{ message: string; error?: boolean } | null>(null);
   const [submitNote,   setSubmitNote]   = useState('');
   const [submitUrl,    setSubmitUrl]    = useState('');
   const [submitting,   setSubmitting]   = useState(false);
   const [completing,   setCompleting]   = useState(false);
-  const [showForm,     setShowForm]     = useState(false);
+  const [showForm,          setShowForm]          = useState(false);
+  const [showRevisionForm,  setShowRevisionForm]  = useState(false);
+  const [revisionNoteInput, setRevisionNoteInput] = useState('');
+  const [requestingRevision, setRequestingRevision] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -102,25 +107,59 @@ export default function Contracts() {
   const initials = user ? getInitials(user.name) : '?';
 
   const handleSubmitWork = async (contract: ContractResponse) => {
-    if (!submitNote.trim() || !submitUrl.trim()) { setToast('Please fill in both fields.'); return; }
+    if (!submitNote.trim() || !submitUrl.trim()) {
+      setToast({ message: 'Please fill in both fields.', error: true });
+      return;
+    }
     setSubmitting(true);
     try {
       await contractsApi.submitWork(contract.id, { submissionNote: submitNote, submissionUrl: submitUrl });
-      setToast('Work submitted! Awaiting client review.');
+      setToast({ message: 'Work submitted! Awaiting client review.' });
       setShowForm(false); setSubmitNote(''); setSubmitUrl('');
       await fetchContracts();
-    } catch { setToast('Failed to submit work. Please try again.'); }
-    finally { setSubmitting(false); }
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number; data?: { message?: string } } })?.response?.status;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (status === 409) {
+        setToast({ message: 'Work has already been submitted for this contract.', error: true });
+        setShowForm(false);
+        await fetchContracts();
+      } else {
+        setToast({ message: msg ?? 'Failed to submit work. Please try again.', error: true });
+      }
+    } finally { setSubmitting(false); }
   };
 
   const handleComplete = async (contract: ContractResponse) => {
     setCompleting(true);
     try {
       await contractsApi.completeContract(contract.id);
-      setToast('Contract completed! Payment released.');
+      setToast({ message: 'Contract completed! Payment released.' });
       await fetchContracts();
-    } catch { setToast('Failed to complete contract. Please try again.'); }
-    finally { setCompleting(false); }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setToast({ message: msg ?? 'Failed to complete contract. Please try again.', error: true });
+    } finally { setCompleting(false); }
+  };
+
+  const handleRequestRevision = async (contract: ContractResponse) => {
+    if (!revisionNoteInput.trim()) {
+      setToast({ message: 'Please enter a revision note.', error: true });
+      return;
+    }
+    setRequestingRevision(true);
+    try {
+      await contractsApi.requestRevision(contract.id, revisionNoteInput);
+      setToast({ message: 'Revision requested. The freelancer has been notified.' });
+      setShowRevisionForm(false);
+      setRevisionNoteInput('');
+      await fetchContracts();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setToast({ message: msg ?? 'Failed to request revision. Please try again.', error: true });
+    } finally {
+      setRequestingRevision(false);
+    }
   };
 
   const selected = contractId ? contracts.find(c => c.id === contractId) : null;
@@ -293,6 +332,13 @@ export default function Contracts() {
         descCls: 'text-amber-700',
         badge: 'bg-white text-amber-600 border-amber-100', badgeText: 'Under Review',
       };
+      if (contract.status === 'REVISION_REQUESTED') return {
+        bg: 'bg-orange-50 border-orange-100', iconBg: 'bg-orange-500', icon: 'replay',
+        title: 'Revision Requested', titleCls: 'text-orange-900',
+        desc: isClient ? 'You\'ve requested changes. Waiting for the freelancer to resubmit.' : 'The client has requested revisions. Review their feedback and resubmit.',
+        descCls: 'text-orange-700',
+        badge: 'bg-white text-orange-600 border-orange-100', badgeText: 'Revision Pending',
+      };
       if (contract.status === 'CANCELLED') return {
         bg: 'bg-red-50 border-red-100', iconBg: 'bg-red-500', icon: 'cancel',
         title: 'Contract Cancelled', titleCls: 'text-red-900',
@@ -413,13 +459,24 @@ export default function Contracts() {
             {/* Submission section */}
             <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
 
-              {/* FREELANCER + ACTIVE: submit work form */}
-              {isFreelancer && contract.status === 'ACTIVE' && (
+              {/* FREELANCER + ACTIVE or REVISION_REQUESTED: submit work form */}
+              {isFreelancer && (contract.status === 'ACTIVE' || contract.status === 'REVISION_REQUESTED') && (
                 <>
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-on-surface">Submit Your Work</h3>
+                    <h3 className="text-lg font-bold text-on-surface">
+                      {contract.status === 'REVISION_REQUESTED' ? 'Resubmit Your Work' : 'Submit Your Work'}
+                    </h3>
                     <span className="text-xs text-on-surface-variant">Provide a note and a link to your deliverables</span>
                   </div>
+                  {contract.status === 'REVISION_REQUESTED' && contract.revisionNote && (
+                    <div className="mb-5 p-4 bg-orange-50 border border-orange-200 rounded-xl flex items-start gap-3">
+                      <span className="material-symbols-outlined text-orange-500 text-[20px] flex-shrink-0 mt-0.5">replay</span>
+                      <div>
+                        <p className="text-xs font-bold text-orange-800 uppercase tracking-widest mb-1">Client's Revision Note</p>
+                        <p className="text-sm text-orange-900 leading-relaxed">{contract.revisionNote}</p>
+                      </div>
+                    </div>
+                  )}
                   {!showForm ? (
                     <button onClick={() => setShowForm(true)}
                       className="w-full border-2 border-dashed border-slate-200 rounded-xl p-10 flex flex-col items-center gap-3 cursor-pointer hover:border-secondary hover:bg-secondary/5 transition-all group">
@@ -511,6 +568,21 @@ export default function Contracts() {
                 </>
               )}
 
+              {/* CLIENT + REVISION_REQUESTED: revision pending */}
+              {isClient && contract.status === 'REVISION_REQUESTED' && (
+                <>
+                  <h3 className="text-lg font-bold text-on-surface mb-4">Revision Requested</h3>
+                  <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl flex items-start gap-3 mb-4">
+                    <span className="material-symbols-outlined text-orange-500 text-[20px] flex-shrink-0 mt-0.5">replay</span>
+                    <div>
+                      <p className="text-xs font-bold text-orange-800 uppercase tracking-widest mb-1">Your Revision Note</p>
+                      <p className="text-sm text-orange-900 leading-relaxed">{contract.revisionNote || '—'}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-on-surface-variant">Waiting for the freelancer to address your feedback and resubmit.</p>
+                </>
+              )}
+
               {/* CLIENT + ACTIVE: waiting */}
               {isClient && contract.status === 'ACTIVE' && (
                 <>
@@ -589,11 +661,18 @@ export default function Contracts() {
               <div className="space-y-3">
 
                 {/* Freelancer actions */}
-                {isFreelancer && contract.status === 'ACTIVE' && (
-                  <button onClick={() => setShowForm(true)}
+                {isFreelancer && (contract.status === 'ACTIVE' || contract.status === 'REVISION_REQUESTED') && !showForm && (
+                  <button type="button" onClick={() => setShowForm(true)}
                     className="w-full bg-secondary text-white py-3.5 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg shadow-secondary/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                     <span className="material-symbols-outlined text-[18px]">upload_file</span>
-                    Submit Work
+                    {contract.status === 'REVISION_REQUESTED' ? 'Resubmit Work' : 'Submit Work'}
+                  </button>
+                )}
+                {isFreelancer && (contract.status === 'ACTIVE' || contract.status === 'REVISION_REQUESTED') && showForm && (
+                  <button type="button" onClick={() => { setShowForm(false); setSubmitNote(''); setSubmitUrl(''); }}
+                    className="w-full bg-slate-100 text-slate-600 py-3.5 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                    Cancel
                   </button>
                 )}
                 {isFreelancer && contract.status === 'SUBMITTED' && (
@@ -611,13 +690,52 @@ export default function Contracts() {
 
                 {/* Client actions */}
                 {isClient && contract.status === 'SUBMITTED' && (
-                  <button onClick={() => handleComplete(contract)} disabled={completing}
-                    className="w-full bg-secondary text-white py-3.5 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg shadow-secondary/20 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                    {completing ? (
-                      <><span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>Processing…</>
+                  <>
+                    <button onClick={() => handleComplete(contract)} disabled={completing}
+                      className="w-full bg-secondary text-white py-3.5 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg shadow-secondary/20 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                      {completing ? (
+                        <><span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>Processing…</>
+                      ) : (
+                        <><span className="material-symbols-outlined text-[18px]">verified</span>Approve &amp; Release Payment</>
+                      )}
+                    </button>
+                    {!showRevisionForm ? (
+                      <button type="button" onClick={() => setShowRevisionForm(true)}
+                        className="w-full bg-orange-50 border border-orange-200 text-orange-700 py-3.5 rounded-xl text-sm font-bold hover:bg-orange-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                        <span className="material-symbols-outlined text-[18px]">replay</span>
+                        Request Revision
+                      </button>
                     ) : (
-                      <><span className="material-symbols-outlined text-[18px]">verified</span>Approve &amp; Release Payment</>
+                      <div className="space-y-2">
+                        <textarea
+                          value={revisionNoteInput}
+                          onChange={e => setRevisionNoteInput(e.target.value)}
+                          rows={3}
+                          placeholder="Describe what needs to be changed…"
+                          className="w-full px-3 py-2.5 border border-orange-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 resize-none bg-orange-50"
+                        />
+                        <div className="flex gap-2">
+                          <button type="button" onClick={() => handleRequestRevision(contract)} disabled={requestingRevision}
+                            className="flex-1 py-2.5 bg-orange-500 text-white rounded-lg text-sm font-bold hover:bg-orange-600 disabled:opacity-60 flex items-center justify-center gap-1.5">
+                            {requestingRevision ? (
+                              <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Sending…</>
+                            ) : (
+                              <><span className="material-symbols-outlined text-[16px]">send</span>Send</>
+                            )}
+                          </button>
+                          <button type="button" onClick={() => { setShowRevisionForm(false); setRevisionNoteInput(''); }}
+                            className="px-3 py-2.5 border border-outline-variant text-on-surface-variant rounded-lg text-sm font-semibold hover:bg-slate-50">
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     )}
+                  </>
+                )}
+                {isClient && contract.status === 'REVISION_REQUESTED' && (
+                  <button disabled className="w-full bg-orange-100 text-orange-700 py-3.5 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">replay</span>
+                    Awaiting Resubmission
                   </button>
                 )}
                 {isClient && contract.status === 'ACTIVE' && (
@@ -633,7 +751,7 @@ export default function Contracts() {
                   </button>
                 )}
 
-                <button className="w-full bg-white border border-outline-variant text-on-surface py-3.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                <button type="button" className="w-full bg-white border border-outline-variant text-on-surface py-3.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">schedule</span>
                   Request Extension
                 </button>
@@ -751,9 +869,9 @@ export default function Contracts() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 bg-on-surface text-inverse-on-surface text-sm font-semibold rounded-xl shadow-xl flex items-center gap-2">
-          <span className="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
-          {toast}
+        <div className={`fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 text-sm font-semibold rounded-xl shadow-xl flex items-center gap-2 max-w-sm text-center ${toast.error ? 'bg-red-600 text-white' : 'bg-on-surface text-inverse-on-surface'}`}>
+          <span className="material-symbols-outlined text-[18px] flex-shrink-0">{toast.error ? 'error' : 'check_circle'}</span>
+          {toast.message}
         </div>
       )}
     </div>

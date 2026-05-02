@@ -112,6 +112,7 @@ export interface JobResponse {
   visibility: 'PUBLIC' | 'INVITE_ONLY';
   status: 'DRAFT' | 'OPEN' | 'ASSIGNED' | 'COMPLETED' | 'CANCELLED';
   clientId: number;
+  clientName?: string;
   createdAt: string;
   updatedAt: string;
   experienceLevel?: ExperienceLevel;

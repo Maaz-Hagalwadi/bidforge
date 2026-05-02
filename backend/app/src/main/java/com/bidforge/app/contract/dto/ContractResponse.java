@@ -23,7 +23,8 @@ public class ContractResponse {
     private String submissionUrl;
     private LocalDateTime submittedAt;
     private LocalDateTime createdAt;
-
+    private String revisionNote;
+    private LocalDateTime revisionRequestedAt;
     private String jobTitle;
     private String deadline;
     private String clientName;

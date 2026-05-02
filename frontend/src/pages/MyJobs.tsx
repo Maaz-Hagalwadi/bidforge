@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
+import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import type { JobInviteStatus, JobResponse } from '@/types/job';
 
 const SIDEBAR_BG = '#0A192F';
@@ -87,6 +88,10 @@ function EditJobModal({ job, onClose, onSaved }: {
       setError('Title, category and description are required.');
       return;
     }
+    if (!expLevel) {
+      setError('Please select an experience level.');
+      return;
+    }
     const min = Number(budgetMin), max = Number(budgetMax);
     if (!min || !max || min <= 0 || max <= 0 || max < min) {
       setError('Enter valid budget values (max ≥ min).');
@@ -123,9 +128,12 @@ function EditJobModal({ job, onClose, onSaved }: {
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
-          <div>
-            <h2 className="text-base font-bold text-on-surface">Edit Job</h2>
-            <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-1">{job.title}</p>
+          <div className="flex items-center gap-3">
+            <BidForgeLogo variant="dark" className="scale-75 origin-left" />
+            <div>
+              <h2 className="text-base font-bold text-on-surface">Edit Job</h2>
+              <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-1">{job.title}</p>
+            </div>
           </div>
           <button onClick={onClose} className="p-1 text-on-surface-variant hover:text-on-surface transition-colors">
             <span className="material-symbols-outlined">close</span>
@@ -203,11 +211,11 @@ function EditJobModal({ job, onClose, onSaved }: {
           {/* Experience + Urgency */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Experience Level</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Experience Level <span className="text-red-500">*</span></label>
               <div className="relative">
                 <select value={expLevel} onChange={e => setExpLevel(e.target.value)}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary transition-colors">
-                  <option value="">Any Level</option>
+                  className={`w-full px-3 py-2 border rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary transition-colors ${!expLevel && error ? 'border-red-400' : 'border-outline-variant'}`}>
+                  <option value="">Select experience level</option>
                   <option value="ENTRY">Entry Level</option>
                   <option value="INTERMEDIATE">Intermediate</option>
                   <option value="EXPERT">Expert</option>

@@ -3,6 +3,7 @@ package com.bidforge.app.contract;
 import com.bidforge.app.common.exception.AccessDeniedException;
 import com.bidforge.app.common.exception.ContractNotFoundException;
 import com.bidforge.app.contract.dto.ContractResponse;
+import com.bidforge.app.contract.dto.RevisionRequest;
 import com.bidforge.app.contract.dto.SubmitWorkRequest;
 import com.bidforge.app.job.Job;
 import com.bidforge.app.job.enums.JobStatus;
@@ -56,10 +57,36 @@ public class ContractService {
 
         // ✅ Complete
         contract.setStatus(ContractStatus.COMPLETED);
+        contractRepository.save(contract);
 
         // 🔥 Update job
         Job job = contract.getJob();
         job.setStatus(JobStatus.COMPLETED);
+    }
+
+    @Transactional
+    public void requestRevision(UUID contractId, RevisionRequest request, User client) {
+
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new ContractNotFoundException("Contract not found"));
+
+        // 🔒 Only client
+        if (!contract.getClient().getId().equals(client.getId())) {
+            throw new AccessDeniedException("You do not own this contract");
+        }
+
+        // 🔒 Only after submission
+        if (contract.getStatus() != ContractStatus.SUBMITTED) {
+            throw new IllegalStateException("Work must be submitted first");
+        }
+
+        // ✅ Save feedback
+        contract.setRevisionNote(request.getNote());
+        contract.setRevisionRequestedAt(LocalDateTime.now());
+
+        // ✅ Update status
+        contract.setStatus(ContractStatus.REVISION_REQUESTED);
+        contractRepository.save(contract);
     }
 
 
@@ -74,9 +101,10 @@ public class ContractService {
             throw new AccessDeniedException("You are not assigned to this contract");
         }
 
-        // 🔒 Only ACTIVE contracts
-        if (contract.getStatus() != ContractStatus.ACTIVE) {
-            throw new IllegalStateException("Contract is not in active state");
+        // 🔒 ACTIVE or REVISION_REQUESTED
+        if (contract.getStatus() != ContractStatus.ACTIVE &&
+                contract.getStatus() != ContractStatus.REVISION_REQUESTED) {
+            throw new IllegalStateException("Cannot submit at this stage");
         }
 
         // ✅ Save submission details
@@ -84,8 +112,14 @@ public class ContractService {
         contract.setSubmissionUrl(request.getSubmissionUrl());
         contract.setSubmittedAt(LocalDateTime.now());
 
+        contract.setRevisionNote(null);
+        contract.setRevisionRequestedAt(null);
+
+
         // ✅ Move status
         contract.setStatus(ContractStatus.SUBMITTED);
+
+        contractRepository.save(contract);
     }
 
 
@@ -109,6 +143,8 @@ public class ContractService {
                 .clientName(c.getClient().getName())
                 .freelancerName(c.getFreelancer().getName())
                 .deliveryDays(c.getDeliveryDays())
+                .revisionNote(c.getRevisionNote())
+                .revisionRequestedAt(c.getRevisionRequestedAt())
                 .build();
     }
 }
