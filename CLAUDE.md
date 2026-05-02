@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, and dashboards. Planned: Chat, Payment, Notification modules.
+**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, milestones with escrow-style payments, and dashboards. Planned: Chat, Notification modules.
 
 ---
 
@@ -50,8 +50,14 @@ bid/           Bid (entity), BidController, BidService, BidRepository,
                BidStatus (enum: PENDING/ACCEPTED/REJECTED)
                dto/  CreateBidRequest, BidResponse
 contract/      Contract (entity), ContractController, ContractService, ContractRepository,
-               ContractStatus (enum: ACTIVE/SUBMITTED/COMPLETED)
+               ContractStatus (enum: ACTIVE/SUBMITTED/REVISION_REQUESTED/COMPLETED/CANCELLED)
                dto/  ContractResponse, SubmitWorkRequest
+milestone/     Milestone (entity), MilestoneController, MilestoneService, MilestoneRepository,
+               MilestoneStatus (enum: PENDING/IN_PROGRESS/SUBMITTED/APPROVED/REJECTED)
+               dto/  CreateMilestoneRequest, MilestoneResponse, MilestoneSummary
+payment/       Payment (entity), PaymentRepository,
+               PaymentStatus (enum: ESCROWED/RELEASED)
+               (no controller — lifecycle managed entirely by MilestoneService)
 dashboard/     DashboardController, DashboardService (stats aggregation)
 config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler
 common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
@@ -83,7 +89,9 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 
 **Job lifecycle**: `DRAFT` → `OPEN` (on publish) → `ASSIGNED` (on bid accept, contract created) → `COMPLETED` (on contract complete). `OPEN`/`DRAFT` jobs can be archived → `CANCELLED`. Edit (`PUT /jobs/{id}`) is allowed while `OPEN` or `DRAFT`.
 
-**Contract flow**: Accepting a bid (via `BidService`) creates a `Contract` with status `ACTIVE` and sets the job to `ASSIGNED`. Freelancer calls `PATCH /contracts/{id}/submit-work` → `SUBMITTED`. Client calls `PATCH /contracts/{id}/complete` → `COMPLETED`, job moves to `COMPLETED`.
+**Contract flow**: Accepting a bid (via `BidService`) creates a `Contract` with status `ACTIVE` and sets the job to `ASSIGNED`. Freelancer calls `PATCH /contracts/{id}/submit-work` → `SUBMITTED`. Client can then either: call `PATCH /contracts/{id}/complete` → `COMPLETED` (job moves to `COMPLETED`), or call `PATCH /contracts/{id}/request-revision` → `REVISION_REQUESTED` (freelancer can resubmit). `Contract` also has `revisionNote` and `revisionRequestedAt` fields.
+
+**Milestone flow**: Client creates milestones (`POST /milestones/contracts/{contractId}`). Each `Milestone` starts `PENDING` with `funded=false`. Client funds a milestone (`PATCH /milestones/{id}/fund`) → creates a `Payment` record with status `ESCROWED`. Freelancer submits work (`PATCH /milestones/{id}/submit`) → milestone → `SUBMITTED` (requires funded). Client approves (`PATCH /milestones/{id}/approve`) → milestone → `APPROVED`, `Payment` → `RELEASED`. Milestone and payment lifecycle is managed entirely by `MilestoneService`; there is no `PaymentController`.
 
 **`JobResponse` enrichment**: `getClientJobs` (i.e. `GET /jobs/my`) additionally sets `bidsCount` (count from BidRepository) and `assignedFreelancerName` (from ContractRepository) for `ASSIGNED`/`COMPLETED` jobs. These fields are `null` on all other endpoints.
 
@@ -127,6 +135,15 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/contracts/freelancer` | FREELANCER | All contracts assigned to caller |
 | PATCH | `/contracts/{id}/submit-work` | FREELANCER | Submit work (`submissionNote`, `submissionUrl`); contract → SUBMITTED |
 | PATCH | `/contracts/{id}/complete` | CLIENT | Mark contract complete; contract → COMPLETED, job → COMPLETED |
+| PATCH | `/contracts/{id}/request-revision` | CLIENT | Request revision (`note`); contract → REVISION_REQUESTED |
+| POST | `/milestones/contracts/{contractId}` | CLIENT | Create milestones (bulk array of `CreateMilestoneRequest`); owner only |
+| GET | `/milestones/contract/{contractId}` | Yes | List milestones for a contract; restricted to client or assigned freelancer |
+| GET | `/milestones/freelancer` | FREELANCER | All milestones across freelancer's contracts |
+| PATCH | `/milestones/{id}/fund` | CLIENT | Fund milestone → `funded=true`, creates ESCROWED Payment |
+| PATCH | `/milestones/{id}/submit` | FREELANCER | Submit milestone work → SUBMITTED (must be funded) |
+| PATCH | `/milestones/{id}/approve` | CLIENT | Approve milestone → APPROVED, Payment → RELEASED |
+| GET | `/milestones/summary/client` | CLIENT | Aggregated milestone stats for the caller's contracts |
+| GET | `/milestones/summary/freelancer` | FREELANCER | Aggregated milestone stats for the caller's contracts |
 
 ### Exception → HTTP mapping
 
@@ -208,13 +225,14 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 
 **API layer** (`src/api/`):
 - `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, inviteFreelancer (single), inviteFreelancers (bulk), getInvites, acceptInvite, declineInvite, getJobInvites, getAllClientInvites, getInvitedJobs, createBid, getJobBids, acceptBid, declineBid, getMyBids, updateJob, archiveJob, **repostJob**, **deleteJob**
-- `contracts.ts` — `contractsApi`: `getClientContracts()`, `getFreelancerContracts()`, `submitWork(contractId, payload)`, `completeContract(contractId)`
+- `contracts.ts` — `contractsApi`: `getClientContracts()`, `getFreelancerContracts()`, `submitWork(contractId, payload)`, `completeContract(contractId)`, `requestRevision(contractId, note)`
+- `milestones.ts` — `milestonesApi`: `createMilestones()`, `getMilestonesByContract()`, `getFreelancerMilestones()`, `fundMilestone()`, `submitMilestone()`, `approveMilestone()`, `getSummaryForClient()`, `getSummaryForFreelancer()`
 - `user.ts` — `userApi`: `getMe()`, `updateMe()`
 - `users.ts` — `usersApi`: `searchFreelancers()`
 - `dashboard.ts` — `dashboardApi`: `getClientDashboard()`, `getFreelancerDashboard()`
 - `auth.ts` — auth calls (login, register, refresh, logout)
 
-**Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR` and `FREELANCER_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. The Contracts entry now links to `/contracts`; Payments is still a placeholder with no `path`. `withActive()` marks the active route.
+**Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR` and `FREELANCER_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. The Contracts entry links to `/contracts`; Payments is still a placeholder with no `path`. `withActive()` marks the active route.
 
 **Pagination pattern**: `BrowseJobs` uses server-side pagination (`SpringPage<JobResponse>` from `GET /jobs`). `MyJobs` and `FreelancerInvites` fetch all records once and paginate client-side (10 per page). `SpringPage<T>` is defined in `src/types/job.ts`.
 
@@ -234,6 +252,8 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `PlaceBidModal` — modal dialog for submitting a bid with form validation
 
 **Inline modals in `MyJobs`**: `EditJobModal` (edit OPEN/DRAFT job fields), `InviteModal` (search + single-invite a freelancer), `InviteesModal` (view all invitees + statuses for a job), archive confirmation dialog — all defined in the same file rather than as separate component files. `MyJobs` also supports list/grid view toggle and client-side pagination (10 per page).
+
+**`Contracts` page** (`src/pages/Contracts.tsx`): Dual-view page — list view at `/contracts`, detail view at `/contracts/:contractId`. The detail view embeds full milestone management: client can create milestones (inline multi-item form), fund escrow, and approve; freelancer can submit work per-milestone. Contract status REVISION_REQUESTED flow is also handled inline (revision note display + resubmit form). The `REVISION_REQUESTED` and `CANCELLED` statuses are new compared to the earlier contract module.
 
 **Path alias**: `@/` → `src/` (configured in `vite.config.ts` and `tsconfig.json`).
 

@@ -3,6 +3,8 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { contractsApi } from '@/api/contracts';
+import { milestonesApi } from '@/api/milestones';
+import type { MilestoneResponse } from '@/types/milestone';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
@@ -32,6 +34,17 @@ const STATUS_CFG: Record<ContractResponse['status'], { label: string; cls: strin
   COMPLETED:           { label: 'Completed',          cls: 'bg-emerald-50 text-emerald-700',   icon: 'task_alt'       },
   CANCELLED:           { label: 'Cancelled',          cls: 'bg-red-50 text-red-600',           icon: 'cancel'         },
 };
+
+const MILESTONE_STATUS_CFG: Record<MilestoneResponse['status'], { label: string; cls: string; icon: string }> = {
+  PENDING:     { label: 'Pending',     cls: 'bg-slate-100 text-slate-600',     icon: 'schedule'        },
+  IN_PROGRESS: { label: 'In Progress', cls: 'bg-secondary/10 text-secondary',  icon: 'autorenew'       },
+  SUBMITTED:   { label: 'Submitted',   cls: 'bg-amber-50 text-amber-700',      icon: 'pending_actions' },
+  APPROVED:    { label: 'Approved',    cls: 'bg-emerald-50 text-emerald-700',  icon: 'task_alt'        },
+  REJECTED:    { label: 'Rejected',    cls: 'bg-red-50 text-red-600',          icon: 'cancel'          },
+};
+
+interface MilestoneFormItem { title: string; description: string; amount: string; dueDate: string; }
+const emptyMilestoneItem = (): MilestoneFormItem => ({ title: '', description: '', amount: '', dueDate: '' });
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -75,6 +88,15 @@ export default function Contracts() {
   const [revisionNoteInput, setRevisionNoteInput] = useState('');
   const [requestingRevision, setRequestingRevision] = useState(false);
 
+  const [milestones,           setMilestones]           = useState<MilestoneResponse[]>([]);
+  const [loadingMilestones,    setLoadingMilestones]    = useState(false);
+  const [showMilestoneForm,    setShowMilestoneForm]    = useState(false);
+  const [milestoneFormItems,   setMilestoneFormItems]   = useState<MilestoneFormItem[]>([emptyMilestoneItem()]);
+  const [creatingMilestones,   setCreatingMilestones]   = useState(false);
+  const [fundingId,            setFundingId]            = useState<string | null>(null);
+  const [approvingId,          setApprovingId]          = useState<string | null>(null);
+  const [submittingMilestoneId, setSubmittingMilestoneId] = useState<string | null>(null);
+
   const profileRef = useRef<HTMLDivElement>(null);
 
   const fetchContracts = useCallback(async () => {
@@ -88,6 +110,20 @@ export default function Contracts() {
   }, [user?.role]);
 
   useEffect(() => { fetchContracts(); }, [fetchContracts]);
+
+  const fetchMilestones = useCallback(async (cId: string) => {
+    setLoadingMilestones(true);
+    try {
+      const data = await milestonesApi.getMilestonesByContract(cId);
+      setMilestones(data);
+    } catch { /* silent */ }
+    finally { setLoadingMilestones(false); }
+  }, []);
+
+  useEffect(() => {
+    if (contractId) { fetchMilestones(contractId); }
+    else { setMilestones([]); setShowMilestoneForm(false); setMilestoneFormItems([emptyMilestoneItem()]); }
+  }, [contractId, fetchMilestones]);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -140,6 +176,64 @@ export default function Contracts() {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setToast({ message: msg ?? 'Failed to complete contract. Please try again.', error: true });
     } finally { setCompleting(false); }
+  };
+
+  const handleFundMilestone = async (milestoneId: string) => {
+    setFundingId(milestoneId);
+    try {
+      await milestonesApi.fundMilestone(milestoneId);
+      setToast({ message: 'Milestone funded — payment locked in escrow.' });
+      if (contractId) await fetchMilestones(contractId);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setToast({ message: msg ?? 'Failed to fund milestone.', error: true });
+    } finally { setFundingId(null); }
+  };
+
+  const handleSubmitMilestone = async (milestoneId: string) => {
+    setSubmittingMilestoneId(milestoneId);
+    try {
+      await milestonesApi.submitMilestone(milestoneId);
+      setToast({ message: 'Milestone submitted! Awaiting client approval.' });
+      if (contractId) await fetchMilestones(contractId);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setToast({ message: msg ?? 'Failed to submit milestone.', error: true });
+    } finally { setSubmittingMilestoneId(null); }
+  };
+
+  const handleApproveMilestone = async (milestoneId: string) => {
+    setApprovingId(milestoneId);
+    try {
+      await milestonesApi.approveMilestone(milestoneId);
+      setToast({ message: 'Milestone approved — payment released!' });
+      if (contractId) await fetchMilestones(contractId);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setToast({ message: msg ?? 'Failed to approve milestone.', error: true });
+    } finally { setApprovingId(null); }
+  };
+
+  const handleCreateMilestones = async (cId: string) => {
+    const invalid = milestoneFormItems.some(i => !i.title.trim() || !i.amount || !i.dueDate);
+    if (invalid) { setToast({ message: 'Please fill in all milestone fields.', error: true }); return; }
+    setCreatingMilestones(true);
+    try {
+      const requests = milestoneFormItems.map(i => ({
+        title: i.title.trim(),
+        description: i.description.trim(),
+        amount: parseFloat(i.amount),
+        dueDate: `${i.dueDate}T23:59:00`,
+      }));
+      await milestonesApi.createMilestones(cId, requests);
+      setToast({ message: `${requests.length} milestone${requests.length > 1 ? 's' : ''} created.` });
+      setShowMilestoneForm(false);
+      setMilestoneFormItems([emptyMilestoneItem()]);
+      await fetchMilestones(cId);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setToast({ message: msg ?? 'Failed to create milestones.', error: true });
+    } finally { setCreatingMilestones(false); }
   };
 
   const handleRequestRevision = async (contract: ContractResponse) => {
@@ -454,6 +548,192 @@ export default function Contracts() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Milestones card */}
+            <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-lg font-bold text-on-surface">Milestones</h3>
+                  {milestones.length > 0 && (
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {milestones.filter(m => m.status === 'APPROVED').length}/{milestones.length} completed
+                      · {formatCurrency(milestones.filter(m => m.status === 'APPROVED').reduce((s, m) => s + m.amount, 0))} released
+                    </p>
+                  )}
+                </div>
+                {isClient && contract.status !== 'COMPLETED' && contract.status !== 'CANCELLED' && !showMilestoneForm && (
+                  <button onClick={() => setShowMilestoneForm(true)}
+                    className="flex items-center gap-1.5 text-sm font-semibold text-secondary hover:bg-secondary/5 px-3 py-1.5 rounded-lg transition-colors border border-secondary/20">
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    Add Milestones
+                  </button>
+                )}
+              </div>
+
+              {loadingMilestones ? (
+                <div className="flex items-center justify-center py-10">
+                  <span className="material-symbols-outlined animate-spin text-secondary text-[28px]">progress_activity</span>
+                </div>
+              ) : milestones.length === 0 && !showMilestoneForm ? (
+                <div className="flex flex-col items-center gap-3 py-10 text-center">
+                  <div className="w-14 h-14 bg-surface-container rounded-full flex items-center justify-center">
+                    <span className="material-symbols-outlined text-3xl text-on-surface-variant">checklist</span>
+                  </div>
+                  <p className="text-sm font-semibold text-on-surface">No milestones yet</p>
+                  <p className="text-xs text-on-surface-variant max-w-xs">
+                    {isClient ? 'Break this project into trackable deliverables with individual payments.' : 'The client hasn\'t added any milestones yet.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {milestones.map((m, idx) => {
+                    const mCfg = MILESTONE_STATUS_CFG[m.status];
+                    const isFunding = fundingId === m.id;
+                    const isApproving = approvingId === m.id;
+                    const isSubmittingM = submittingMilestoneId === m.id;
+                    return (
+                      <div key={m.id} className="border border-outline-variant rounded-xl p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                              <span className="text-xs font-bold text-on-surface-variant">#{idx + 1}</span>
+                              <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${mCfg.cls}`}>
+                                <span className="material-symbols-outlined text-[12px]">{mCfg.icon}</span>
+                                {mCfg.label}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${m.funded ? 'bg-emerald-50 text-emerald-700' : 'bg-orange-50 text-orange-700'}`}>
+                                {m.funded ? 'Escrowed' : 'Not Funded'}
+                              </span>
+                            </div>
+                            <p className="text-sm font-bold text-on-surface">{m.title}</p>
+                            {m.description && <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{m.description}</p>}
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-base font-bold text-secondary">{formatCurrency(m.amount)}</p>
+                            {m.dueDate && <p className="text-xs text-on-surface-variant mt-0.5">Due: {formatDate(m.dueDate)}</p>}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
+                          {isClient && !m.funded && m.status === 'PENDING' && (
+                            <button onClick={() => handleFundMilestone(m.id)} disabled={isFunding}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-white text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+                              {isFunding ? <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">lock</span>}
+                              {isFunding ? 'Funding…' : 'Fund Escrow'}
+                            </button>
+                          )}
+                          {isClient && m.status === 'SUBMITTED' && (
+                            <button onClick={() => handleApproveMilestone(m.id)} disabled={isApproving}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+                              {isApproving ? <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">verified</span>}
+                              {isApproving ? 'Approving…' : 'Approve & Release'}
+                            </button>
+                          )}
+                          {isFreelancer && m.funded && m.status === 'PENDING' && (
+                            <button onClick={() => handleSubmitMilestone(m.id)} disabled={isSubmittingM}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-white text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+                              {isSubmittingM ? <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">send</span>}
+                              {isSubmittingM ? 'Submitting…' : 'Submit Work'}
+                            </button>
+                          )}
+                          {m.status === 'APPROVED' && (
+                            <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
+                              <span className="material-symbols-outlined text-[14px]">task_alt</span>Payment Released
+                            </span>
+                          )}
+                          {isFreelancer && !m.funded && m.status === 'PENDING' && (
+                            <span className="flex items-center gap-1 text-xs text-orange-600 font-medium">
+                              <span className="material-symbols-outlined text-[14px]">hourglass_empty</span>
+                              Awaiting funding from client
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Create milestone form */}
+              {showMilestoneForm && (
+                <div className="mt-5 space-y-4 border-t border-slate-100 pt-5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-on-surface">New Milestones</h4>
+                    <button onClick={() => { setShowMilestoneForm(false); setMilestoneFormItems([emptyMilestoneItem()]); }}
+                      className="text-on-surface-variant hover:text-on-surface transition-colors">
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </div>
+                  {milestoneFormItems.map((item, idx) => (
+                    <div key={idx} className="p-4 border border-outline-variant rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Milestone {idx + 1}</p>
+                        {milestoneFormItems.length > 1 && (
+                          <button onClick={() => setMilestoneFormItems(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-red-400 hover:text-red-600 transition-colors">
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={item.title}
+                        onChange={e => setMilestoneFormItems(prev => prev.map((it, i) => i === idx ? { ...it, title: e.target.value } : it))}
+                        placeholder="Milestone title"
+                        className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary bg-white"
+                      />
+                      <textarea
+                        value={item.description}
+                        onChange={e => setMilestoneFormItems(prev => prev.map((it, i) => i === idx ? { ...it, description: e.target.value } : it))}
+                        rows={2}
+                        placeholder="Description (optional)"
+                        className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary bg-white resize-none"
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-on-surface-variant mb-1 px-0.5">Amount ($)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.amount}
+                            onChange={e => setMilestoneFormItems(prev => prev.map((it, i) => i === idx ? { ...it, amount: e.target.value } : it))}
+                            placeholder="500"
+                            className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-on-surface-variant mb-1 px-0.5">Due Date</label>
+                          <input
+                            type="date"
+                            value={item.dueDate}
+                            onChange={e => setMilestoneFormItems(prev => prev.map((it, i) => i === idx ? { ...it, dueDate: e.target.value } : it))}
+                            className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary bg-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={() => setMilestoneFormItems(prev => [...prev, emptyMilestoneItem()])}
+                    className="w-full py-2.5 border-2 border-dashed border-slate-200 rounded-xl text-sm font-semibold text-on-surface-variant hover:border-secondary hover:text-secondary transition-all flex items-center justify-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    Add Another Milestone
+                  </button>
+                  <div className="flex gap-3">
+                    <button onClick={() => handleCreateMilestones(contract.id)} disabled={creatingMilestones}
+                      className="flex-1 py-3 bg-secondary text-white rounded-lg text-sm font-bold hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2">
+                      {creatingMilestones ? (
+                        <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Creating…</>
+                      ) : (
+                        <><span className="material-symbols-outlined text-[16px]">save</span>Create Milestones</>
+                      )}
+                    </button>
+                    <button onClick={() => { setShowMilestoneForm(false); setMilestoneFormItems([emptyMilestoneItem()]); }}
+                      className="px-4 py-3 border border-outline-variant text-on-surface-variant rounded-lg text-sm font-semibold hover:bg-slate-50 transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Submission section */}
