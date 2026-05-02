@@ -1,6 +1,7 @@
 package com.bidforge.app.contract;
 
 import com.bidforge.app.contract.dto.ContractResponse;
+import com.bidforge.app.contract.dto.RevisionRequest;
 import com.bidforge.app.contract.dto.SubmitWorkRequest;
 import com.bidforge.app.user.User;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,15 @@ public class ContractController {
     @GetMapping("/freelancer")
     public List<ContractResponse> getFreelancerContracts() {
         return contractService.getFreelancerContracts(getCurrentUser());
+    }
+
+    @PatchMapping("/{contractId}/request-revision")
+    @PreAuthorize("hasRole('CLIENT')")
+    public void requestRevision(
+            @PathVariable UUID contractId,
+            @RequestBody RevisionRequest request
+    ) {
+        contractService.requestRevision(contractId, request, getCurrentUser());
     }
 
     @PatchMapping("/{contractId}/submit-work")

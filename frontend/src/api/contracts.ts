@@ -19,4 +19,8 @@ export const contractsApi = {
   completeContract: async (contractId: string): Promise<void> => {
     await api.patch(`/contracts/${contractId}/complete`);
   },
+
+  requestRevision: async (contractId: string, note: string): Promise<void> => {
+    await api.patch(`/contracts/${contractId}/request-revision`, { note });
+  },
 };

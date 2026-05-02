@@ -32,7 +32,7 @@ export const postJobSchema = z.object({
   ),
   attachmentUrl: z.string().optional(),
   visibility: z.enum(['PUBLIC', 'INVITE_ONLY']),
-  experienceLevel: z.enum(['ENTRY', 'INTERMEDIATE', 'EXPERT']).optional(),
+  experienceLevel: z.enum(['ENTRY', 'INTERMEDIATE', 'EXPERT'], { errorMap: () => ({ message: 'Please select an experience level' }) }),
   urgencyLevel: z.enum(['LOW', 'NORMAL', 'HIGH'], { errorMap: () => ({ message: 'Please select an urgency level' }) }),
 }).refine(d => d.budgetMax >= d.budgetMin, {
   message: 'Max must be ≥ min',

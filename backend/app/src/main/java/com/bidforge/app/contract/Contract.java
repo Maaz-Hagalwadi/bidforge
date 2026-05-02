@@ -42,6 +42,9 @@ public class Contract {
 
     private String submissionUrl;
 
+    private String revisionNote;
+    private LocalDateTime revisionRequestedAt;
+
     private LocalDateTime submittedAt;
 
     @CreationTimestamp

@@ -147,7 +147,7 @@ export default function PostJob() {
         attachmentUrl: values.attachmentUrl || undefined,
         visibility: values.visibility,
         draft: draftRef.current,
-        experienceLevel: values.experienceLevel || undefined,
+        experienceLevel: values.experienceLevel,
         urgencyLevel: values.urgencyLevel || undefined,
       });
       if (invitees.length > 0) {
@@ -339,17 +339,18 @@ export default function PostJob() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Experience Level</label>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">Experience Level <span className="text-red-500">*</span></label>
                         <div className="relative">
                           <select {...register('experienceLevel')}
-                            className="w-full px-4 py-2.5 border border-outline-variant rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all">
-                            <option value="">Any Level</option>
+                            className={`w-full px-4 py-2.5 border rounded-lg text-sm appearance-none bg-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all ${errors.experienceLevel ? 'border-red-400' : 'border-outline-variant'}`}>
+                            <option value="">Select experience level</option>
                             <option value="ENTRY">Entry Level</option>
                             <option value="INTERMEDIATE">Intermediate</option>
                             <option value="EXPERT">Expert</option>
                           </select>
                           <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">expand_more</span>
                         </div>
+                        {errors.experienceLevel && <p className="text-xs text-red-500 mt-1">{errors.experienceLevel.message}</p>}
                       </div>
 
                       <div>

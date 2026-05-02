@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation, type NavigateFunction } from 'reac
 import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
+import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
@@ -468,11 +469,8 @@ function JobDetailContent({
                   disabled={submitting}
                   className="flex items-center gap-2 bg-secondary text-white px-8 py-3 rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60"
                 >
-                  {submitting ? (
-                    <><span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span> Submitting…</>
-                  ) : (
-                    <><span>Submit Bid</span><span className="material-symbols-outlined text-[18px]">send</span></>
-                  )}
+                  <span>Submit Bid</span>
+                  <span className="material-symbols-outlined text-[18px]">send</span>
                 </button>
               </div>
             </form>
@@ -506,7 +504,7 @@ function JobDetailContent({
               <span className="material-symbols-outlined text-secondary text-[28px]">person</span>
             </div>
             <div>
-              <p className="text-base font-bold text-on-surface">Client #{job.clientId}</p>
+              <p className="text-base font-bold text-on-surface">{job.clientName ?? `Client #${job.clientId}`}</p>
               <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold mt-1 ${st.cls}`}>
                 {st.label}
               </span>
@@ -591,6 +589,20 @@ function JobDetailContent({
       </aside>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* BidForge submit overlay */}
+      {submitting && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl px-10 py-10 flex flex-col items-center gap-5 w-full max-w-[320px] mx-4 text-center">
+            <BidForgeLogo variant="dark" />
+            <div className="flex flex-col items-center gap-3">
+              <span className="material-symbols-outlined text-secondary animate-spin text-[40px]">progress_activity</span>
+              <p className="text-base font-bold text-on-surface">Placing your bid…</p>
+              <p className="text-sm text-on-surface-variant">Please wait while we submit your proposal.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
