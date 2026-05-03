@@ -7,7 +7,11 @@ import com.bidforge.app.common.exception.AccessDeniedException;
 import com.bidforge.app.milestone.dto.MilestoneResponse;
 import com.bidforge.app.milestone.dto.MilestoneSummary;
 import com.bidforge.app.payment.*;
+import com.bidforge.app.payment.dto.FundMilestoneRequest;
+import com.bidforge.app.payment.dto.PaymentIntentResponse;
 import com.bidforge.app.user.User;
+import com.stripe.exception.StripeException;
+import com.stripe.model.PaymentIntent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
@@ -23,8 +27,8 @@ public class MilestoneService {
     private final MilestoneRepository milestoneRepository;
     private final ContractRepository contractRepository;
     private final PaymentRepository paymentRepository;
+    private final StripeService stripeService;
 
-    // ✅ Create milestones
     @Transactional
     public void createMilestones(UUID contractId,
                                  List<com.bidforge.app.milestone.dto.CreateMilestoneRequest> requests,
@@ -76,8 +80,6 @@ public class MilestoneService {
                 .build();
     }
 
-
-
     public MilestoneSummary getSummaryForClient(User client) {
 
         List<Milestone> milestones = milestoneRepository.findAll()
@@ -98,13 +100,11 @@ public class MilestoneService {
         return buildSummary(milestones);
     }
 
-
     public List<MilestoneResponse> getMilestonesByContract(UUID contractId, User user) {
 
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ContractNotFoundException("Contract not found"));
 
-        // 🔒 Only client or assigned freelancer
         boolean isClient = contract.getClient().getId().equals(user.getId());
         boolean isFreelancer = contract.getFreelancer().getId().equals(user.getId());
 
@@ -127,10 +127,40 @@ public class MilestoneService {
                 .toList();
     }
 
+    public List<MilestoneResponse> getClientMilestones(User client) {
 
-    // 💰 Fund milestone (Escrow)
+        return milestoneRepository.findAll()
+                .stream()
+                .filter(m -> m.getContract().getClient().getId().equals(client.getId()))
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    // 💳 Create Stripe PaymentIntent before card entry
+    public PaymentIntentResponse createPaymentIntent(UUID milestoneId, User client) {
+
+        Milestone m = milestoneRepository.findById(milestoneId)
+                .orElseThrow(() -> new RuntimeException("Milestone not found"));
+
+        if (!m.getContract().getClient().getId().equals(client.getId())) {
+            throw new AccessDeniedException("Not your milestone");
+        }
+
+        if (m.isFunded()) {
+            throw new IllegalStateException("Already funded");
+        }
+
+        try {
+            PaymentIntent intent = stripeService.createPaymentIntent(m.getAmount());
+            return new PaymentIntentResponse(intent.getClientSecret(), m.getAmount());
+        } catch (StripeException e) {
+            throw new RuntimeException("Stripe error: " + e.getMessage(), e);
+        }
+    }
+
+    // 💰 Fund milestone (Escrow) — verified via Stripe PaymentIntent
     @Transactional
-    public void fundMilestone(UUID id, User client) {
+    public void fundMilestone(UUID id, User client, FundMilestoneRequest request) {
 
         Milestone m = milestoneRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Milestone not found"));
@@ -143,12 +173,21 @@ public class MilestoneService {
             throw new IllegalStateException("Already funded");
         }
 
+        try {
+            if (!stripeService.isPaymentSucceeded(request.getPaymentIntentId())) {
+                throw new IllegalStateException("Payment not completed");
+            }
+        } catch (StripeException e) {
+            throw new RuntimeException("Stripe verification failed: " + e.getMessage(), e);
+        }
+
         m.setFunded(true);
 
         Payment payment = Payment.builder()
                 .milestone(m)
                 .amount(m.getAmount())
                 .status(PaymentStatus.ESCROWED)
+                .stripePaymentIntentId(request.getPaymentIntentId())
                 .createdAt(LocalDateTime.now())
                 .build();
 
@@ -206,6 +245,7 @@ public class MilestoneService {
                 .status(m.getStatus())
                 .funded(m.isFunded())
                 .contractId(m.getContract().getId())
+                .jobTitle(m.getContract().getJob().getTitle())
                 .createdAt(m.getCreatedAt())
                 .build();
     }

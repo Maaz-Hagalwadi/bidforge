@@ -174,6 +174,13 @@ public class GlobalExceptionHandler {
                 "A record with the provided details already exists", request);
     }
 
+    @ExceptionHandler(com.stripe.exception.StripeException.class)
+    public ResponseEntity<ErrorResponse> handleStripeException(
+            com.stripe.exception.StripeException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_GATEWAY, "STRIPE_ERROR",
+                "Payment processing failed: " + ex.getUserMessage(), request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {

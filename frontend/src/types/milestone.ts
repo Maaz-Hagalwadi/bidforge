@@ -9,6 +9,7 @@ export interface MilestoneResponse {
   status: MilestoneStatus;
   funded: boolean;
   contractId: string;
+  jobTitle?: string;
   createdAt: string;
 }
 

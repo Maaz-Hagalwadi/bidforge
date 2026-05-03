@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { contractsApi } from '@/api/contracts';
 import { milestonesApi } from '@/api/milestones';
 import type { MilestoneResponse } from '@/types/milestone';
+import { PaymentModal } from '@/components/PaymentModal';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
@@ -93,9 +94,9 @@ export default function Contracts() {
   const [showMilestoneForm,    setShowMilestoneForm]    = useState(false);
   const [milestoneFormItems,   setMilestoneFormItems]   = useState<MilestoneFormItem[]>([emptyMilestoneItem()]);
   const [creatingMilestones,   setCreatingMilestones]   = useState(false);
-  const [fundingId,            setFundingId]            = useState<string | null>(null);
   const [approvingId,          setApprovingId]          = useState<string | null>(null);
   const [submittingMilestoneId, setSubmittingMilestoneId] = useState<string | null>(null);
+  const [paymentMilestone,     setPaymentMilestone]     = useState<MilestoneResponse | null>(null);
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -178,16 +179,15 @@ export default function Contracts() {
     } finally { setCompleting(false); }
   };
 
-  const handleFundMilestone = async (milestoneId: string) => {
-    setFundingId(milestoneId);
-    try {
-      await milestonesApi.fundMilestone(milestoneId);
-      setToast({ message: 'Milestone funded — payment locked in escrow.' });
-      if (contractId) await fetchMilestones(contractId);
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setToast({ message: msg ?? 'Failed to fund milestone.', error: true });
-    } finally { setFundingId(null); }
+  const handleFundMilestone = (milestoneId: string) => {
+    const milestone = milestones.find(m => m.id === milestoneId);
+    if (milestone) setPaymentMilestone(milestone);
+  };
+
+  const handlePaymentSuccess = async () => {
+    setPaymentMilestone(null);
+    setToast({ message: 'Milestone funded — payment locked in escrow.' });
+    if (contractId) await fetchMilestones(contractId);
   };
 
   const handleSubmitMilestone = async (milestoneId: string) => {
@@ -589,7 +589,6 @@ export default function Contracts() {
                 <div className="space-y-3">
                   {milestones.map((m, idx) => {
                     const mCfg = MILESTONE_STATUS_CFG[m.status];
-                    const isFunding = fundingId === m.id;
                     const isApproving = approvingId === m.id;
                     const isSubmittingM = submittingMilestoneId === m.id;
                     return (
@@ -616,10 +615,10 @@ export default function Contracts() {
                         </div>
                         <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
                           {isClient && !m.funded && m.status === 'PENDING' && (
-                            <button onClick={() => handleFundMilestone(m.id)} disabled={isFunding}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-white text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
-                              {isFunding ? <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">lock</span>}
-                              {isFunding ? 'Funding…' : 'Fund Escrow'}
+                            <button onClick={() => handleFundMilestone(m.id)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-white text-xs font-bold rounded-lg hover:brightness-110 transition-all">
+                              <span className="material-symbols-outlined text-[14px]">lock</span>
+                              Fund Escrow
                             </button>
                           )}
                           {isClient && m.status === 'SUBMITTED' && (
@@ -1145,6 +1144,15 @@ export default function Contracts() {
             </button>
           ))}
         </nav>
+      )}
+
+      {/* Payment modal */}
+      {paymentMilestone && (
+        <PaymentModal
+          milestone={paymentMilestone}
+          onSuccess={handlePaymentSuccess}
+          onClose={() => setPaymentMilestone(null)}
+        />
       )}
 
       {/* Toast */}

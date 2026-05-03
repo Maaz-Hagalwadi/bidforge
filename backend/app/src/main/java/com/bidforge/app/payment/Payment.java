@@ -28,6 +28,8 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
 
+    private String stripePaymentIntentId;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
