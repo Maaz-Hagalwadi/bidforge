@@ -21,6 +21,7 @@ public class MilestoneResponse {
     private boolean funded;
 
     private UUID contractId;
+    private String jobTitle;
 
     private LocalDateTime createdAt;
 

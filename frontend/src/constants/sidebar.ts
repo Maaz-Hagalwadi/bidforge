@@ -13,7 +13,7 @@ export const CLIENT_SIDEBAR: readonly SidebarLink[] = [
   { icon: 'gavel',        label: 'Bids',          short: 'Bids',     path: '/client/bids'          },
   { icon: 'chat',         label: 'Messages',      short: 'Messages', path: '/messages'             },
   { icon: 'receipt_long', label: 'Contracts',     short: 'Contracts',path: '/contracts'            },
-  { icon: 'payments',     label: 'Payments',      short: 'Payments', path: ''                      },
+  { icon: 'payments',     label: 'Payments',      short: 'Payments', path: '/payments'             },
 ];
 
 export const FREELANCER_SIDEBAR: readonly SidebarLink[] = [
@@ -23,7 +23,7 @@ export const FREELANCER_SIDEBAR: readonly SidebarLink[] = [
   { icon: 'gavel',        label: 'My Bids',     short: 'Bids',      path: '/freelancer/bids'      },
   { icon: 'chat',         label: 'Messages',    short: 'Messages',  path: '/messages'             },
   { icon: 'receipt_long', label: 'Contracts',   short: 'Contracts', path: '/contracts'            },
-  { icon: 'payments',     label: 'Payments',    short: 'Payments',  path: ''                      },
+  { icon: 'payments',     label: 'Payments',    short: 'Payments',  path: '/payments'             },
 ];
 
 export function withActive(links: readonly SidebarLink[], pathname: string): (SidebarLink & { active: boolean })[] {

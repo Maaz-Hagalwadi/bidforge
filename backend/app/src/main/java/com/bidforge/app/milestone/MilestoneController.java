@@ -3,8 +3,11 @@ package com.bidforge.app.milestone;
 import com.bidforge.app.milestone.dto.CreateMilestoneRequest;
 import com.bidforge.app.milestone.dto.MilestoneResponse;
 import com.bidforge.app.milestone.dto.MilestoneSummary;
+import com.bidforge.app.payment.dto.FundMilestoneRequest;
+import com.bidforge.app.payment.dto.PaymentIntentResponse;
 import com.bidforge.app.user.User;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -33,7 +36,6 @@ public class MilestoneController {
         milestoneService.createMilestones(contractId, request, getCurrentUser());
     }
 
-
     @GetMapping("/summary/client")
     @PreAuthorize("hasRole('CLIENT')")
     public MilestoneSummary clientSummary() {
@@ -46,8 +48,6 @@ public class MilestoneController {
         return milestoneService.getSummaryForFreelancer(getCurrentUser());
     }
 
-
-
     @GetMapping("/contract/{contractId}")
     public List<MilestoneResponse> getByContract(@PathVariable UUID contractId) {
         return milestoneService.getMilestonesByContract(contractId, getCurrentUser());
@@ -59,11 +59,22 @@ public class MilestoneController {
         return milestoneService.getFreelancerMilestones(getCurrentUser());
     }
 
+    @GetMapping("/client")
+    @PreAuthorize("hasRole('CLIENT')")
+    public List<MilestoneResponse> clientMilestones() {
+        return milestoneService.getClientMilestones(getCurrentUser());
+    }
+
+    @PostMapping("/{id}/create-payment-intent")
+    @PreAuthorize("hasRole('CLIENT')")
+    public ResponseEntity<PaymentIntentResponse> createPaymentIntent(@PathVariable UUID id) {
+        return ResponseEntity.ok(milestoneService.createPaymentIntent(id, getCurrentUser()));
+    }
 
     @PatchMapping("/{id}/fund")
     @PreAuthorize("hasRole('CLIENT')")
-    public void fund(@PathVariable UUID id) {
-        milestoneService.fundMilestone(id, getCurrentUser());
+    public void fund(@PathVariable UUID id, @RequestBody FundMilestoneRequest request) {
+        milestoneService.fundMilestone(id, getCurrentUser(), request);
     }
 
     @PatchMapping("/{id}/submit")
