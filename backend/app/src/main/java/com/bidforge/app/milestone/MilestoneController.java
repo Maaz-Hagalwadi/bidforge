@@ -88,4 +88,16 @@ public class MilestoneController {
     public void approve(@PathVariable UUID id) {
         milestoneService.approveMilestone(id, getCurrentUser());
     }
+
+    @PatchMapping("/{id}/reject")
+    @PreAuthorize("hasRole('CLIENT')")
+    public void reject(@PathVariable UUID id) {
+        milestoneService.rejectMilestone(id, getCurrentUser());
+    }
+
+    @PatchMapping("/{id}/refund")
+    @PreAuthorize("hasRole('CLIENT')")
+    public void refund(@PathVariable UUID id) {
+        milestoneService.refundMilestone(id, getCurrentUser());
+    }
 }

@@ -39,6 +39,8 @@ public class User {
     @Column(length = 500)
     private String profileImageUrl;
 
+    private String stripeAccountId;
+
     private Double rating;
 
     @Column(length = 200)

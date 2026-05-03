@@ -39,6 +39,7 @@ const STATUS_CFG: Record<ContractResponse['status'], { label: string; cls: strin
 const MILESTONE_STATUS_CFG: Record<MilestoneResponse['status'], { label: string; cls: string; icon: string }> = {
   PENDING:     { label: 'Pending',     cls: 'bg-slate-100 text-slate-600',     icon: 'schedule'        },
   IN_PROGRESS: { label: 'In Progress', cls: 'bg-secondary/10 text-secondary',  icon: 'autorenew'       },
+  FUNDED:      { label: 'Funded',      cls: 'bg-blue-50 text-blue-600',        icon: 'lock'            },
   SUBMITTED:   { label: 'Submitted',   cls: 'bg-amber-50 text-amber-700',      icon: 'pending_actions' },
   APPROVED:    { label: 'Approved',    cls: 'bg-emerald-50 text-emerald-700',  icon: 'task_alt'        },
   REJECTED:    { label: 'Rejected',    cls: 'bg-red-50 text-red-600',          icon: 'cancel'          },
@@ -95,6 +96,8 @@ export default function Contracts() {
   const [milestoneFormItems,   setMilestoneFormItems]   = useState<MilestoneFormItem[]>([emptyMilestoneItem()]);
   const [creatingMilestones,   setCreatingMilestones]   = useState(false);
   const [approvingId,          setApprovingId]          = useState<string | null>(null);
+  const [rejectingId,          setRejectingId]          = useState<string | null>(null);
+  const [refundingId,          setRefundingId]          = useState<string | null>(null);
   const [submittingMilestoneId, setSubmittingMilestoneId] = useState<string | null>(null);
   const [paymentMilestone,     setPaymentMilestone]     = useState<MilestoneResponse | null>(null);
 
@@ -212,6 +215,30 @@ export default function Contracts() {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setToast({ message: msg ?? 'Failed to approve milestone.', error: true });
     } finally { setApprovingId(null); }
+  };
+
+  const handleRejectMilestone = async (milestoneId: string) => {
+    setRejectingId(milestoneId);
+    try {
+      await milestonesApi.rejectMilestone(milestoneId);
+      setToast({ message: 'Milestone rejected — freelancer will need to resubmit.' });
+      if (contractId) await fetchMilestones(contractId);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setToast({ message: msg ?? 'Failed to reject milestone.', error: true });
+    } finally { setRejectingId(null); }
+  };
+
+  const handleRefundMilestone = async (milestoneId: string) => {
+    setRefundingId(milestoneId);
+    try {
+      await milestonesApi.refundMilestone(milestoneId);
+      setToast({ message: 'Payment refunded — escrow released back to you.' });
+      if (contractId) await fetchMilestones(contractId);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setToast({ message: msg ?? 'Failed to refund milestone.', error: true });
+    } finally { setRefundingId(null); }
   };
 
   const handleCreateMilestones = async (cId: string) => {
@@ -622,17 +649,31 @@ export default function Contracts() {
                             </button>
                           )}
                           {isClient && m.status === 'SUBMITTED' && (
-                            <button onClick={() => handleApproveMilestone(m.id)} disabled={isApproving}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
-                              {isApproving ? <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">verified</span>}
-                              {isApproving ? 'Approving…' : 'Approve & Release'}
+                            <>
+                              <button onClick={() => handleApproveMilestone(m.id)} disabled={isApproving}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+                                {isApproving ? <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">verified</span>}
+                                {isApproving ? 'Approving…' : 'Approve & Release'}
+                              </button>
+                              <button onClick={() => handleRejectMilestone(m.id)} disabled={rejectingId === m.id}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 text-xs font-bold rounded-lg hover:bg-red-100 disabled:opacity-60 transition-all">
+                                {rejectingId === m.id ? <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">cancel</span>}
+                                {rejectingId === m.id ? 'Rejecting…' : 'Reject'}
+                              </button>
+                            </>
+                          )}
+                          {isClient && m.funded && m.status !== 'APPROVED' && m.status !== 'SUBMITTED' && (
+                            <button onClick={() => handleRefundMilestone(m.id)} disabled={refundingId === m.id}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-lg hover:bg-slate-200 disabled:opacity-60 transition-all">
+                              {refundingId === m.id ? <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">undo</span>}
+                              {refundingId === m.id ? 'Refunding…' : 'Refund Escrow'}
                             </button>
                           )}
-                          {isFreelancer && m.funded && m.status === 'PENDING' && (
+                          {isFreelancer && m.funded && (m.status === 'PENDING' || m.status === 'REJECTED') && (
                             <button onClick={() => handleSubmitMilestone(m.id)} disabled={isSubmittingM}
                               className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-white text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
                               {isSubmittingM ? <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[14px]">send</span>}
-                              {isSubmittingM ? 'Submitting…' : 'Submit Work'}
+                              {isSubmittingM ? 'Submitting…' : m.status === 'REJECTED' ? 'Resubmit Work' : 'Submit Work'}
                             </button>
                           )}
                           {m.status === 'APPROVED' && (
@@ -644,6 +685,12 @@ export default function Contracts() {
                             <span className="flex items-center gap-1 text-xs text-orange-600 font-medium">
                               <span className="material-symbols-outlined text-[14px]">hourglass_empty</span>
                               Awaiting funding from client
+                            </span>
+                          )}
+                          {isFreelancer && m.status === 'REJECTED' && !m.funded && (
+                            <span className="flex items-center gap-1 text-xs text-red-600 font-medium">
+                              <span className="material-symbols-outlined text-[14px]">cancel</span>
+                              Rejected — client refunded the escrow
                             </span>
                           )}
                         </div>
@@ -1030,10 +1077,6 @@ export default function Contracts() {
                   </button>
                 )}
 
-                <button type="button" className="w-full bg-white border border-outline-variant text-on-surface py-3.5 rounded-xl text-sm font-bold hover:bg-slate-50 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                  <span className="material-symbols-outlined text-[18px]">schedule</span>
-                  Request Extension
-                </button>
               </div>
               <div className="mt-6 pt-5 border-t border-slate-100 flex items-start gap-3">
                 <span className="material-symbols-outlined text-secondary text-[20px] flex-shrink-0 mt-0.5">info</span>

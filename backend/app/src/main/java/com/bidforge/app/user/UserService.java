@@ -3,12 +3,14 @@ package com.bidforge.app.user;
 import com.bidforge.app.common.exception.UserNotFoundException;
 import com.bidforge.app.user.dto.request.UpdateUserRequest;
 import com.bidforge.app.user.dto.response.UserResponse;
+import com.stripe.model.Account;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -55,6 +57,8 @@ public class UserService {
                 .getAuthentication()
                 .getPrincipal();
     }
+
+
 
     private UserResponse mapToResponse(User user) {
         return UserResponse.builder()
