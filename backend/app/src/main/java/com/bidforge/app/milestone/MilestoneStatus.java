@@ -5,5 +5,5 @@ public enum MilestoneStatus {
     IN_PROGRESS,
     SUBMITTED,
     APPROVED,
-    REJECTED
+    FUNDED, REJECTED
 }

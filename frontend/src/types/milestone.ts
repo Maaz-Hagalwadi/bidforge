@@ -1,4 +1,4 @@
-export type MilestoneStatus = 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+export type MilestoneStatus = 'PENDING' | 'IN_PROGRESS' | 'FUNDED' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 
 export interface MilestoneResponse {
   id: string;

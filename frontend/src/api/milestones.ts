@@ -43,6 +43,14 @@ export const milestonesApi = {
     await api.patch(`/milestones/${milestoneId}/approve`);
   },
 
+  rejectMilestone: async (milestoneId: string): Promise<void> => {
+    await api.patch(`/milestones/${milestoneId}/reject`);
+  },
+
+  refundMilestone: async (milestoneId: string): Promise<void> => {
+    await api.patch(`/milestones/${milestoneId}/refund`);
+  },
+
   getSummaryForClient: async (): Promise<MilestoneSummary> => {
     const { data } = await api.get('/milestones/summary/client');
     return data;

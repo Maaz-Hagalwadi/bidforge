@@ -80,6 +80,31 @@ public class MilestoneService {
                 .build();
     }
 
+
+    @Transactional
+    public void handlePaymentSuccess(UUID milestoneId, String paymentIntentId) {
+
+        Milestone milestone = milestoneRepository.findById(milestoneId)
+                .orElseThrow(() -> new RuntimeException("Milestone not found"));
+
+        // 🔒 Idempotency (CRITICAL)
+        if (milestone.isFunded()) {
+            return;
+        }
+
+        milestone.setFunded(true);
+        milestone.setStatus(MilestoneStatus.FUNDED);
+        milestoneRepository.save(milestone);
+
+        paymentRepository.save(
+                Payment.builder()
+                        .milestone(milestone)
+                        .stripePaymentIntentId(paymentIntentId)
+                        .status(PaymentStatus.ESCROWED)
+                        .build()
+        );
+    }
+
     public MilestoneSummary getSummaryForClient(User client) {
 
         List<Milestone> milestones = milestoneRepository.findAll()
@@ -151,7 +176,7 @@ public class MilestoneService {
         }
 
         try {
-            PaymentIntent intent = stripeService.createPaymentIntent(m.getAmount());
+            PaymentIntent intent = stripeService.createPaymentIntent(m.getAmount(), milestoneId);
             return new PaymentIntentResponse(intent.getClientSecret(), m.getAmount());
         } catch (StripeException e) {
             throw new RuntimeException("Stripe error: " + e.getMessage(), e);
@@ -182,6 +207,7 @@ public class MilestoneService {
         }
 
         m.setFunded(true);
+        milestoneRepository.save(m);
 
         Payment payment = Payment.builder()
                 .milestone(m)
@@ -210,6 +236,7 @@ public class MilestoneService {
         }
 
         m.setStatus(MilestoneStatus.SUBMITTED);
+        milestoneRepository.save(m);
     }
 
     // ✅ Client approves → release payment
@@ -228,11 +255,77 @@ public class MilestoneService {
         }
 
         m.setStatus(MilestoneStatus.APPROVED);
+        milestoneRepository.save(m);
 
         Payment payment = paymentRepository.findByMilestone(m)
                 .orElseThrow(() -> new RuntimeException("Payment not found"));
 
         payment.setStatus(PaymentStatus.RELEASED);
+        paymentRepository.save(payment);
+
+        String freelancerStripeId = m.getContract().getFreelancer().getStripeAccountId();
+        if (freelancerStripeId != null) {
+            try {
+                stripeService.transferToFreelancer(m.getAmount(), freelancerStripeId);
+            } catch (StripeException e) {
+                throw new RuntimeException("Transfer to freelancer failed: " + e.getMessage(), e);
+            }
+        }
+    }
+
+    @Transactional
+    public void rejectMilestone(UUID id, User client) {
+        Milestone m = milestoneRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Milestone not found"));
+
+        if (!m.getContract().getClient().getId().equals(client.getId())) {
+            throw new AccessDeniedException("Not your milestone");
+        }
+
+        if (m.getStatus() != MilestoneStatus.SUBMITTED) {
+            throw new IllegalStateException("Can only reject a submitted milestone");
+        }
+
+        m.setStatus(MilestoneStatus.REJECTED);
+        milestoneRepository.save(m);
+    }
+
+    @Transactional
+    public void refundMilestone(UUID id, User client) {
+        Milestone m = milestoneRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Milestone not found"));
+
+        if (!m.getContract().getClient().getId().equals(client.getId())) {
+            throw new AccessDeniedException("Not your milestone");
+        }
+
+        if (!m.isFunded()) {
+            throw new IllegalStateException("Milestone is not funded");
+        }
+
+        if (m.getStatus() == MilestoneStatus.APPROVED) {
+            throw new IllegalStateException("Cannot refund an already approved milestone");
+        }
+
+        Payment payment = paymentRepository.findByMilestone(m)
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+        if (payment.getStatus() == PaymentStatus.REFUNDED) {
+            throw new IllegalStateException("Already refunded");
+        }
+
+        try {
+            stripeService.refundPaymentIntent(payment.getStripePaymentIntentId());
+        } catch (StripeException e) {
+            throw new RuntimeException("Stripe refund failed: " + e.getMessage(), e);
+        }
+
+        payment.setStatus(PaymentStatus.REFUNDED);
+        paymentRepository.save(payment);
+
+        m.setFunded(false);
+        m.setStatus(MilestoneStatus.PENDING);
+        milestoneRepository.save(m);
     }
 
     private MilestoneResponse mapToResponse(Milestone m) {
