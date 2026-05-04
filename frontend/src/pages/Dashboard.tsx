@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { NotificationBell } from '@/components/NotificationBell';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { userApi } from '@/api/user';
@@ -347,14 +348,7 @@ export default function Dashboard() {
   // ── Right-side content injected into the Navbar ──
   const navRight = (
     <div className="flex items-center gap-1">
-      {/* Notification bell */}
-      <button
-        className="relative p-2 text-white/70 hover:text-white transition-colors"
-        aria-label="Notifications"
-      >
-        <span className="material-symbols-outlined">notifications</span>
-        <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
-      </button>
+      <NotificationBell />
 
       {/* Profile avatar + dropdown */}
       <div className="relative" ref={profileRef}>

@@ -8,7 +8,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+
+import jakarta.persistence.LockModeType;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,6 +31,10 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
             String category,
             Pageable pageable
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT j FROM Job j WHERE j.id = :id")
+    java.util.Optional<Job> findByIdWithLock(UUID id);
 
     @Query("SELECT ji.job.id FROM JobInvite ji WHERE ji.freelancer.id = :freelancerId")
     List<UUID> findJobIdsByFreelancerId(Long freelancerId);

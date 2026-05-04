@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
+import { NotificationBell } from '@/components/NotificationBell';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CLIENT_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
@@ -668,9 +669,7 @@ export default function MyJobs() {
 
   const navRight = (
     <div className="flex items-center gap-1">
-      <button className="relative p-2 text-white/70 hover:text-white transition-colors" aria-label="Notifications">
-        <span className="material-symbols-outlined">notifications</span>
-      </button>
+      <NotificationBell />
       <div className="relative" ref={profileRef}>
         <button onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen} aria-label="Profile menu"
           className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-white/10 transition-colors">

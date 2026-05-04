@@ -10,13 +10,17 @@ import com.bidforge.app.job.dto.request.UpdateJobRequest;
 import com.bidforge.app.job.dto.response.JobResponse;
 import com.bidforge.app.job.enums.JobStatus;
 import com.bidforge.app.job.enums.Visibility;
+import com.bidforge.app.job.events.JobCreatedEvent;
 import com.bidforge.app.job_invite.InviteStatus;
 import com.bidforge.app.job_invite.JobInvite;
 import com.bidforge.app.job_invite.JobInviteRepository;
+import com.bidforge.app.notification.NotificationService;
+import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.user.Role;
 import com.bidforge.app.user.User;
 import com.bidforge.app.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -36,6 +40,8 @@ public class JobService {
     private final UserRepository userRepository;
     private final BidRepository bidRepository;
     private final ContractRepository contractRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final NotificationService notificationService;
 
     public JobResponse createJob(CreateJobRequest request, User client) {
         JobStatus status = request.isDraft() ? JobStatus.DRAFT : JobStatus.OPEN;
@@ -57,7 +63,11 @@ public class JobService {
                 .client(client)
                 .build();
 
-        return mapToResponse(jobRepository.save(job));
+        Job saved = jobRepository.save(job);
+
+        eventPublisher.publishEvent(new JobCreatedEvent(client, saved.getId()));
+
+        return mapToResponse(saved);
     }
 
     /** Returns all jobs owned by the client — newest first, enriched with bid count and assigned freelancer. */
@@ -207,6 +217,14 @@ public class JobService {
                 .build();
 
         jobInviteRepository.save(invite);
+
+        notificationService.createNotification(
+                freelancer,
+                "Job Invitation",
+                "You've been invited to bid on \"" + job.getTitle() + "\"",
+                NotificationType.JOB_INVITED,
+                job.getId()
+        );
     }
 
     @Transactional
