@@ -36,7 +36,9 @@ export default function Login() {
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const apiErr = err.response?.data as ApiError;
-        if (err.response?.status === 401) {
+        if (!err.response) {
+          setError('root', { message: 'Cannot reach the server. Please wait a moment and try again.' });
+        } else if (err.response.status === 401) {
           setError('root', { message: 'Invalid email or password.' });
         } else {
           setError('root', { message: apiErr?.message ?? 'Login failed. Please try again.' });
