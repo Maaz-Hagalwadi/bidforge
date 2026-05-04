@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    zoom: 0.8;
+  }
   html,
   body,
   #root {

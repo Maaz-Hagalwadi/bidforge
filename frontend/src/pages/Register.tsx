@@ -8,7 +8,6 @@ import { useAuth } from '@/context/AuthContext';
 import { FormField } from '@/components/ui/FormField';
 import { RoleSelector } from '@/components/ui/RoleSelector';
 import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
 import type { ApiError } from '@/types/auth';
 
 // Professional freelancer at modern workspace
@@ -221,7 +220,6 @@ export default function Register() {
         </section>
       </main>
 
-      <Footer />
     </div>
   );
 }

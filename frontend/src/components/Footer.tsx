@@ -2,7 +2,7 @@ import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 
 export function Footer() {
   return (
-    <footer className="bg-white border-t border-slate-200 mt-auto">
+    <footer className="border-t border-outline-variant mt-auto">
       <div className="w-full max-w-8xl mx-auto px-4 md:px-8 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
