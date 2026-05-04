@@ -98,7 +98,7 @@ export default function FreelancerBids() {
   );
 
   return (
-    <div className="bg-surface min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col">
       <Navbar variant="app" authRight={navRight} />
 
       <div className="flex flex-1 min-h-0">
@@ -113,7 +113,7 @@ export default function FreelancerBids() {
               <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
             </button>
           </div>
-          <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
+          <nav className="flex-1 min-h-0 py-2 px-2 space-y-0.5 overflow-y-auto">
             {sidebarLinks.map(({ icon, label, active, path }) => (
               <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
                 className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white font-medium' : 'text-white/30 cursor-default font-medium'].join(' ')}>
@@ -122,7 +122,14 @@ export default function FreelancerBids() {
               </button>
             ))}
           </nav>
-          <div className="p-3 border-t border-white/10 flex-shrink-0">
+          <div className="mt-auto p-3 space-y-2 border-t border-white/10 flex-shrink-0">
+            {sidebarOpen && (
+              <div className="bg-white/5 border border-white/10 text-white rounded-xl p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">PRO PLAN</p>
+                <p className="text-xs font-semibold leading-relaxed mb-3 text-white/80">Unlimited active contracts and priority support.</p>
+                <button className="w-full py-2 bg-secondary rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
+              </div>
+            )}
             <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
               className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
               <span className="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>
@@ -132,7 +139,7 @@ export default function FreelancerBids() {
         </aside>
 
         {/* Main */}
-        <main className="flex-1 overflow-y-auto min-w-0 flex flex-col">
+        <main className="flex-1 overflow-y-auto min-w-0 flex flex-col bg-surface">
           <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             <div>

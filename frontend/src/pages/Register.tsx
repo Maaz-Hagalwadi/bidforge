@@ -7,6 +7,7 @@ import { registerSchema, type RegisterFormValues } from '@/lib/schemas';
 import { useAuth } from '@/context/AuthContext';
 import { FormField } from '@/components/ui/FormField';
 import { RoleSelector } from '@/components/ui/RoleSelector';
+import { BidForgeLoader } from '@/components/ui/BidForgeLoader';
 import { Navbar } from '@/components/Navbar';
 import type { ApiError } from '@/types/auth';
 
@@ -59,6 +60,7 @@ export default function Register() {
 
   return (
     <div className="bg-dark-navy antialiased flex flex-col h-screen overflow-hidden">
+      {isSubmitting && <BidForgeLoader message="Creating your account…" />}
       <Navbar variant="auth" />
 
       {/* Main two-panel layout — fills remaining viewport height */}

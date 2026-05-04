@@ -385,7 +385,7 @@ export default function Dashboard() {
   );
 
   return (
-    <div className="bg-surface min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col">
       {/* Top navbar — hidden on mobile, shown on md+ via Navbar component */}
       <Navbar variant="app" authRight={navRight} />
 
@@ -424,7 +424,7 @@ export default function Dashboard() {
           </div>
 
           {/* Nav links */}
-          <nav className="flex-1 py-2 px-2 space-y-0.5 overflow-y-auto">
+          <nav className="flex-1 min-h-0 py-2 px-2 space-y-0.5 overflow-y-auto">
             {SIDEBAR_LINKS.map(({ icon, label, active }) => (
               <a
                 key={label}
@@ -445,7 +445,7 @@ export default function Dashboard() {
           </nav>
 
           {/* Bottom: PRO card + logout */}
-          <div className="p-3 space-y-2 border-t border-white/10 flex-shrink-0">
+          <div className="mt-auto p-3 space-y-2 border-t border-white/10 flex-shrink-0">
             {sidebarOpen && (
               <div className="bg-white/5 border border-white/10 text-white rounded-xl p-4">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">
@@ -475,7 +475,7 @@ export default function Dashboard() {
         </aside>
 
         {/* ── Main content ── */}
-        <main className="flex-1 overflow-y-auto min-w-0 flex flex-col">
+        <main className="flex-1 overflow-y-auto min-w-0 flex flex-col bg-surface">
           <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 space-y-8 max-w-[1280px] w-full mx-auto">
 
             {/* Welcome header */}

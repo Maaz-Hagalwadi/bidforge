@@ -6,6 +6,7 @@ import axios from 'axios';
 import { loginSchema, type LoginFormValues } from '@/lib/schemas';
 import { useAuth } from '@/context/AuthContext';
 import { FormField } from '@/components/ui/FormField';
+import { BidForgeLoader } from '@/components/ui/BidForgeLoader';
 import { Navbar } from '@/components/Navbar';
 import type { ApiError } from '@/types/auth';
 
@@ -47,13 +48,14 @@ export default function Login() {
   };
 
   return (
-    <div className="bg-dark-navy antialiased flex flex-col min-h-screen">
+    <div className="bg-dark-navy antialiased flex flex-col h-screen overflow-hidden">
+      {isSubmitting && <BidForgeLoader message="Signing in…" />}
       <Navbar variant="auth" />
 
       {/* Main two-panel layout */}
-      <main className="flex-1 w-full flex flex-col md:flex-row overflow-hidden">
+      <main className="flex-1 w-full flex flex-col md:flex-row overflow-hidden min-h-0">
         {/* Left: Branding */}
-        <section className="relative w-full md:w-1/2 h-[40vh] md:h-auto overflow-hidden">
+        <section className="relative w-full md:w-1/2 h-[45vh] md:h-full overflow-hidden flex-shrink-0 md:flex-shrink">
           <img
             alt="Team of professionals collaborating in a modern office"
             className="absolute inset-0 w-full h-full object-cover"
@@ -71,8 +73,8 @@ export default function Login() {
         </section>
 
         {/* Right: Form */}
-        <section className="w-full md:w-1/2 bg-dark-navy flex items-center justify-center p-8 md:p-16 overflow-y-auto">
-          <div className="w-full max-w-md space-y-xl py-8 md:py-12">
+        <section className="w-full md:w-1/2 bg-dark-navy flex items-center justify-center p-8 md:p-16 overflow-y-auto flex-1 min-h-0">
+          <div className="w-full max-w-md space-y-xl py-4 md:py-8">
             <div className="text-center md:text-left">
               <h2 className="text-white text-h2 mb-sm">Welcome Back</h2>
               <p className="text-on-primary-container text-body-md">
