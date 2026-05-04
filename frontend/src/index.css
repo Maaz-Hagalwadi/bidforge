@@ -4,7 +4,6 @@
 
 @layer base {
   html {
-    zoom: 0.8;
     background-color: #0A192F;
   }
   body {
