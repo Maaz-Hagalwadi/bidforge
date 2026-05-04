@@ -7,7 +7,6 @@ import { loginSchema, type LoginFormValues } from '@/lib/schemas';
 import { useAuth } from '@/context/AuthContext';
 import { FormField } from '@/components/ui/FormField';
 import { Navbar } from '@/components/Navbar';
-import { Footer } from '@/components/Footer';
 import type { ApiError } from '@/types/auth';
 
 // Professionals collaborating — different from register panel
@@ -178,7 +177,6 @@ export default function Login() {
         </section>
       </main>
 
-      <Footer />
     </div>
   );
 }

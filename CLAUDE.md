@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented so far: auth, user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, milestones with escrow-style payments, and dashboards. Planned: Chat, Notification modules.
+**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented: auth, user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, milestones with escrow-style payments, dashboards, real-time notifications (WebSocket + REST), and Stripe payment integration (partially wired). Planned: Chat module.
 
 ---
 
@@ -57,8 +57,17 @@ milestone/     Milestone (entity), MilestoneController, MilestoneService, Milest
                dto/  CreateMilestoneRequest, MilestoneResponse, MilestoneSummary
 payment/       Payment (entity), PaymentRepository,
                PaymentStatus (enum: ESCROWED/RELEASED)
-               (no controller — lifecycle managed entirely by MilestoneService)
+               StripeService (PaymentIntent, Transfer, Connect account, refund)
+               StripeWebhookController (webhook handler)
+               dto/  FundMilestoneRequest, PaymentIntentResponse
+               (Payment lifecycle managed by MilestoneService; StripeService is wired
+                but Stripe flows are partially integrated — not all paths use real Stripe)
 dashboard/     DashboardController, DashboardService (stats aggregation)
+notification/  Notification (entity), NotificationController, NotificationService,
+               NotificationRepository, NotificationType (enum), NotificationEventListener
+               (event-driven: Spring ApplicationEvent → listener → persist + push via WS)
+websocket/     WebSocketConfig (STOMP/SockJS on /ws, brokers /topic /queue /user),
+               WebSocketAuthInterceptor (JWT auth on CONNECT frame)
 config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler
 common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 ```
@@ -144,6 +153,10 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | PATCH | `/milestones/{id}/approve` | CLIENT | Approve milestone → APPROVED, Payment → RELEASED |
 | GET | `/milestones/summary/client` | CLIENT | Aggregated milestone stats for the caller's contracts |
 | GET | `/milestones/summary/freelancer` | FREELANCER | Aggregated milestone stats for the caller's contracts |
+| GET | `/notifications` | Yes | All notifications for caller (newest first) |
+| GET | `/notifications/unread-count` | Yes | Count of unread notifications |
+| PATCH | `/notifications/{id}/read` | Yes | Mark a notification as read; pushes updated count via WS |
+| PATCH | `/notifications/read-all` | Yes | Mark all notifications read; pushes count=0 via WS |
 
 ### Exception → HTTP mapping
 
@@ -164,6 +177,17 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | `HttpMessageNotReadableException` | 400 | `MALFORMED_REQUEST` |
 
 `ErrorResponse` shape: `{ timestamp, status, error, message, path, errors? }`.
+
+### WebSocket & real-time notifications
+
+- STOMP over SockJS endpoint: `ws://localhost:8080/ws`
+- `WebSocketAuthInterceptor` reads the JWT from the `Authorization` STOMP header on `CONNECT` and sets the Spring `Principal` to the user's email.
+- `NotificationService` pushes to two user-specific destinations after any create/mark-read operation:
+  - `/user/{email}/queue/notifications` — the new `Notification` object
+  - `/user/{email}/queue/notification-count` — updated unread count (`long`)
+- Events fire via Spring `ApplicationEventPublisher` (e.g. `JobCreatedEvent`); `NotificationEventListener` handles them and delegates to `NotificationService`. New domain events go in `job/events/` or a module-specific `events/` sub-package.
+- `NotificationService.createNotification` runs in `Propagation.REQUIRES_NEW` so a failure there doesn't roll back the calling transaction.
+- **Env var required**: `stripe.secret-key` (and optionally `app.base-url`) for Stripe features; missing key causes startup failure if `StripeService` is loaded.
 
 ### Testing strategy
 
@@ -211,6 +235,9 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 | `/client/archived-jobs` | `ArchivedJobs` | `ClientRoute` |
 | `/contracts` | `Contracts` | `ProtectedRoute` |
 | `/contracts/:contractId` | `Contracts` | `ProtectedRoute` |
+| `/payments` | `Payments` | `ProtectedRoute` |
+| `/messages` | `Messages` | `ProtectedRoute` | (UI-only, mock data — no backend) |
+| `/profile/:id` | `Profile` | — (public) |
 | `/dashboard` | redirect → `/client/dashboard` | — |
 
 `ClientRoute` / `FreelancerRoute` (in `src/components/ProtectedRoute.tsx`) extend `ProtectedRoute` and additionally check `user.role`; redirect to the correct dashboard if wrong role.
@@ -223,6 +250,8 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 
 **Auth context** (`src/context/AuthContext.tsx`): `isAuthenticated`, `isLoading`, `login()`, `register()`, `logout()`, `refreshUser()`. `register()` does **not** auto-login. Consumed via the `useAuth()` hook.
 
+**Notification context** (`src/context/NotificationContext.tsx`): Manages WebSocket connection (STOMP over SockJS), unread count, and notification list. Provides `useNotifications()` hook. Connects after login using the access token; subscribes to `/user/queue/notifications` and `/user/queue/notification-count`. `NotificationProvider` wraps the entire app (inside `AuthProvider`). `NotificationToastContainer` renders real-time toast popups for incoming WS notifications.
+
 **API layer** (`src/api/`):
 - `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, inviteFreelancer (single), inviteFreelancers (bulk), getInvites, acceptInvite, declineInvite, getJobInvites, getAllClientInvites, getInvitedJobs, createBid, getJobBids, acceptBid, declineBid, getMyBids, updateJob, archiveJob, **repostJob**, **deleteJob**
 - `contracts.ts` — `contractsApi`: `getClientContracts()`, `getFreelancerContracts()`, `submitWork(contractId, payload)`, `completeContract(contractId)`, `requestRevision(contractId, note)`
@@ -230,6 +259,7 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `user.ts` — `userApi`: `getMe()`, `updateMe()`
 - `users.ts` — `usersApi`: `searchFreelancers()`
 - `dashboard.ts` — `dashboardApi`: `getClientDashboard()`, `getFreelancerDashboard()`
+- `notifications.ts` — `notificationsApi`: `getAll()`, `getUnreadCount()`, `markAsRead(id)`, `markAllAsRead()`
 - `auth.ts` — auth calls (login, register, refresh, logout)
 
 **Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR` and `FREELANCER_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. The Contracts entry links to `/contracts`; Payments is still a placeholder with no `path`. `withActive()` marks the active route.
@@ -250,6 +280,8 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `PageLoader` — full-area spinner with message
 - `Toast` — auto-dismiss success/error notification
 - `PlaceBidModal` — modal dialog for submitting a bid with form validation
+- `NotificationBell` — bell icon with unread badge; opens dropdown list of notifications with per-type icons and click-to-navigate; calls `markAsRead` on open
+- `NotificationToastContainer` — renders transient toast popups for real-time WS notifications
 
 **Inline modals in `MyJobs`**: `EditJobModal` (edit OPEN/DRAFT job fields), `InviteModal` (search + single-invite a freelancer), `InviteesModal` (view all invitees + statuses for a job), archive confirmation dialog — all defined in the same file rather than as separate component files. `MyJobs` also supports list/grid view toggle and client-side pagination (10 per page).
 
