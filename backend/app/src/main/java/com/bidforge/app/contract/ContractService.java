@@ -2,6 +2,8 @@ package com.bidforge.app.contract;
 
 import com.bidforge.app.common.exception.AccessDeniedException;
 import com.bidforge.app.common.exception.ContractNotFoundException;
+import com.bidforge.app.notification.NotificationService;
+import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.contract.dto.ContractResponse;
 import com.bidforge.app.contract.dto.RevisionRequest;
 import com.bidforge.app.contract.dto.SubmitWorkRequest;
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class ContractService {
 
     private final ContractRepository contractRepository;
+    private final NotificationService notificationService;
 
 
 
@@ -62,6 +65,14 @@ public class ContractService {
         // 🔥 Update job
         Job job = contract.getJob();
         job.setStatus(JobStatus.COMPLETED);
+
+        notificationService.createNotification(
+                contract.getFreelancer(),
+                "Contract Completed",
+                "Congratulations! \"" + job.getTitle() + "\" has been completed.",
+                NotificationType.CONTRACT_COMPLETED,
+                contract.getId()
+        );
     }
 
     @Transactional
@@ -87,6 +98,14 @@ public class ContractService {
         // ✅ Update status
         contract.setStatus(ContractStatus.REVISION_REQUESTED);
         contractRepository.save(contract);
+
+        notificationService.createNotification(
+                contract.getFreelancer(),
+                "Revision Requested",
+                "Client requested revisions on \"" + contract.getJob().getTitle() + "\".",
+                NotificationType.REVISION_REQUESTED,
+                contract.getId()
+        );
     }
 
 
@@ -120,6 +139,14 @@ public class ContractService {
         contract.setStatus(ContractStatus.SUBMITTED);
 
         contractRepository.save(contract);
+
+        notificationService.createNotification(
+                contract.getClient(),
+                "Work Submitted",
+                "Freelancer submitted work for review on \"" + contract.getJob().getTitle() + "\".",
+                NotificationType.CONTRACT_SUBMITTED,
+                contract.getId()
+        );
     }
 
 

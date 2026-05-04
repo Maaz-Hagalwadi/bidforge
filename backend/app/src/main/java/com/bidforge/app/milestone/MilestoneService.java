@@ -9,6 +9,8 @@ import com.bidforge.app.milestone.dto.MilestoneSummary;
 import com.bidforge.app.payment.*;
 import com.bidforge.app.payment.dto.FundMilestoneRequest;
 import com.bidforge.app.payment.dto.PaymentIntentResponse;
+import com.bidforge.app.notification.NotificationService;
+import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.user.User;
 import com.stripe.exception.StripeException;
 import com.stripe.model.PaymentIntent;
@@ -28,6 +30,7 @@ public class MilestoneService {
     private final ContractRepository contractRepository;
     private final PaymentRepository paymentRepository;
     private final StripeService stripeService;
+    private final NotificationService notificationService;
 
     @Transactional
     public void createMilestones(UUID contractId,
@@ -54,6 +57,14 @@ public class MilestoneService {
 
             milestoneRepository.save(m);
         }
+
+        notificationService.createNotification(
+                contract.getFreelancer(),
+                "Milestones Added",
+                requests.size() + " milestone(s) were added to your contract.",
+                NotificationType.MILESTONE_CREATED,
+                contractId
+        );
     }
 
     private MilestoneSummary buildSummary(List<Milestone> list) {
@@ -102,6 +113,14 @@ public class MilestoneService {
                         .stripePaymentIntentId(paymentIntentId)
                         .status(PaymentStatus.ESCROWED)
                         .build()
+        );
+
+        notificationService.createNotification(
+                milestone.getContract().getFreelancer(),
+                "Milestone Funded",
+                "\"" + milestone.getTitle() + "\" has been funded and is ready to start.",
+                NotificationType.MILESTONE_FUNDED,
+                milestone.getContract().getId()
         );
     }
 
@@ -218,6 +237,14 @@ public class MilestoneService {
                 .build();
 
         paymentRepository.save(payment);
+
+        notificationService.createNotification(
+                m.getContract().getFreelancer(),
+                "Milestone Funded",
+                "\"" + m.getTitle() + "\" has been funded and is ready to start.",
+                NotificationType.MILESTONE_FUNDED,
+                m.getContract().getId()
+        );
     }
 
     // 👨‍💻 Freelancer submits work
@@ -237,6 +264,14 @@ public class MilestoneService {
 
         m.setStatus(MilestoneStatus.SUBMITTED);
         milestoneRepository.save(m);
+
+        notificationService.createNotification(
+                m.getContract().getClient(),
+                "Work Submitted",
+                "\"" + m.getTitle() + "\" has been submitted for your review.",
+                NotificationType.MILESTONE_SUBMITTED,
+                m.getContract().getId()
+        );
     }
 
     // ✅ Client approves → release payment
@@ -271,6 +306,14 @@ public class MilestoneService {
                 throw new RuntimeException("Transfer to freelancer failed: " + e.getMessage(), e);
             }
         }
+
+        notificationService.createNotification(
+                m.getContract().getFreelancer(),
+                "Milestone Approved",
+                "\"" + m.getTitle() + "\" was approved. Payment is being released.",
+                NotificationType.MILESTONE_APPROVED,
+                m.getContract().getId()
+        );
     }
 
     @Transactional
@@ -288,6 +331,14 @@ public class MilestoneService {
 
         m.setStatus(MilestoneStatus.REJECTED);
         milestoneRepository.save(m);
+
+        notificationService.createNotification(
+                m.getContract().getFreelancer(),
+                "Milestone Rejected",
+                "\"" + m.getTitle() + "\" was rejected and needs revisions.",
+                NotificationType.MILESTONE_REJECTED,
+                m.getContract().getId()
+        );
     }
 
     @Transactional
@@ -326,6 +377,22 @@ public class MilestoneService {
         m.setFunded(false);
         m.setStatus(MilestoneStatus.PENDING);
         milestoneRepository.save(m);
+
+        String msg = "Escrow for \"" + m.getTitle() + "\" has been refunded.";
+        notificationService.createNotification(
+                m.getContract().getClient(),
+                "Milestone Refunded",
+                msg,
+                NotificationType.MILESTONE_REFUNDED,
+                m.getContract().getId()
+        );
+        notificationService.createNotification(
+                m.getContract().getFreelancer(),
+                "Milestone Refunded",
+                msg,
+                NotificationType.MILESTONE_REFUNDED,
+                m.getContract().getId()
+        );
     }
 
     private MilestoneResponse mapToResponse(Milestone m) {

@@ -2,6 +2,8 @@ package com.bidforge.app.job_invite;
 
 import com.bidforge.app.common.exception.AccessDeniedException;
 import com.bidforge.app.common.exception.InviteAlreadyProcessedException;
+import com.bidforge.app.notification.NotificationService;
+import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.common.exception.InviteNotFoundException;
 import com.bidforge.app.common.exception.JobNotFoundException;
 import com.bidforge.app.job.Job;
@@ -25,6 +27,7 @@ public class JobInviteService {
     private final JobRepository jobRepository;
     private final UserRepository userRepository;
     private final JobInviteRepository jobInviteRepository;
+    private final NotificationService notificationService;
 
     // 👉 Invite freelancers
     public void inviteFreelancers(UUID jobId, List<Long> freelancerIds, User client) {
@@ -59,6 +62,14 @@ public class JobInviteService {
                     .build();
 
             jobInviteRepository.save(invite);
+
+            notificationService.createNotification(
+                    freelancer,
+                    "Job Invitation",
+                    "You've been invited to bid on \"" + job.getTitle() + "\"",
+                    NotificationType.JOB_INVITED,
+                    job.getId()
+            );
         }
     }
 

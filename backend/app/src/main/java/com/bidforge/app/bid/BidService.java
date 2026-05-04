@@ -16,6 +16,8 @@ import com.bidforge.app.job.enums.Visibility;
 import com.bidforge.app.job_invite.InviteStatus;
 import com.bidforge.app.job_invite.JobInvite;
 import com.bidforge.app.job_invite.JobInviteRepository;
+import com.bidforge.app.notification.NotificationService;
+import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.user.User;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class BidService {
     private final JobRepository jobRepository;
     private final JobInviteRepository jobInviteRepository;
     private final ContractRepository contractRepository;
+    private final NotificationService notificationService;
 
     public BidResponse createBid(UUID jobId, CreateBidRequest request, User freelancer) {
 
@@ -69,6 +72,14 @@ public class BidService {
                 .build();
 
         Bid saved = bidRepository.save(bid);
+
+        notificationService.createNotification(
+                job.getClient(),
+                "New Bid Received",
+                "A freelancer placed a bid on your job \"" + job.getTitle() + "\"",
+                NotificationType.BID_PLACED,
+                job.getId()
+        );
 
         return mapToResponse(saved);
     }
@@ -113,21 +124,25 @@ public class BidService {
 
         bid.setStatus(BidStatus.REJECTED);
         bidRepository.save(bid);
+
+        notificationService.createNotification(
+                bid.getFreelancer(),
+                "Bid Declined",
+                "Your bid on \"" + job.getTitle() + "\" was declined.",
+                NotificationType.BID_REJECTED,
+                job.getId()
+        );
     }
 
     @Transactional
     public void acceptBid(UUID bidId, User client) {
 
-
-
         Bid bid = bidRepository.findById(bidId)
                 .orElseThrow(() -> new BidNotFoundException("Bid not found"));
 
-        Job job = bid.getJob();
-
-        System.out.println("Bid ID: " + bidId);
-        System.out.println("Job: " + bid.getJob());
-        System.out.println("Client: " + client.getId());
+        // Lock the job row to prevent concurrent double-accept race condition
+        Job job = jobRepository.findByIdWithLock(bid.getJob().getId())
+                .orElseThrow(() -> new JobNotFoundException("Job not found"));
 
         // 🔒 Ownership check
         if (job.getClient() == null || !job.getClient().getId().equals(client.getId())) {
@@ -152,6 +167,13 @@ public class BidService {
         for (Bid b : allBids) {
             if (!b.getId().equals(bidId)) {
                 b.setStatus(BidStatus.REJECTED);
+                notificationService.createNotification(
+                        b.getFreelancer(),
+                        "Bid Not Selected",
+                        "Another freelancer was selected for \"" + job.getTitle() + "\".",
+                        NotificationType.BID_REJECTED,
+                        job.getId()
+                );
             }
         }
 
@@ -169,7 +191,15 @@ public class BidService {
                 .status(ContractStatus.ACTIVE)
                 .build();
 
-        contractRepository.save(contract);
+        Contract savedContract = contractRepository.save(contract);
+
+        notificationService.createNotification(
+                bid.getFreelancer(),
+                "Bid Accepted!",
+                "Your bid was accepted. A contract has been created for \"" + job.getTitle() + "\".",
+                NotificationType.BID_ACCEPTED,
+                savedContract.getId()
+        );
     }
 
 

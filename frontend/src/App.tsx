@@ -1,5 +1,25 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React from 'react';
 import { AuthProvider } from '@/context/AuthContext';
+import { NotificationProvider } from '@/context/NotificationContext';
+import { NotificationToastContainer } from '@/components/NotificationToastContainer';
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(e: Error) { return { error: e }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 32, fontFamily: 'monospace', background: '#0a192f', color: '#f87171', minHeight: '100vh' }}>
+          <h2>App Error</h2>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 13 }}>{(this.state.error as Error).message}</pre>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, color: '#94a3b8' }}>{(this.state.error as Error).stack}</pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { ProtectedRoute, ClientRoute, FreelancerRoute } from '@/components/ProtectedRoute';
 import Landing from '@/pages/Landing';
 import Register from '@/pages/Register';
@@ -23,7 +43,10 @@ import Payments from '@/pages/Payments';
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
+      <NotificationProvider>
+      <NotificationToastContainer />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -84,6 +107,8 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </NotificationProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }

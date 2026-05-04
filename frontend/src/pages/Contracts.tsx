@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { NotificationBell } from '@/components/NotificationBell';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
@@ -80,6 +81,8 @@ export default function Contracts() {
   const [profileOpen,  setProfileOpen]  = useState(false);
   const [contracts,    setContracts]    = useState<ContractResponse[]>([]);
   const [loading,      setLoading]      = useState(true);
+  const [listPage,     setListPage]     = useState(1);
+  const LIST_PAGE_SIZE = 6;
   const [toast,        setToast]        = useState<{ message: string; error?: boolean } | null>(null);
   const [submitNote,   setSubmitNote]   = useState('');
   const [submitUrl,    setSubmitUrl]    = useState('');
@@ -289,9 +292,7 @@ export default function Contracts() {
 
   const navRight = (
     <div className="flex items-center gap-1">
-      <button className="relative p-2 text-white/70 hover:text-white transition-colors" aria-label="Notifications">
-        <span className="material-symbols-outlined">notifications</span>
-      </button>
+      <NotificationBell />
       <div className="relative" ref={profileRef}>
         <button onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen} aria-label="Profile menu"
           className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-white/10 transition-colors">
@@ -348,6 +349,12 @@ export default function Contracts() {
 
   // ── List view ────────────────────────────────────────────────────────────────
 
+  const sortedContracts = [...contracts].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedContracts.length / LIST_PAGE_SIZE));
+  const pagedContracts = sortedContracts.slice((listPage - 1) * LIST_PAGE_SIZE, listPage * LIST_PAGE_SIZE);
+
   const listView = (
     <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
       <div>
@@ -373,56 +380,88 @@ export default function Contracts() {
           </button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {contracts.map(c => {
-            const cfg = STATUS_CFG[c.status];
-            const party = user?.role === 'CLIENT' ? c.freelancerName : c.clientName;
-            const partyLabel = user?.role === 'CLIENT' ? 'Freelancer' : 'Client';
-            return (
-              <article key={c.id}
-                className="bg-white rounded-xl border border-outline-variant hover:border-secondary/30 hover:shadow-md transition-all group cursor-pointer"
-                onClick={() => navigate(`/contracts/${c.id}`)}>
-                <div className="flex flex-col md:flex-row md:items-center p-5 gap-4">
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold ${cfg.cls}`}>
-                        <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
-                        {cfg.label}
-                      </span>
-                      <span className="text-xs text-on-surface-variant font-medium">{shortId(c.id)}</span>
-                      <span className="text-xs text-on-surface-variant">· {formatDate(c.createdAt)}</span>
-                    </div>
-                    <h3 className="text-base font-bold text-on-surface group-hover:text-secondary transition-colors leading-snug">{c.jobTitle}</h3>
-                    <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant">
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-secondary text-[16px]">payments</span>
-                        <strong className="text-on-surface">{formatCurrency(c.amount)}</strong>
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[16px]">person</span>
-                        {partyLabel}: <strong className="text-on-surface ml-0.5">{party}</strong>
-                      </span>
-                      {c.deadline && (
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-                          Due: <strong className="text-on-surface ml-0.5">{formatDate(c.deadline)}</strong>
+        <>
+          <div className="space-y-4">
+            {pagedContracts.map(c => {
+              const cfg = STATUS_CFG[c.status];
+              const party = user?.role === 'CLIENT' ? c.freelancerName : c.clientName;
+              const partyLabel = user?.role === 'CLIENT' ? 'Freelancer' : 'Client';
+              return (
+                <article key={c.id}
+                  className="bg-white rounded-xl border border-outline-variant hover:border-secondary/30 hover:shadow-md transition-all group cursor-pointer"
+                  onClick={() => navigate(`/contracts/${c.id}`)}>
+                  <div className="flex flex-col md:flex-row md:items-center p-5 gap-4">
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold ${cfg.cls}`}>
+                          <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
+                          {cfg.label}
                         </span>
-                      )}
+                        <span className="text-xs text-on-surface-variant font-medium">{shortId(c.id)}</span>
+                        <span className="text-xs text-on-surface-variant">· {formatDate(c.createdAt)}</span>
+                      </div>
+                      <h3 className="text-base font-bold text-on-surface group-hover:text-secondary transition-colors leading-snug">{c.jobTitle}</h3>
+                      <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant">
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-secondary text-[16px]">payments</span>
+                          <strong className="text-on-surface">{formatCurrency(c.amount)}</strong>
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[16px]">person</span>
+                          {partyLabel}: <strong className="text-on-surface ml-0.5">{party}</strong>
+                        </span>
+                        {c.deadline && (
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[16px]">calendar_today</span>
+                            Due: <strong className="text-on-surface ml-0.5">{formatDate(c.deadline)}</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2">
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                        View Details
+                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                      </button>
                     </div>
                   </div>
-                  <div className="shrink-0 flex items-center gap-2">
-                    <button
-                      onClick={e => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                      View Details
-                      <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                </article>
+              );
+            })}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-sm text-on-surface-variant">
+                Showing {(listPage - 1) * LIST_PAGE_SIZE + 1}–{Math.min(listPage * LIST_PAGE_SIZE, contracts.length)} of {contracts.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setListPage(p => Math.max(1, p - 1))}
+                  disabled={listPage === 1}
+                  className="p-2 rounded-lg text-on-surface-variant hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                  <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setListPage(page)}
+                    className={`w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${page === listPage ? 'bg-secondary text-white' : 'text-on-surface-variant hover:bg-slate-100'}`}>
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setListPage(p => Math.min(totalPages, p + 1))}
+                  disabled={listPage === totalPages}
+                  className="p-2 rounded-lg text-on-surface-variant hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
