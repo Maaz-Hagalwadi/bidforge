@@ -47,6 +47,7 @@ public class StripeService {
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                 .setAmount(amountCents)
                 .setCurrency("usd")
+                .addPaymentMethodType("card")
                 .putMetadata("milestoneId", milestoneId.toString())
                 .build();
         return PaymentIntent.create(params);
