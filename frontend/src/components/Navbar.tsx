@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
+import { useAuth } from '@/context/AuthContext';
 
 interface NavbarProps {
   variant?: 'app' | 'auth';
@@ -8,6 +9,8 @@ interface NavbarProps {
 
 export function Navbar({ variant = 'app', authRight }: NavbarProps) {
   const { pathname } = useLocation();
+  const { isAuthenticated, user } = useAuth();
+  const dashPath = user?.role === 'FREELANCER' ? '/freelancer/dashboard' : '/client/dashboard';
 
   return (
     <header
@@ -33,24 +36,33 @@ export function Navbar({ variant = 'app', authRight }: NavbarProps) {
         {/* Right — actions */}
         <div className="flex items-center gap-3 z-10">
           {authRight ?? (
-            <>
-              {pathname !== '/login' && (
-                <Link
-                  to="/login"
-                  className="text-label-md font-medium text-white/80 hover:text-white transition-colors duration-200"
-                >
-                  Log In
-                </Link>
-              )}
-              {pathname !== '/register' && (
-                <Link
-                  to="/register"
-                  className="bg-secondary px-md py-xs rounded-lg text-white text-label-md hover:brightness-110 transition-all duration-200 shadow-md shadow-secondary/30"
-                >
-                  Get Started
-                </Link>
-              )}
-            </>
+            isAuthenticated ? (
+              <Link
+                to={dashPath}
+                className="bg-secondary px-md py-xs rounded-lg text-white text-label-md hover:brightness-110 transition-all duration-200 shadow-md shadow-secondary/30"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                {pathname !== '/login' && (
+                  <Link
+                    to="/login"
+                    className="text-label-md font-medium text-white/80 hover:text-white transition-colors duration-200"
+                  >
+                    Log In
+                  </Link>
+                )}
+                {pathname !== '/register' && (
+                  <Link
+                    to="/register"
+                    className="bg-secondary px-md py-xs rounded-lg text-white text-label-md hover:brightness-110 transition-all duration-200 shadow-md shadow-secondary/30"
+                  >
+                    Get Started
+                  </Link>
+                )}
+              </>
+            )
           )}
         </div>
 

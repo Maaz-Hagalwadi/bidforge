@@ -7,8 +7,7 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <BidForgeLogo variant="dark" />
-            <span className="text-slate-300">|</span>
-            <span className="text-sm text-slate-500">The Professional Marketplace</span>
+            <span className="text-sm text-on-surface-variant">The Professional Marketplace</span>
           </div>
           <div className="flex flex-wrap items-center gap-6">
             {['Privacy Policy', 'Terms of Service', 'Help Center'].map(l => (
