@@ -10,6 +10,7 @@ import com.bidforge.app.contract.dto.RevisionRequest;
 import com.bidforge.app.contract.dto.SubmitWorkRequest;
 import com.bidforge.app.job.Job;
 import com.bidforge.app.job.enums.JobStatus;
+import com.bidforge.app.review.ReviewRepository;
 import com.bidforge.app.user.User;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class ContractService {
     private final ContractRepository contractRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final ReviewRepository reviewRepository;
 
 
 
@@ -160,6 +162,8 @@ public class ContractService {
         String deadline = c.getJob().getDeadline() != null
                 ? c.getJob().getDeadline().toLocalDate().toString()
                 : null;
+        boolean reviewedByClient = reviewRepository.existsByContractIdAndReviewerId(c.getId(), c.getClient().getId());
+        boolean reviewedByFreelancer = reviewRepository.existsByContractIdAndReviewerId(c.getId(), c.getFreelancer().getId());
         return ContractResponse.builder()
                 .id(c.getId())
                 .jobId(c.getJob().getId())
@@ -178,6 +182,8 @@ public class ContractService {
                 .deliveryDays(c.getDeliveryDays())
                 .revisionNote(c.getRevisionNote())
                 .revisionRequestedAt(c.getRevisionRequestedAt())
+                .reviewedByClient(reviewedByClient)
+                .reviewedByFreelancer(reviewedByFreelancer)
                 .build();
     }
 }

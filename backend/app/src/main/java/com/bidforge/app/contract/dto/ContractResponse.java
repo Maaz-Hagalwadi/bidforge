@@ -30,4 +30,6 @@ public class ContractResponse {
     private String clientName;
     private String freelancerName;
     private Integer deliveryDays;
+    private boolean reviewedByClient;
+    private boolean reviewedByFreelancer;
 }

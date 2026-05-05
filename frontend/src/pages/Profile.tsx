@@ -4,7 +4,9 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
 import { userApi } from '@/api/user';
-import type { UserProfile } from '@/types/user';
+import { reviewsApi } from '@/api/reviews';
+import type { UserProfile, PortfolioItem } from '@/types/user';
+import type { ReviewResponse } from '@/types/review';
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -29,6 +31,14 @@ export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const [reviews, setReviews] = useState<ReviewResponse[]>([]);
+
+  const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
+  const [showPortfolioForm, setShowPortfolioForm] = useState(false);
+  const [portfolioForm, setPortfolioForm] = useState({ title: '', description: '', imageUrl: '', projectUrl: '', technologies: '' });
+  const [portfolioSaving, setPortfolioSaving] = useState(false);
+  const [portfolioErr, setPortfolioErr] = useState('');
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -61,6 +71,8 @@ export default function Profile() {
           skills: p.skills ?? '',
           profileImageUrl: p.profileImageUrl ?? '',
         });
+        reviewsApi.getUserReviews(p.id).then(setReviews).catch(() => {});
+        userApi.getPortfolio(p.id).then(setPortfolio).catch(() => {});
       })
       .catch(() => setError('Profile not found.'))
       .finally(() => setLoading(false));
@@ -87,6 +99,34 @@ export default function Profile() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleAddPortfolio = async () => {
+    if (!portfolioForm.title.trim()) return;
+    setPortfolioSaving(true); setPortfolioErr('');
+    try {
+      const item = await userApi.addPortfolioItem({
+        title: portfolioForm.title.trim(),
+        description: portfolioForm.description.trim() || undefined,
+        imageUrl: portfolioForm.imageUrl.trim() || undefined,
+        projectUrl: portfolioForm.projectUrl.trim() || undefined,
+        technologies: portfolioForm.technologies.trim() || undefined,
+      });
+      setPortfolio(p => [...p, item]);
+      setPortfolioForm({ title: '', description: '', imageUrl: '', projectUrl: '', technologies: '' });
+      setShowPortfolioForm(false);
+    } catch {
+      setPortfolioErr('Failed to add portfolio item.');
+    } finally {
+      setPortfolioSaving(false);
+    }
+  };
+
+  const handleDeletePortfolio = async (itemId: number) => {
+    try {
+      await userApi.deletePortfolioItem(itemId);
+      setPortfolio(p => p.filter(i => i.id !== itemId));
+    } catch { /* ignore */ }
   };
 
   const cancelEdit = () => {
@@ -197,13 +237,16 @@ export default function Profile() {
                 )}
 
                 <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                  {profile.rating != null && (
-                    <span className="flex items-center gap-1 text-amber-600 font-semibold">
-                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      {profile.rating.toFixed(1)}
-                      <span className="text-slate-400 font-normal">rating</span>
-                    </span>
-                  )}
+                  {reviews.length > 0 && (() => {
+                    const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+                    return (
+                      <span className="flex items-center gap-1 text-amber-600 font-semibold">
+                        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        {avg.toFixed(1)}
+                        <span className="text-slate-400 font-normal">({reviews.length} review{reviews.length !== 1 ? 's' : ''})</span>
+                      </span>
+                    );
+                  })()}
                   {profile.location && (
                     <span className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-[18px] text-slate-400">location_on</span>
@@ -372,28 +415,192 @@ export default function Profile() {
 
             {/* Portfolio */}
             <div className="bg-white rounded-2xl shadow border border-slate-100 p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px] text-secondary">grid_view</span>
-                Portfolio
-              </h2>
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <span className="material-symbols-outlined text-5xl text-slate-200 mb-3">folder_open</span>
-                <p className="text-sm font-semibold text-slate-400">Portfolio coming soon</p>
-                <p className="text-xs text-slate-300 mt-1">Project showcases will appear here</p>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px] text-secondary">grid_view</span>
+                  Portfolio
+                </h2>
+                {isOwnProfile && !showPortfolioForm && (
+                  <button
+                    onClick={() => setShowPortfolioForm(true)}
+                    className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    Add Item
+                  </button>
+                )}
               </div>
+
+              {/* Add portfolio form */}
+              {showPortfolioForm && isOwnProfile && (
+                <div className="mb-5 p-4 border border-slate-200 rounded-xl bg-slate-50">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                    <div className="sm:col-span-2">
+                      <input
+                        value={portfolioForm.title}
+                        onChange={e => setPortfolioForm(f => ({ ...f, title: e.target.value }))}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary"
+                        placeholder="Project title *"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <textarea
+                        rows={2}
+                        value={portfolioForm.description}
+                        onChange={e => setPortfolioForm(f => ({ ...f, description: e.target.value }))}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary resize-none"
+                        placeholder="Description"
+                      />
+                    </div>
+                    <input
+                      value={portfolioForm.imageUrl}
+                      onChange={e => setPortfolioForm(f => ({ ...f, imageUrl: e.target.value }))}
+                      className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary"
+                      placeholder="Image URL"
+                    />
+                    <input
+                      value={portfolioForm.projectUrl}
+                      onChange={e => setPortfolioForm(f => ({ ...f, projectUrl: e.target.value }))}
+                      className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary"
+                      placeholder="Project URL"
+                    />
+                    <div className="sm:col-span-2">
+                      <input
+                        value={portfolioForm.technologies}
+                        onChange={e => setPortfolioForm(f => ({ ...f, technologies: e.target.value }))}
+                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary"
+                        placeholder="Technologies (e.g. React, Node.js)"
+                      />
+                    </div>
+                  </div>
+                  {portfolioErr && <p className="text-xs text-red-500 mb-2">{portfolioErr}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAddPortfolio}
+                      disabled={portfolioSaving || !portfolioForm.title.trim()}
+                      className="px-4 py-1.5 text-xs font-semibold text-white rounded-xl disabled:opacity-60 hover:brightness-110 transition-all"
+                      style={{ backgroundColor: '#0059bb' }}
+                    >
+                      {portfolioSaving ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => { setShowPortfolioForm(false); setPortfolioErr(''); }}
+                      className="px-4 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {portfolio.length === 0 && !showPortfolioForm ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <span className="material-symbols-outlined text-5xl text-slate-200 mb-3">folder_open</span>
+                  <p className="text-sm font-semibold text-slate-400">No portfolio items yet</p>
+                  {isOwnProfile && <p className="text-xs text-slate-300 mt-1">Add your first project above</p>}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {portfolio.map(item => (
+                    <div key={item.id} className="border border-slate-100 rounded-xl overflow-hidden group relative">
+                      {item.imageUrl && (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.title}
+                          className="w-full h-36 object-cover"
+                          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
+                      <div className="p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-slate-800 leading-tight">{item.title}</p>
+                          {isOwnProfile && (
+                            <button
+                              onClick={() => handleDeletePortfolio(item.id)}
+                              className="flex-shrink-0 text-slate-300 hover:text-red-400 transition-colors"
+                              title="Delete"
+                            >
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          )}
+                        </div>
+                        {item.description && (
+                          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.description}</p>
+                        )}
+                        {item.technologies && (
+                          <p className="text-xs text-slate-400 mt-1.5">{item.technologies}</p>
+                        )}
+                        {item.projectUrl && (
+                          <a
+                            href={item.projectUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-semibold mt-2"
+                            style={{ color: '#0059bb' }}
+                          >
+                            <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                            View Project
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Reviews */}
             <div className="bg-white rounded-2xl shadow border border-slate-100 p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px] text-secondary">reviews</span>
-                Client Reviews
-              </h2>
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <span className="material-symbols-outlined text-5xl text-slate-200 mb-3">rate_review</span>
-                <p className="text-sm font-semibold text-slate-400">Reviews coming soon</p>
-                <p className="text-xs text-slate-300 mt-1">Client feedback will appear here</p>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px] text-secondary">reviews</span>
+                  Reviews
+                </h2>
+                {reviews.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1 text-amber-500 font-bold text-sm">
+                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)}
+                    </span>
+                    <span className="text-xs text-slate-400">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
+                  </div>
+                )}
               </div>
+
+              {reviews.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <span className="material-symbols-outlined text-5xl text-slate-200 mb-3">rate_review</span>
+                  <p className="text-sm font-semibold text-slate-400">No reviews yet</p>
+                  <p className="text-xs text-slate-300 mt-1">Reviews appear after completed contracts</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map(r => (
+                    <div key={r.id} className="border border-slate-100 rounded-xl p-4">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">{r.reviewerName}</p>
+                          <p className="text-xs text-slate-400">{r.jobTitle}</p>
+                        </div>
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          {[1, 2, 3, 4, 5].map(s => (
+                            <span key={s} className="material-symbols-outlined text-[16px] leading-none"
+                              style={{ fontVariationSettings: "'FILL' 1", color: s <= r.rating ? '#f59e0b' : '#e2e8f0' }}>
+                              star
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      {r.comment && (
+                        <p className="text-sm text-slate-600 leading-relaxed">{r.comment}</p>
+                      )}
+                      <p className="text-xs text-slate-400 mt-2">
+                        {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

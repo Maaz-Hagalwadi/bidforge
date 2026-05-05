@@ -10,6 +10,7 @@ import com.bidforge.app.dashboard.dto.response.*;
 import com.bidforge.app.job.Job;
 import com.bidforge.app.job.JobRepository;
 import com.bidforge.app.job.enums.JobStatus;
+import com.bidforge.app.review.ReviewRepository;
 import com.bidforge.app.user.Role;
 import com.bidforge.app.user.User;
 import com.bidforge.app.user.UserRepository;
@@ -30,6 +31,7 @@ public class DashboardService {
     private final JobRepository jobRepository;
     private final BidRepository bidRepository;
     private final ContractRepository contractRepository;
+    private final ReviewRepository reviewRepository;
 
     @Transactional(readOnly = true)
     public ClientDashboardResponse getClientDashboard(User client) {
@@ -101,7 +103,7 @@ public class DashboardService {
                     .build();
         }).collect(Collectors.toList());
 
-        // Top freelancers by rating
+        // Top freelancers by rating, unrated fall to the bottom
         List<RecommendedFreelancer> freelancers = userRepository.findByRole(Role.FREELANCER).stream()
                 .sorted((a, b) -> {
                     double ra = a.getRating() != null ? a.getRating() : 0.0;
@@ -113,7 +115,7 @@ public class DashboardService {
                         .name(u.getName())
                         .title(u.getTitle() != null ? u.getTitle() : "Freelancer")
                         .rating(u.getRating() != null ? u.getRating() : 0.0)
-                        .reviewsCount(0)
+                        .reviewsCount(reviewRepository.countByReviewee(u))
                         .build())
                 .collect(Collectors.toList());
 

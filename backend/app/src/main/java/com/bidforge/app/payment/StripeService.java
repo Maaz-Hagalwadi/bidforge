@@ -43,6 +43,9 @@ public class StripeService {
     }
 
     public PaymentIntent createPaymentIntent(Double amountDollars, UUID milestoneId) throws StripeException {
+        if (amountDollars == null || amountDollars <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
         long amountCents = Math.round(amountDollars * 100);
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
                 .setAmount(amountCents)
@@ -54,6 +57,9 @@ public class StripeService {
     }
 
     public void transferToFreelancer(Double amountDollars, String stripeAccountId) throws StripeException {
+        if (amountDollars == null || amountDollars <= 0) {
+            throw new IllegalArgumentException("Transfer amount must be greater than zero");
+        }
         long amountCents = Math.round(amountDollars * 100);
         TransferCreateParams params = TransferCreateParams.builder()
                 .setAmount(amountCents)

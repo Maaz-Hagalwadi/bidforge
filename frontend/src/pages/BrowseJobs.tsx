@@ -146,6 +146,7 @@ export default function BrowseJobs() {
   const [result, setResult] = useState<SpringPage<JobResponse> | null>(null);
   const [loading, setLoading] = useState(true);
   const [savedJobs, setSavedJobs] = useState<Map<string, JobResponse>>(loadSaved);
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
 
   const toggleSave = (job: JobResponse) => {
     setSavedJobs(prev => {
@@ -177,6 +178,12 @@ export default function BrowseJobs() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [applied, sortBy]);
+
+  useEffect(() => {
+    if (user?.role === 'FREELANCER') {
+      jobsApi.getMyBids().then(bids => setAppliedJobIds(new Set(bids.map(b => b.jobId)))).catch(() => {});
+    }
+  }, [user]);
 
   useEffect(() => { fetchJobs(page); }, [fetchJobs, page]);
 
@@ -473,20 +480,30 @@ export default function BrowseJobs() {
                   const visCfg = VIS_CFG[job.visibility];
 
                   const isSaved = savedJobs.has(job.id);
+                  const isApplied = appliedJobIds.has(job.id);
 
                   if (isUrgent) {
                     return (
-                      <article key={job.id} className="rounded-xl border-l-4 border-l-secondary overflow-hidden hover:shadow-lg transition-all group"
+                      <article key={job.id} className="relative rounded-xl border-l-4 border-l-secondary overflow-hidden hover:shadow-lg transition-all group"
                         style={{ backgroundColor: '#d8e2ff' }}>
-                        <div className="flex flex-col p-6 gap-4">
-                          <div className="flex-1 min-w-0 space-y-3">
+                        <div className="absolute top-5 right-4 flex items-center gap-1.5 z-10">
+                          <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
+                          <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
+                            <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
+                            {visCfg.label}
+                          </span>
+                        </div>
+                        <div className="flex flex-col p-5 gap-3">
+                          <div className="flex-1 min-w-0 space-y-2">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="px-2.5 py-1 bg-secondary text-white rounded text-xs font-bold uppercase tracking-wider">
-                                Urgent Hiring
-                              </span>
+                              <span className="px-2.5 py-0.5 bg-secondary text-white rounded text-xs font-bold uppercase tracking-wider">Urgent Hiring</span>
                               {expCfg && (
-                                <span className="px-2.5 py-1 bg-white/50 text-secondary rounded text-xs font-semibold uppercase tracking-wider">
-                                  {expCfg.label}
+                                <span className="px-2.5 py-0.5 bg-white/50 text-secondary rounded text-xs font-semibold uppercase tracking-wider">{expCfg.label}</span>
+                              )}
+                              {isApplied && (
+                                <span className="flex items-center gap-1 px-2.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
+                                  <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                  Applied
                                 </span>
                               )}
                               <span className="text-xs text-secondary/70 flex items-center gap-1">
@@ -494,36 +511,43 @@ export default function BrowseJobs() {
                                 {job.createdAt ? timeAgo(job.createdAt) : ''}
                               </span>
                             </div>
-                            <h3 className="text-lg font-bold text-secondary group-hover:opacity-80 transition-opacity">{job.title}</h3>
+                            <h3 className="text-base font-bold text-secondary group-hover:opacity-80 transition-opacity pr-28">{job.title}</h3>
                             <p className="text-sm text-secondary/70 line-clamp-2">{job.description}</p>
                             {skillList.length > 0 && (
-                              <div className="flex flex-wrap gap-2">
+                              <div className="flex flex-wrap gap-1.5">
                                 {skillList.slice(0, 6).map(s => (
-                                  <span key={s} className="px-2.5 py-1 bg-white/40 border border-secondary/20 rounded-full text-xs text-secondary font-medium">{s}</span>
+                                  <span key={s} className="px-2 py-0.5 bg-white/40 border border-secondary/20 rounded-full text-xs text-secondary font-medium">{s}</span>
                                 ))}
-                                {skillList.length > 6 && <span className="px-2.5 py-1 text-xs text-secondary/70">+{skillList.length - 6} more</span>}
+                                {skillList.length > 6 && <span className="text-xs text-secondary/70">+{skillList.length - 6} more</span>}
                               </div>
                             )}
-                            <div>
-                              <p className="text-xs text-secondary/60 mb-0.5">Budget</p>
-                              <p className="text-lg font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
-                            </div>
                           </div>
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex flex-wrap gap-1.5">
-                              <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
-                              <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
-                                <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
-                                {visCfg.label}
-                              </span>
-                            </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <p className="text-base font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
                             <div className="flex gap-2">
-                              <button onClick={() => navigate(`/jobs/${job.id}`)}
-                                className="px-4 py-2 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all">
-                                View &amp; Bid
-                              </button>
+                              {job.visibility === 'INVITE_ONLY' ? (
+                                <div className="relative group/tip">
+                                  <button onClick={() => navigate(`/jobs/${job.id}`)}
+                                    className="px-4 py-1.5 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-[15px]">lock</span>
+                                    View &amp; Bid
+                                  </button>
+                                  <div className="absolute bottom-full right-0 mb-2 w-56 pointer-events-none opacity-0 group-hover/tip:opacity-100 transition-opacity duration-200 z-20">
+                                    <div className="bg-slate-800 text-white text-xs font-medium rounded-lg px-3 py-2 leading-relaxed shadow-lg">
+                                      <span className="material-symbols-outlined text-[13px] align-middle mr-1 text-amber-400">info</span>
+                                      You must accept the invite before placing a bid.
+                                    </div>
+                                    <div className="w-2.5 h-2.5 bg-slate-800 rotate-45 absolute -bottom-1 right-5" />
+                                  </div>
+                                </div>
+                              ) : (
+                                <button onClick={() => navigate(`/jobs/${job.id}`)}
+                                  className="px-4 py-1.5 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all">
+                                  View &amp; Bid
+                                </button>
+                              )}
                               <button onClick={() => toggleSave(job)}
-                                className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all flex items-center gap-1.5 ${isSaved ? 'bg-secondary/15 border-secondary text-secondary' : 'border-secondary/30 text-secondary hover:bg-secondary/10'}`}>
+                                className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all flex items-center gap-1.5 ${isSaved ? 'bg-secondary/15 border-secondary text-secondary' : 'border-secondary/30 text-secondary hover:bg-secondary/10'}`}>
                                 <span className="material-symbols-outlined text-[18px]">{isSaved ? 'bookmark_added' : 'bookmark'}</span>
                                 {isSaved ? 'Saved' : 'Save'}
                               </button>
@@ -535,50 +559,70 @@ export default function BrowseJobs() {
                   }
 
                   return (
-                    <article key={job.id} className="tonal-card rounded-xl overflow-hidden hover:border-secondary/20 hover:shadow-md transition-all group border border-outline-variant">
-                      <div className="flex flex-col p-6 gap-4">
-                        <div className="flex-1 min-w-0 space-y-3">
+                    <article key={job.id} className="relative tonal-card rounded-xl overflow-hidden hover:border-secondary/20 hover:shadow-md transition-all group border border-outline-variant">
+                      <div className="absolute top-5 right-4 flex items-center gap-1.5 z-10">
+                        <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
+                        <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
+                          <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
+                          {visCfg.label}
+                        </span>
+                      </div>
+                      <div className="flex flex-col p-5 gap-3">
+                        <div className="flex-1 min-w-0 space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
                             {expCfg ? (
-                              <span className={`px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wider ${expCfg.cls}`}>{expCfg.label}</span>
+                              <span className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${expCfg.cls}`}>{expCfg.label}</span>
                             ) : (
-                              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded text-xs font-semibold">{job.category}</span>
+                              <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded text-xs font-semibold">{job.category}</span>
+                            )}
+                            {isApplied && (
+                              <span className="flex items-center gap-1 px-2.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
+                                <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                Applied
+                              </span>
                             )}
                             <span className="text-xs text-on-surface-variant flex items-center gap-1">
                               <span className="material-symbols-outlined text-[14px]">schedule</span>
                               {job.createdAt ? timeAgo(job.createdAt) : ''}
                             </span>
                           </div>
-                          <h3 className="text-lg font-bold text-on-surface group-hover:text-secondary transition-colors">{job.title}</h3>
+                          <h3 className="text-base font-bold text-on-surface group-hover:text-secondary transition-colors pr-28">{job.title}</h3>
                           <p className="text-sm text-on-surface-variant line-clamp-2">{job.description}</p>
                           {skillList.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-1.5">
                               {skillList.slice(0, 6).map(s => (
-                                <span key={s} className="px-2.5 py-1 bg-surface-container border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
+                                <span key={s} className="px-2 py-0.5 bg-surface-container border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
                               ))}
-                              {skillList.length > 6 && <span className="px-2.5 py-1 text-xs text-on-surface-variant">+{skillList.length - 6} more</span>}
+                              {skillList.length > 6 && <span className="text-xs text-on-surface-variant">+{skillList.length - 6} more</span>}
                             </div>
                           )}
-                          <div>
-                            <p className="text-xs text-on-surface-variant mb-0.5">Budget</p>
-                            <p className="text-lg font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
-                          </div>
                         </div>
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex flex-wrap gap-1.5">
-                            <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
-                            <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
-                              <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
-                              {visCfg.label}
-                            </span>
-                          </div>
+                        <div className="flex items-center justify-between pt-1">
+                          <p className="text-base font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
                           <div className="flex gap-2">
-                            <button onClick={() => navigate(`/jobs/${job.id}`)}
-                              className="px-4 py-2 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all">
-                              View &amp; Bid
-                            </button>
+                            {job.visibility === 'INVITE_ONLY' ? (
+                              <div className="relative group/tip">
+                                <button onClick={() => navigate(`/jobs/${job.id}`)}
+                                  className="px-4 py-1.5 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-[15px]">lock</span>
+                                  View &amp; Bid
+                                </button>
+                                <div className="absolute bottom-full right-0 mb-2 w-56 pointer-events-none opacity-0 group-hover/tip:opacity-100 transition-opacity duration-200 z-20">
+                                  <div className="bg-slate-800 text-white text-xs font-medium rounded-lg px-3 py-2 leading-relaxed shadow-lg">
+                                    <span className="material-symbols-outlined text-[13px] align-middle mr-1 text-amber-400">info</span>
+                                    You must accept the invite before placing a bid.
+                                  </div>
+                                  <div className="w-2.5 h-2.5 bg-slate-800 rotate-45 absolute -bottom-1 right-5" />
+                                </div>
+                              </div>
+                            ) : (
+                              <button onClick={() => navigate(`/jobs/${job.id}`)}
+                                className="px-4 py-1.5 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all">
+                                View &amp; Bid
+                              </button>
+                            )}
                             <button onClick={() => toggleSave(job)}
-                              className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all flex items-center gap-1.5 ${isSaved ? 'bg-secondary/10 border-secondary text-secondary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'}`}>
+                              className={`px-3 py-1.5 rounded-lg text-sm font-semibold border transition-all flex items-center gap-1.5 ${isSaved ? 'bg-secondary/10 border-secondary text-secondary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'}`}>
                               <span className="material-symbols-outlined text-[18px]">{isSaved ? 'bookmark_added' : 'bookmark'}</span>
                               {isSaved ? 'Saved' : 'Save'}
                             </button>
@@ -638,13 +682,17 @@ export default function BrowseJobs() {
         </main>
       </div>
 
-      {user && <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {sidebarLinks.map(({ icon, short, active, path }) => (
-            <button key={short} onClick={() => path && navigate(path)}
-              className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-              <span className="material-symbols-outlined text-[22px]">{icon}</span>
-              <span className="text-[10px] font-semibold leading-none">{short}</span>
-            </button>
+      {user && <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+            {row.map(({ icon, short, active, path }) => (
+              <button key={short} onClick={() => path && navigate(path)}
+                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                <span className="text-[9px] font-semibold leading-none">{short}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>}
     </div>

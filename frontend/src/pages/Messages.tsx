@@ -10,7 +10,7 @@ import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { chatApi, type ChatRoom, type ChatMessage } from '@/api/chat';
 
 const SIDEBAR_BG = '#0A192F';
-const WS_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8080') + '/ws';
+const WS_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080') + '/ws';
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -682,13 +682,17 @@ export default function Messages() {
       </div>
 
       {user && mobileView !== 'chat' && (
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-          {sidebarLinks.map(({ icon, short, active, path }) => (
-            <button key={short} onClick={() => path && navigate(path)}
-              className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-              <span className="material-symbols-outlined text-[22px]">{icon}</span>
-              <span className="text-[10px] font-semibold leading-none">{short}</span>
-            </button>
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+          {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
+            <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+              {row.map(({ icon, short, active, path }) => (
+                <button key={short} onClick={() => path && navigate(path)}
+                  className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                  <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                  <span className="text-[9px] font-semibold leading-none">{short}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
       )}

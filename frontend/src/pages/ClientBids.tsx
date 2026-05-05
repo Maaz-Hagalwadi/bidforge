@@ -243,28 +243,30 @@ export default function ClientBids() {
                           const accepted = bids.filter(b => b.status === 'ACCEPTED').length;
                           const rejected = bids.filter(b => b.status === 'REJECTED').length;
                           return (
-                            <article key={job.id} className="tonal-card rounded-xl p-5 hover:shadow-md transition-all">
-                              <div className="flex flex-col md:flex-row md:items-center gap-4">
-                                <div className="flex-1 min-w-0 space-y-2">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${jst.cls}`}>{jst.label}</span>
-                                    <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{job.category}</span>
+                            <article key={job.id} className="tonal-card rounded-xl p-4 hover:shadow-md transition-all">
+                              <div className="flex flex-col gap-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${jst.cls}`}>{jst.label}</span>
+                                      <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{job.category}</span>
+                                    </div>
+                                    <h3 className="text-sm font-bold text-on-surface line-clamp-1">{job.title}</h3>
+                                    <div className="flex flex-wrap gap-3">
+                                      <span className="flex items-center gap-1 text-xs text-on-surface-variant"><span className="material-symbols-outlined text-[14px]">gavel</span><span className="font-semibold text-on-surface">{bids.length}</span> total</span>
+                                      {pending > 0 && <span className="flex items-center gap-1 text-xs text-amber-700"><span className="material-symbols-outlined text-[14px]">schedule</span>{pending} pending</span>}
+                                      {accepted > 0 && <span className="flex items-center gap-1 text-xs text-green-700"><span className="material-symbols-outlined text-[14px]">check_circle</span>{accepted} accepted</span>}
+                                      {rejected > 0 && <span className="flex items-center gap-1 text-xs text-slate-500"><span className="material-symbols-outlined text-[14px]">cancel</span>{rejected} rejected</span>}
+                                      {bids.length === 0 && <span className="text-xs text-on-surface-variant italic">No bids yet</span>}
+                                    </div>
                                   </div>
-                                  <h3 className="text-sm font-bold text-on-surface line-clamp-1">{job.title}</h3>
-                                  <div className="flex flex-wrap gap-4">
-                                    <span className="flex items-center gap-1 text-xs text-on-surface-variant"><span className="material-symbols-outlined text-[14px]">gavel</span><span className="font-semibold text-on-surface">{bids.length}</span> total</span>
-                                    {pending > 0 && <span className="flex items-center gap-1 text-xs text-amber-700"><span className="material-symbols-outlined text-[14px]">schedule</span>{pending} pending</span>}
-                                    {accepted > 0 && <span className="flex items-center gap-1 text-xs text-green-700"><span className="material-symbols-outlined text-[14px]">check_circle</span>{accepted} accepted</span>}
-                                    {rejected > 0 && <span className="flex items-center gap-1 text-xs text-slate-500"><span className="material-symbols-outlined text-[14px]">cancel</span>{rejected} rejected</span>}
-                                    {bids.length === 0 && <span className="text-xs text-on-surface-variant italic">No bids yet</span>}
-                                  </div>
+                                  <button
+                                    onClick={() => navigate(`/client/jobs/${job.id}/bids`)}
+                                    className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all whitespace-nowrap">
+                                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                    View Bids
+                                  </button>
                                 </div>
-                                <button
-                                  onClick={() => navigate(`/client/jobs/${job.id}/bids`)}
-                                  className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                                  View Bids
-                                </button>
                               </div>
                             </article>
                           );
@@ -341,14 +343,18 @@ export default function ClientBids() {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {sidebarLinks.map(({ icon, short, active, path }) => (
-          <button key={short} onClick={() => path && navigate(path)}
-            className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-            <span className="material-symbols-outlined text-[22px]">{icon}</span>
-            <span className="text-[10px] font-semibold leading-none">{short}</span>
-          </button>
+      {/* Mobile bottom nav — 4+4 */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+            {row.map(({ icon, short, active, path }) => (
+              <button key={short} onClick={() => path && navigate(path)}
+                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                <span className="text-[9px] font-semibold leading-none">{short}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
     </div>

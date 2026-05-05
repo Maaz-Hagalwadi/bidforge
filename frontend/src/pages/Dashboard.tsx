@@ -549,20 +549,24 @@ export default function Dashboard() {
 
       {/* ── Mobile bottom nav (lg+: sidebar takes over) ── */}
       <nav
-        className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col"
         style={{ backgroundColor: '#0A192F' }}
       >
-        {SIDEBAR_LINKS.map(({ icon, short, active }) => (
-          <button
-            key={short}
-            className={[
-              'flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors',
-              active ? 'text-secondary' : 'text-white/50 hover:text-white',
-            ].join(' ')}
-          >
-            <span className="material-symbols-outlined text-[22px]">{icon}</span>
-            <span className="text-[10px] font-semibold leading-none">{short}</span>
-          </button>
+        {[SIDEBAR_LINKS.slice(0, 4), SIDEBAR_LINKS.slice(4)].map((row, ri) => (
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+            {row.map(({ icon, short, active }) => (
+              <button
+                key={short}
+                className={[
+                  'flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors',
+                  active ? 'text-secondary' : 'text-white/50 hover:text-white',
+                ].join(' ')}
+              >
+                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                <span className="text-[9px] font-semibold leading-none">{short}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
     </div>

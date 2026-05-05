@@ -2,6 +2,7 @@ package com.bidforge.app.files;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,11 +13,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/files")
 public class FileController {
+
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
+            ".jpg", ".jpeg", ".png", ".gif", ".webp",
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".zip"
+    );
 
     @Value("${app.upload-dir:uploads}")
     private String uploadDir;
@@ -24,6 +31,7 @@ public class FileController {
     @Value("${app.server-url:http://localhost:8080}")
     private String serverUrl;
 
+    @PreAuthorize("isAuthenticated()")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, String> upload(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
@@ -33,7 +41,12 @@ public class FileController {
             String original = StringUtils.cleanPath(
                     file.getOriginalFilename() != null ? file.getOriginalFilename() : "file"
             );
-            String ext = original.contains(".") ? original.substring(original.lastIndexOf('.')) : "";
+            String ext = original.contains(".")
+                    ? original.substring(original.lastIndexOf('.')).toLowerCase()
+                    : "";
+            if (!ALLOWED_EXTENSIONS.contains(ext)) {
+                throw new IllegalArgumentException("File type not allowed: " + ext);
+            }
             String stored = UUID.randomUUID() + ext;
 
             Path dir = Paths.get(uploadDir, "chat").toAbsolutePath();

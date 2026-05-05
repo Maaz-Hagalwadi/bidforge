@@ -74,11 +74,9 @@ public class NotificationService {
         messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/notification-count", count);
     }
 
+    @Transactional
     public void markAllAsRead(User user) {
-        List<Notification> unread = notificationRepository.findByUserOrderByCreatedAtDesc(user)
-                .stream().filter(n -> !n.isRead()).toList();
-        unread.forEach(n -> n.setRead(true));
-        notificationRepository.saveAll(unread);
+        notificationRepository.markAllReadByUser(user);
         messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/notification-count", 0L);
     }
 }

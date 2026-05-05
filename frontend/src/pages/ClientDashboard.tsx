@@ -64,9 +64,9 @@ function StatCard({ icon, label, value, trend, trendColor }: { icon: string; lab
         <span className="material-symbols-outlined text-secondary text-[20px]">{icon}</span>
         {trend && <span className={`font-bold text-label-sm ${trendColor}`}>{trend}</span>}
       </div>
-      <div>
-        <p className="text-on-surface-variant text-label-md">{label}</p>
+      <div className="flex flex-col items-center md:items-start">
         <h3 className="text-h2 font-bold text-on-surface">{value}</h3>
+        <p className="text-on-surface-variant text-label-md text-center md:text-left">{label}</p>
       </div>
     </div>
   );
@@ -76,33 +76,39 @@ function StatCard({ icon, label, value, trend, trendColor }: { icon: string; lab
 
 function ProjectRow({ title, status, statusCls, meta, extra }: { title: string; status: string; statusCls: string; meta: string; extra: string }) {
   return (
-    <div className="px-6 py-4 flex flex-col md:flex-row md:items-center gap-4 hover:bg-slate-50 transition-colors">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <h4 className="font-semibold text-sm text-on-surface">{title}</h4>
-          <span className={`px-2.5 py-0.5 text-label-sm rounded-full ${statusCls}`}>{status}</span>
+    <div className="px-4 md:px-6 py-4 flex flex-col gap-3 hover:bg-slate-50 transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <h4 className="font-semibold text-sm text-on-surface">{title}</h4>
+            <span className={`px-2.5 py-0.5 text-label-sm rounded-full ${statusCls}`}>{status}</span>
+          </div>
+          <p className="text-xs text-on-surface-variant leading-relaxed">{meta}</p>
         </div>
-        <p className="text-sm text-on-surface-variant">{meta}</p>
-      </div>
-      <div className="flex items-center gap-4 flex-shrink-0">
-        {extra === 'bids' ? (
-          <div className="flex -space-x-2">
-            {['A','B','C'].map(l => (
-              <div key={l} className="w-7 h-7 rounded-full border-2 border-white bg-secondary/10 flex items-center justify-center text-[10px] font-bold text-secondary">{l}</div>
-            ))}
-          </div>
-        ) : extra === 'paid' ? (
-          <span className="text-label-sm font-bold text-slate-400">Paid Out</span>
-        ) : extra ? (
-          <div className="text-right">
-            <p className="font-bold text-sm text-on-surface">{extra}</p>
-            <p className="text-[10px] text-on-surface-variant">Total Value</p>
-          </div>
-        ) : null}
-        <button className="p-1.5 border border-outline-variant rounded-lg hover:border-secondary transition-colors">
+        <button className="p-1.5 border border-outline-variant rounded-lg hover:border-secondary transition-colors flex-shrink-0">
           <span className="material-symbols-outlined text-[18px]">more_horiz</span>
         </button>
       </div>
+      {extra && extra !== 'bids' && extra !== 'paid' && (
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant">
+          <span className="material-symbols-outlined text-[14px] text-secondary">payments</span>
+          <span className="text-secondary font-bold">{extra}</span>
+          <span>Total Value</span>
+        </div>
+      )}
+      {extra === 'bids' && (
+        <div className="flex items-center gap-2">
+          <div className="flex -space-x-2">
+            {['A','B','C'].map(l => (
+              <div key={l} className="w-6 h-6 rounded-full border-2 border-white bg-secondary/10 flex items-center justify-center text-[9px] font-bold text-secondary">{l}</div>
+            ))}
+          </div>
+          <span className="text-xs text-on-surface-variant">Bidders</span>
+        </div>
+      )}
+      {extra === 'paid' && (
+        <span className="text-label-sm font-bold text-slate-400">Paid Out</span>
+      )}
     </div>
   );
 }
@@ -250,17 +256,17 @@ export default function ClientDashboard() {
 
         {/* ── Main content ── */}
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col bg-surface">
-          <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 space-y-8 max-w-[1280px] w-full mx-auto">
+          <div className="flex-1 p-4 pb-32 lg:pb-8 lg:p-8 space-y-6 max-w-[1280px] w-full mx-auto">
 
             {/* Welcome */}
-            <section className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <section className="flex flex-col md:flex-row md:items-end justify-between gap-3 pt-2 md:pt-0">
               <div>
-                <h1 className="text-h2 font-bold text-on-surface">Welcome back, {user?.name.split(' ')[0] ?? 'there'} 👋</h1>
-                <p className="text-sm text-on-surface-variant mt-0.5">Manage your projects and discover top talent for your next big idea.</p>
+                <h1 className="text-xl md:text-h2 font-bold text-on-surface">Welcome back, {user?.name.split(' ')[0] ?? 'there'} 👋</h1>
+                <p className="text-xs md:text-sm text-on-surface-variant mt-0.5">Manage your projects and discover top talent for your next big idea.</p>
               </div>
               <button onClick={() => navigate('/client/post-job')}
-                className="flex items-center justify-center gap-2 px-6 h-12 bg-secondary text-white font-semibold rounded-lg shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0">
-                <span className="material-symbols-outlined">add</span>Post a New Job
+                className="flex items-center justify-center gap-2 px-5 h-10 md:h-12 md:px-6 bg-secondary text-white text-sm font-semibold rounded-lg shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0 self-end md:self-auto">
+                <span className="material-symbols-outlined text-[18px]">add</span>Post a New Job
               </button>
             </section>
 
@@ -268,7 +274,7 @@ export default function ClientDashboard() {
             {dataLoading ? (
               <PageLoader message="Loading dashboard…" />
             ) : (
-              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                 {stats.map(s => <StatCard key={s.label} {...s} />)}
               </section>
             )}
@@ -292,11 +298,11 @@ export default function ClientDashboard() {
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-sm font-semibold text-on-surface">Recommended for You</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {dashboardData?.recommendedFreelancers.map(f => (
-                      <TalentCard key={f.name} name={f.name} specialty={f.title} rating={String(f.rating)} reviews={f.reviewsCount} />
-                    ))}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {dashboardData?.recommendedFreelancers.map(f => (
+                    <TalentCard key={f.name} name={f.name} specialty={f.title} rating={String(f.rating)} reviews={f.reviewsCount} />
+                  ))}
+                </div>
               </div>
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-on-surface">Network News</h3>
@@ -318,14 +324,18 @@ export default function ClientDashboard() {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {sidebarLinks.map(({ icon, short, active, path }) => (
-          <button key={short} onClick={() => path && navigate(path)}
-            className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-            <span className="material-symbols-outlined text-[22px]">{icon}</span>
-            <span className="text-[10px] font-semibold leading-none">{short}</span>
-          </button>
+      {/* Mobile bottom nav — split into 2 rows of 4 */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+            {row.map(({ icon, short, active, path }) => (
+              <button key={short} onClick={() => path && navigate(path)}
+                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                <span className="text-[9px] font-semibold leading-none">{short}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
     </div>

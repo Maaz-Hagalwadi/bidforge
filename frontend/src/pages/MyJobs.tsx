@@ -107,7 +107,7 @@ function EditJobModal({ job, onClose, onSaved }: {
         budgetType,
         budgetMin: min,
         budgetMax: max,
-        deadline: deadline ? `${deadline}T00:00:00` : undefined,
+        deadline: deadline ? `${deadline}T23:59:59` : undefined,
         visibility: job.visibility,
         experienceLevel: (expLevel as JobResponse['experienceLevel']) || undefined,
         urgencyLevel: (urgency as JobResponse['urgencyLevel']) || undefined,
@@ -596,71 +596,105 @@ export default function MyJobs() {
   const paginated  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   // ── Action buttons builder ──────────────────────────────────
-  const buildActions = (job: JobResponse, compact = false) => {
+  const buildActions = (job: JobResponse) => {
     const isInviteOnly = job.visibility === 'INVITE_ONLY';
     const canEdit    = job.status === 'OPEN' || job.status === 'DRAFT';
     const canArchive = job.status === 'OPEN' || job.status === 'DRAFT';
-    const px = compact ? 'px-2.5' : 'px-3';
 
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {job.status === 'OPEN' && <>
-          <button onClick={() => navigate(`/client/jobs/${job.id}/bids`)}
-            className={`bg-secondary text-white ${px} py-1.5 rounded-lg text-xs font-semibold hover:brightness-110 transition-all whitespace-nowrap`}>
-            View Bids
-          </button>
-          <button onClick={() => navigate(`/jobs/${job.id}`)}
-            className={`border border-slate-200 text-slate-600 ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors`}>
-            Details
-          </button>
-          {isInviteOnly && <>
-            <button onClick={() => setInviteJob(job)}
-              className={`border border-slate-200 text-slate-600 ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors flex items-center gap-1`}>
-              <span className="material-symbols-outlined text-[13px]">person_add</span>Invite
+    // Primary CTA buttons per status
+    const primary = (
+      <>
+        {job.status === 'OPEN' && (
+          <>
+            <button onClick={() => navigate(`/client/jobs/${job.id}/bids`)}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-secondary text-white px-3 py-2 rounded-lg text-xs font-semibold hover:brightness-110 transition-all whitespace-nowrap">
+              <span className="material-symbols-outlined text-[14px]">gavel</span>View Bids
             </button>
-            <button onClick={() => setInviteesJob(job)} title="Invitees"
-              className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-on-surface hover:bg-slate-50 transition-colors">
-              <span className="material-symbols-outlined text-[16px]">group</span>
+            <button onClick={() => navigate(`/jobs/${job.id}`)}
+              className="flex-1 flex items-center justify-center gap-1.5 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-[14px]">open_in_new</span>Details
             </button>
-          </>}
-        </>}
-        {job.status === 'ASSIGNED' && <>
-          <span className="px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-xs font-semibold border border-amber-200">Hired</span>
-          <button onClick={() => navigate('/contracts')}
-            className={`border border-slate-200 text-slate-600 ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors`}>
-            Manage
-          </button>
-          {isInviteOnly && (
-            <button onClick={() => setInviteesJob(job)} title="Invitees"
-              className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-on-surface hover:bg-slate-50 transition-colors">
-              <span className="material-symbols-outlined text-[16px]">group</span>
-            </button>
-          )}
-        </>}
-        {job.status === 'COMPLETED' && (
-          <button onClick={() => navigate(`/jobs/${job.id}`)}
-            className={`border border-secondary text-secondary ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-secondary hover:text-white transition-all`}>
-            Details
-          </button>
+          </>
         )}
         {job.status === 'DRAFT' && (
-          <button onClick={() => navigate(`/jobs/${job.id}`)}
-            className={`border border-slate-200 text-slate-600 ${px} py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors`}>
-            Details
+          <>
+            <button onClick={() => setEditJob(job)}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-secondary text-white px-3 py-2 rounded-lg text-xs font-semibold hover:brightness-110 transition-all">
+              <span className="material-symbols-outlined text-[14px]">edit</span>Edit Draft
+            </button>
+            <button onClick={() => navigate(`/jobs/${job.id}`)}
+              className="flex-1 flex items-center justify-center gap-1.5 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-[14px]">open_in_new</span>Preview
+            </button>
+          </>
+        )}
+        {job.status === 'ASSIGNED' && (
+          <>
+            <button onClick={() => navigate('/contracts')}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-secondary text-white px-3 py-2 rounded-lg text-xs font-semibold hover:brightness-110 transition-all">
+              <span className="material-symbols-outlined text-[14px]">handshake</span>Manage
+            </button>
+            <button onClick={() => navigate(`/jobs/${job.id}`)}
+              className="flex-1 flex items-center justify-center gap-1.5 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-[14px]">open_in_new</span>Details
+            </button>
+          </>
+        )}
+        {job.status === 'COMPLETED' && (
+          <>
+            <button onClick={() => navigate('/reviews')}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-secondary text-white px-3 py-2 rounded-lg text-xs font-semibold hover:brightness-110 transition-all">
+              <span className="material-symbols-outlined text-[14px]">reviews</span>Reviews
+            </button>
+            <button onClick={() => navigate(`/jobs/${job.id}`)}
+              className="flex-1 flex items-center justify-center gap-1.5 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-[14px]">open_in_new</span>Details
+            </button>
+          </>
+        )}
+      </>
+    );
+
+    // Icon-only utility buttons
+    const utilities = (
+      <>
+        {isInviteOnly && job.status === 'OPEN' && (
+          <>
+            <button onClick={() => setInviteJob(job)}
+              className="flex items-center gap-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-secondary hover:border-secondary/40 transition-colors">
+              <span className="material-symbols-outlined text-[13px]">person_add</span>Invite
+            </button>
+            <button onClick={() => setInviteesJob(job)}
+              className="flex items-center gap-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-on-surface hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-[13px]">group</span>Invitees
+            </button>
+          </>
+        )}
+        {isInviteOnly && job.status === 'ASSIGNED' && (
+          <button onClick={() => setInviteesJob(job)}
+            className="flex items-center gap-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-on-surface hover:bg-slate-50 transition-colors">
+            <span className="material-symbols-outlined text-[13px]">group</span>Invitees
           </button>
         )}
-        {canEdit && (
-          <button onClick={() => setEditJob(job)} title="Edit job"
-            className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-secondary hover:border-secondary/40 transition-colors">
-            <span className="material-symbols-outlined text-[16px]">edit</span>
+        {canEdit && job.status !== 'DRAFT' && (
+          <button onClick={() => setEditJob(job)}
+            className="flex items-center gap-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-secondary hover:border-secondary/40 transition-colors">
+            <span className="material-symbols-outlined text-[13px]">edit</span>Edit
           </button>
         )}
         {canArchive && (
-          <button onClick={() => setArchiveConfirmJob(job)} title="Archive job"
-            className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors">
-            <span className="material-symbols-outlined text-[16px]">archive</span>
+          <button onClick={() => setArchiveConfirmJob(job)}
+            className="flex items-center gap-1 px-2.5 py-1.5 border border-slate-200 rounded-lg text-[11px] font-semibold text-slate-500 hover:text-red-500 hover:border-red-200 transition-colors">
+            <span className="material-symbols-outlined text-[13px]">archive</span>Archive
           </button>
         )}
+      </>
+    );
+
+    return (
+      <div className="flex flex-col gap-2 w-full">
+        <div className="flex gap-1.5">{primary}</div>
+        <div className="flex gap-1.5 justify-end">{utilities}</div>
       </div>
     );
   };
@@ -729,14 +763,15 @@ export default function MyJobs() {
           <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <h1 className="text-h2 font-bold text-on-surface">My Jobs</h1>
-                <p className="text-sm text-on-surface-variant mt-0.5">Manage all jobs you've posted on BidForge.</p>
+                <h1 className="text-lg md:text-h2 font-bold text-on-surface">My Jobs</h1>
+                <p className="text-xs md:text-sm text-on-surface-variant mt-0.5">Manage all jobs you've posted on BidForge.</p>
               </div>
               <button onClick={() => navigate('/client/post-job')}
-                className="flex items-center gap-2 px-6 h-12 bg-secondary text-white font-semibold rounded-lg shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0">
-                <span className="material-symbols-outlined">add</span>Post a New Job
+                className="flex items-center gap-1.5 px-3 py-2 md:px-6 md:h-12 bg-secondary text-white text-xs md:text-sm font-semibold rounded-lg shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0">
+                <span className="material-symbols-outlined text-[16px] md:text-[20px]">add</span>
+                <span>Post Job</span>
               </button>
             </div>
 
@@ -822,10 +857,9 @@ export default function MyJobs() {
                       const skills = parseSkills(job.requiredSkills);
                       return (
                         <article key={job.id} className="group bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-secondary/30 transition-all relative overflow-hidden">
-                          {/* Left accent bar */}
                           <div className={`absolute left-0 top-0 bottom-0 w-1 ${ST_TOP[job.status] ?? 'bg-slate-300'} opacity-0 group-hover:opacity-100 transition-opacity`} />
-                          <div className="flex flex-col md:flex-row justify-between gap-4 p-5">
-                            {/* Left: info */}
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-0 md:gap-4 p-4 md:p-5">
+                            {/* Info */}
                             <div className="flex-1 min-w-0 space-y-2">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${st.cls}`}>{st.label}</span>
@@ -867,8 +901,8 @@ export default function MyJobs() {
                                 </div>
                               )}
                             </div>
-                            {/* Right: actions */}
-                            <div className="flex flex-col justify-center items-stretch gap-2 flex-shrink-0 md:min-w-[148px]">
+                            {/* Actions — border-top on mobile only, side column on desktop */}
+                            <div className="border-t border-slate-100 pt-3 mt-1 md:border-t-0 md:pt-0 md:mt-0 md:flex-shrink-0 md:w-[190px]">
                               {buildActions(job)}
                             </div>
                           </div>
@@ -937,7 +971,7 @@ export default function MyJobs() {
                           )}
                           <div className="flex-1" />
                           <div className="pt-3 border-t border-slate-100">
-                            {buildActions(job, true)}
+                            {buildActions(job)}
                           </div>
                         </div>
                       </article>
@@ -988,14 +1022,18 @@ export default function MyJobs() {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {sidebarLinks.map(({ icon, short, active, path }) => (
-          <button key={short} onClick={() => path && navigate(path)}
-            className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-            <span className="material-symbols-outlined text-[22px]">{icon}</span>
-            <span className="text-[10px] font-semibold leading-none">{short}</span>
-          </button>
+      {/* Mobile bottom nav — 4+4 */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+            {row.map(({ icon, short, active, path }) => (
+              <button key={short} onClick={() => path && navigate(path)}
+                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                <span className="text-[9px] font-semibold leading-none">{short}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
 
