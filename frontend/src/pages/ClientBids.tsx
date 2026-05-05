@@ -42,6 +42,7 @@ export default function ClientBids() {
   const [summaries, setSummaries] = useState<JobBidSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<BidTab>('ALL');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -149,8 +150,8 @@ export default function ClientBids() {
           <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             <div>
-              <h1 className="text-h1 font-bold text-on-surface">Bids</h1>
-              <p className="text-body-md text-on-surface-variant mt-1">All bids received across your posted jobs.</p>
+              <h1 className="text-h2 font-bold text-on-surface">Bids</h1>
+              <p className="text-sm text-on-surface-variant mt-0.5">All bids received across your posted jobs.</p>
             </div>
 
             {loading ? (
@@ -193,20 +194,34 @@ export default function ClientBids() {
                   </div>
                 ) : (
                   <div className="space-y-5">
-                    {/* Filter tabs */}
-                    <div className="flex gap-1.5 flex-wrap">
-                      {([
-                        { key: 'ALL' as const,          label: 'All Jobs',    count: summaries.length                                                           },
-                        { key: 'HAS_PENDING' as const,  label: 'Has Pending', count: summaries.filter(s => s.bids.some(b => b.status === 'PENDING')).length  },
-                        { key: 'HAS_ACCEPTED' as const, label: 'Has Accepted',count: summaries.filter(s => s.bids.some(b => b.status === 'ACCEPTED')).length },
-                        { key: 'HAS_REJECTED' as const, label: 'Has Rejected',count: summaries.filter(s => s.bids.some(b => b.status === 'REJECTED')).length },
-                      ]).map(({ key, label, count }) => (
-                        <button key={key} onClick={() => setTab(key)}
-                          className={['flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all', tab === key ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
-                          {label}
-                          <span className={['text-xs px-1.5 py-0.5 rounded-full font-bold', tab === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-on-surface-variant'].join(' ')}>{count}</span>
+                    {/* Filter tabs + view toggle */}
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <div className="flex gap-1.5 flex-wrap">
+                        {([
+                          { key: 'ALL' as const,          label: 'All Jobs',    count: summaries.length                                                           },
+                          { key: 'HAS_PENDING' as const,  label: 'Has Pending', count: summaries.filter(s => s.bids.some(b => b.status === 'PENDING')).length  },
+                          { key: 'HAS_ACCEPTED' as const, label: 'Has Accepted',count: summaries.filter(s => s.bids.some(b => b.status === 'ACCEPTED')).length },
+                          { key: 'HAS_REJECTED' as const, label: 'Has Rejected',count: summaries.filter(s => s.bids.some(b => b.status === 'REJECTED')).length },
+                        ]).map(({ key, label, count }) => (
+                          <button key={key} onClick={() => setTab(key)}
+                            className={['flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all', tab === key ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+                            {label}
+                            <span className={['text-xs px-1.5 py-0.5 rounded-full font-bold', tab === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-on-surface-variant'].join(' ')}>{count}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="hidden lg:flex items-center gap-0.5 p-1 bg-slate-100 rounded-lg border border-slate-200 flex-shrink-0">
+                        <button onClick={() => setViewMode('list')} title="List view"
+                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                          <span className="material-symbols-outlined text-[16px]">view_list</span>
+                          <span className="text-xs font-semibold">List</span>
                         </button>
-                      ))}
+                        <button onClick={() => setViewMode('grid')} title="Grid view"
+                          className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                          <span className="material-symbols-outlined text-[16px]">grid_view</span>
+                          <span className="text-xs font-semibold">Grid</span>
+                        </button>
+                      </div>
                     </div>
 
                     {filtered.length === 0 ? (
@@ -215,6 +230,7 @@ export default function ClientBids() {
                         <p className="text-on-surface font-semibold">No jobs match this filter</p>
                       </div>
                     ) : (
+                      viewMode === 'list' ? (
                       <div className="space-y-3">
                         {filtered.map(({ job, bids }) => {
                           const jst = JOB_STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
@@ -222,7 +238,7 @@ export default function ClientBids() {
                           const accepted = bids.filter(b => b.status === 'ACCEPTED').length;
                           const rejected = bids.filter(b => b.status === 'REJECTED').length;
                           return (
-                            <article key={job.id} className="tonal-card rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:shadow-md transition-all">
+                            <article key={job.id} className="tonal-card rounded-xl p-5 flex flex-col gap-4 hover:shadow-md transition-all">
                               <div className="flex-1 min-w-0 space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${jst.cls}`}>{jst.label}</span>
@@ -230,44 +246,54 @@ export default function ClientBids() {
                                 </div>
                                 <h3 className="text-sm font-bold text-on-surface line-clamp-1">{job.title}</h3>
                                 <div className="flex flex-wrap gap-4">
-                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant">
-                                    <span className="material-symbols-outlined text-[14px]">gavel</span>
-                                    <span className="font-semibold text-on-surface">{bids.length}</span> total
-                                  </span>
-                                  {pending > 0 && (
-                                    <span className="flex items-center gap-1 text-xs text-amber-700">
-                                      <span className="material-symbols-outlined text-[14px]">schedule</span>
-                                      {pending} pending
-                                    </span>
-                                  )}
-                                  {accepted > 0 && (
-                                    <span className="flex items-center gap-1 text-xs text-green-700">
-                                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                                      {accepted} accepted
-                                    </span>
-                                  )}
-                                  {rejected > 0 && (
-                                    <span className="flex items-center gap-1 text-xs text-slate-500">
-                                      <span className="material-symbols-outlined text-[14px]">cancel</span>
-                                      {rejected} rejected
-                                    </span>
-                                  )}
-                                  {bids.length === 0 && (
-                                    <span className="text-xs text-on-surface-variant italic">No bids yet</span>
-                                  )}
+                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant"><span className="material-symbols-outlined text-[14px]">gavel</span><span className="font-semibold text-on-surface">{bids.length}</span> total</span>
+                                  {pending > 0 && <span className="flex items-center gap-1 text-xs text-amber-700"><span className="material-symbols-outlined text-[14px]">schedule</span>{pending} pending</span>}
+                                  {accepted > 0 && <span className="flex items-center gap-1 text-xs text-green-700"><span className="material-symbols-outlined text-[14px]">check_circle</span>{accepted} accepted</span>}
+                                  {rejected > 0 && <span className="flex items-center gap-1 text-xs text-slate-500"><span className="material-symbols-outlined text-[14px]">cancel</span>{rejected} rejected</span>}
+                                  {bids.length === 0 && <span className="text-xs text-on-surface-variant italic">No bids yet</span>}
                                 </div>
                               </div>
                               <button
                                 onClick={() => navigate(`/client/jobs/${job.id}/bids`)}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0"
-                              >
-                                <span className="material-symbols-outlined text-[15px]">open_in_new</span>
+                                className="self-start flex items-center gap-1.5 px-3 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                                 View Bids
                               </button>
                             </article>
                           );
                         })}
                       </div>
+                      ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {filtered.map(({ job, bids }) => {
+                          const jst = JOB_STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
+                          const pending  = bids.filter(b => b.status === 'PENDING').length;
+                          const accepted = bids.filter(b => b.status === 'ACCEPTED').length;
+                          const rejected = bids.filter(b => b.status === 'REJECTED').length;
+                          return (
+                            <article key={job.id} className="tonal-card rounded-xl p-4 flex flex-col gap-3 hover:shadow-md transition-all">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${jst.cls}`}>{jst.label}</span>
+                                <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{job.category}</span>
+                              </div>
+                              <h3 className="text-sm font-bold text-on-surface line-clamp-2">{job.title}</h3>
+                              <div className="space-y-1 text-xs text-on-surface-variant">
+                                <div className="flex items-center gap-1"><span className="material-symbols-outlined text-[13px]">gavel</span><span className="font-semibold text-on-surface">{bids.length}</span> total bids</div>
+                                {pending > 0 && <div className="flex items-center gap-1 text-amber-700"><span className="material-symbols-outlined text-[13px]">schedule</span>{pending} pending</div>}
+                                {accepted > 0 && <div className="flex items-center gap-1 text-green-700"><span className="material-symbols-outlined text-[13px]">check_circle</span>{accepted} accepted</div>}
+                                {rejected > 0 && <div className="flex items-center gap-1 text-slate-500"><span className="material-symbols-outlined text-[13px]">cancel</span>{rejected} rejected</div>}
+                              </div>
+                              <button
+                                onClick={() => navigate(`/client/jobs/${job.id}/bids`)}
+                                className="mt-auto w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                View Bids
+                              </button>
+                            </article>
+                          );
+                        })}
+                      </div>
+                      )
                     )}
                   </div>
                 )}

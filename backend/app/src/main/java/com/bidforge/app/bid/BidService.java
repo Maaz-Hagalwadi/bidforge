@@ -16,6 +16,7 @@ import com.bidforge.app.job.enums.Visibility;
 import com.bidforge.app.job_invite.InviteStatus;
 import com.bidforge.app.job_invite.JobInvite;
 import com.bidforge.app.job_invite.JobInviteRepository;
+import com.bidforge.app.notification.EmailService;
 import com.bidforge.app.notification.NotificationService;
 import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.user.User;
@@ -35,6 +36,7 @@ public class BidService {
     private final JobInviteRepository jobInviteRepository;
     private final ContractRepository contractRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public BidResponse createBid(UUID jobId, CreateBidRequest request, User freelancer) {
 
@@ -80,6 +82,7 @@ public class BidService {
                 NotificationType.BID_PLACED,
                 job.getId()
         );
+        emailService.sendBidPlacedEmail(job.getClient().getEmail(), freelancer.getName(), job.getTitle());
 
         return mapToResponse(saved);
     }
@@ -200,6 +203,9 @@ public class BidService {
                 NotificationType.BID_ACCEPTED,
                 savedContract.getId()
         );
+        emailService.sendBidAcceptedEmail(bid.getFreelancer().getEmail(), bid.getFreelancer().getName(), job.getTitle());
+        emailService.sendContractCreatedEmail(job.getClient().getEmail(), job.getClient().getName(), job.getTitle());
+        emailService.sendContractCreatedEmail(bid.getFreelancer().getEmail(), bid.getFreelancer().getName(), job.getTitle());
     }
 
 

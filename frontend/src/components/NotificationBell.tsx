@@ -92,21 +92,27 @@ function NotificationItem({
 export function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [open, setOpen] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setShowAll(false);
+      }
     }
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const unread = notifications.filter(n => !n.read).slice(0, 20);
+  const unread = notifications.filter(n => !n.read);
+  const visible = showAll ? unread : unread.slice(0, 5);
 
   async function handleClickItem(n: AppNotification) {
     setOpen(false);
+    setShowAll(false);
     await markAsRead(n.id);
     navigate(getNavPath(n));
   }
@@ -118,7 +124,7 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={ref}>
       <button
-        onClick={() => setOpen(o => !o)}
+        onClick={() => { setOpen(o => !o); setShowAll(false); }}
         className="relative p-2 text-white/70 hover:text-white transition-colors"
         aria-label="Notifications"
       >
@@ -141,16 +147,13 @@ export function NotificationBell() {
               Notifications {unreadCount > 0 && <span className="text-white/40 font-normal">({unreadCount})</span>}
             </span>
             {unreadCount > 0 && (
-              <button
-                onClick={handleMarkAll}
-                className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors"
-              >
+              <button onClick={handleMarkAll} className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors">
                 Mark all as read
               </button>
             )}
           </div>
 
-          {/* List — unread only */}
+          {/* List */}
           <div className="max-h-[400px] overflow-y-auto divide-y divide-white/5">
             {unread.length === 0 ? (
               <div className="py-10 text-center">
@@ -158,15 +161,20 @@ export function NotificationBell() {
                 <p className="text-white/30 text-sm">All caught up!</p>
               </div>
             ) : (
-              unread.map(n => (
+              visible.map(n => (
                 <NotificationItem key={n.id} n={n} onClickItem={handleClickItem} />
               ))
             )}
           </div>
 
-          {notifications.filter(n => !n.read).length > 20 && (
-            <div className="px-4 py-2 border-t border-white/10 text-center text-[11px] text-white/30">
-              Showing 20 of {notifications.filter(n => !n.read).length} unread
+          {/* View All / Show Less */}
+          {unread.length > 5 && (
+            <div className="px-4 py-2.5 border-t border-white/10 text-center">
+              <button
+                onClick={() => setShowAll(v => !v)}
+                className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+                {showAll ? 'Show less' : `View all ${unread.length} notifications`}
+              </button>
             </div>
           )}
         </div>

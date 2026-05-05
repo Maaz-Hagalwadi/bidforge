@@ -2,6 +2,7 @@ package com.bidforge.app.contract;
 
 import com.bidforge.app.common.exception.AccessDeniedException;
 import com.bidforge.app.common.exception.ContractNotFoundException;
+import com.bidforge.app.notification.EmailService;
 import com.bidforge.app.notification.NotificationService;
 import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.contract.dto.ContractResponse;
@@ -25,6 +26,7 @@ public class ContractService {
 
     private final ContractRepository contractRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
 
 
@@ -73,6 +75,8 @@ public class ContractService {
                 NotificationType.CONTRACT_COMPLETED,
                 contract.getId()
         );
+        emailService.sendContractCreatedEmail(contract.getFreelancer().getEmail(), contract.getFreelancer().getName(), job.getTitle());
+        emailService.sendContractCreatedEmail(contract.getClient().getEmail(), contract.getClient().getName(), job.getTitle());
     }
 
     @Transactional
@@ -106,6 +110,7 @@ public class ContractService {
                 NotificationType.REVISION_REQUESTED,
                 contract.getId()
         );
+        emailService.sendMilestoneRejectedEmail(contract.getFreelancer().getEmail(), contract.getFreelancer().getName(), contract.getJob().getTitle());
     }
 
 
@@ -147,6 +152,7 @@ public class ContractService {
                 NotificationType.CONTRACT_SUBMITTED,
                 contract.getId()
         );
+        emailService.sendMilestoneSubmittedEmail(contract.getClient().getEmail(), contract.getClient().getName(), contract.getJob().getTitle());
     }
 
 

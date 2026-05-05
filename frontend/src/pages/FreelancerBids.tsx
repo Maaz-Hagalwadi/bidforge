@@ -143,8 +143,8 @@ export default function FreelancerBids() {
           <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             <div>
-              <h1 className="text-h1 font-bold text-on-surface">My Bids</h1>
-              <p className="text-body-md text-on-surface-variant mt-1">All bids you've placed on jobs.</p>
+              <h1 className="text-h2 font-bold text-on-surface">My Bids</h1>
+              <p className="text-sm text-on-surface-variant mt-0.5">All bids you've placed on jobs.</p>
             </div>
 
             {loading ? (
@@ -217,67 +217,66 @@ export default function FreelancerBids() {
                         const isExpanded = expandedBid === bid.id;
                         return (
                           <article key={bid.id} className="tonal-card rounded-xl p-5 hover:shadow-md transition-all">
-                            <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                              <div className="flex-1 min-w-0 space-y-2">
-                                {/* Job title + badges */}
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <button
-                                    onClick={() => navigate(`/jobs/${bid.jobId}`)}
-                                    className="text-sm font-bold text-on-surface hover:text-secondary hover:underline text-left line-clamp-1 transition-colors"
-                                  >
-                                    {bid.jobTitle}
-                                  </button>
-                                  {bid.status !== 'REJECTED' && (
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${jst.cls}`}>{jst.label}</span>
-                                  )}
-                                </div>
-
-                                {/* Bid meta */}
-                                <div className="flex flex-wrap gap-4">
-                                  <div>
-                                    <p className="text-xs text-on-surface-variant">Your Bid</p>
-                                    <p className="text-base font-bold text-secondary">${bid.amount.toLocaleString()}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-on-surface-variant">Delivery</p>
-                                    <p className="text-sm font-semibold text-on-surface">{bid.deliveryDays} day{bid.deliveryDays !== 1 ? 's' : ''}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-on-surface-variant">Placed On</p>
-                                    <p className="text-sm font-semibold text-on-surface">{formatDate(bid.createdAt)}</p>
-                                  </div>
-                                </div>
-
-                                {/* Proposal */}
-                                <div>
-                                  <p className={`text-sm text-on-surface-variant leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
-                                    {bid.proposal}
-                                  </p>
-                                  {bid.proposal.length > 120 && (
+                            <div className="flex flex-col gap-4">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0 space-y-2">
+                                  {/* Job title + badges */}
+                                  <div className="flex flex-wrap items-center gap-2">
                                     <button
-                                      onClick={() => setExpandedBid(isExpanded ? null : bid.id)}
-                                      className="text-xs text-secondary font-semibold hover:underline mt-1"
+                                      onClick={() => navigate(`/jobs/${bid.jobId}`)}
+                                      className="text-sm font-bold text-on-surface hover:text-secondary hover:underline text-left line-clamp-1 transition-colors"
                                     >
-                                      {isExpanded ? 'Show less' : 'Read more'}
+                                      {bid.jobTitle}
                                     </button>
-                                  )}
+                                    {bid.status !== 'REJECTED' && (
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${jst.cls}`}>{jst.label}</span>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-
-                              {/* Status badge */}
-                              <div className="flex sm:flex-col items-center sm:items-end gap-3 flex-shrink-0">
-                                <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${cfg.cls}`}>
+                                <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 ${cfg.cls}`}>
                                   <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
                                   {cfg.label}
                                 </span>
-                                <button
-                                  onClick={() => navigate(`/jobs/${bid.jobId}`)}
-                                  className="flex items-center gap-1 text-xs font-semibold text-secondary hover:underline transition-colors"
-                                >
-                                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                                  View Job
-                                </button>
                               </div>
+
+                              {/* Bid meta */}
+                              <div className="flex flex-wrap gap-4">
+                                <div>
+                                  <p className="text-xs text-on-surface-variant">Your Bid</p>
+                                  <p className="text-base font-bold text-secondary">${bid.amount.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-on-surface-variant">Delivery</p>
+                                  <p className="text-sm font-semibold text-on-surface">{bid.deliveryDays} day{bid.deliveryDays !== 1 ? 's' : ''}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-on-surface-variant">Placed On</p>
+                                  <p className="text-sm font-semibold text-on-surface">{formatDate(bid.createdAt)}</p>
+                                </div>
+                              </div>
+
+                              {/* Proposal */}
+                              <div>
+                                <p className={`text-sm text-on-surface-variant leading-relaxed ${isExpanded ? '' : 'line-clamp-2'}`}>
+                                  {bid.proposal}
+                                </p>
+                                {bid.proposal.length > 120 && (
+                                  <button
+                                    onClick={() => setExpandedBid(isExpanded ? null : bid.id)}
+                                    className="text-xs text-secondary font-semibold hover:underline mt-1"
+                                  >
+                                    {isExpanded ? 'Show less' : 'Read more'}
+                                  </button>
+                                )}
+                              </div>
+
+                              <button
+                                onClick={() => navigate(`/jobs/${bid.jobId}`)}
+                                className="self-start flex items-center gap-1 text-xs font-semibold text-secondary hover:underline transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                View Job
+                              </button>
                             </div>
                           </article>
                         );

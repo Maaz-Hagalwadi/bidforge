@@ -284,8 +284,8 @@ export default function BrowseJobs() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
-                <h1 className="text-h1 font-bold text-on-surface">Browse Jobs</h1>
-                <p className="text-body-md text-on-surface-variant mt-1">Find projects that match your skills and expertise.</p>
+                <h1 className="text-h2 font-bold text-on-surface">Browse Jobs</h1>
+                <p className="text-sm text-on-surface-variant mt-0.5">Find projects that match your skills and expertise.</p>
               </div>
               {user?.role === 'FREELANCER' && (
                 <div className="flex items-center gap-1 bg-surface-container rounded-xl p-1 self-start sm:self-auto border border-outline-variant">
@@ -328,7 +328,7 @@ export default function BrowseJobs() {
                   const visCfg = VIS_CFG[job.visibility];
                   return (
                     <article key={job.id} className="tonal-card rounded-xl border border-outline-variant hover:border-secondary/20 hover:shadow-md transition-all group">
-                      <div className="flex flex-col md:flex-row md:items-start p-5 gap-5">
+                      <div className="flex flex-col p-5 gap-4">
                         <div className="flex-1 min-w-0 space-y-2">
                           <span className="text-xs text-on-surface-variant flex items-center gap-1">
                             <span className="material-symbols-outlined text-[14px]">schedule</span>
@@ -346,24 +346,25 @@ export default function BrowseJobs() {
                           )}
                           <p className="text-base font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
                         </div>
-                        <div className="shrink-0 flex flex-col items-stretch gap-2 w-36">
-                          <div className="flex flex-row flex-wrap items-center justify-end gap-1.5 mb-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap gap-1.5">
                             <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
                             <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
                               <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
                               {visCfg.label}
                             </span>
                           </div>
-                          <div className="flex-1 min-h-[3rem]" />
-                          <button onClick={() => navigate(`/jobs/${job.id}`)}
-                            className="w-full py-2 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all text-center">
-                            View &amp; Bid
-                          </button>
-                          <button onClick={() => toggleSave(job)}
-                            className="w-full py-1.5 rounded-lg text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-all flex items-center justify-center gap-1">
-                            <span className="material-symbols-outlined text-[15px]">bookmark_remove</span>
-                            Remove
-                          </button>
+                          <div className="flex gap-2">
+                            <button onClick={() => navigate(`/jobs/${job.id}`)}
+                              className="px-4 py-1.5 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all">
+                              View &amp; Bid
+                            </button>
+                            <button onClick={() => toggleSave(job)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-200 text-red-500 hover:bg-red-50 transition-all flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[15px]">bookmark_remove</span>
+                              Remove
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </article>
@@ -477,7 +478,7 @@ export default function BrowseJobs() {
                     return (
                       <article key={job.id} className="rounded-xl border-l-4 border-l-secondary overflow-hidden hover:shadow-lg transition-all group"
                         style={{ backgroundColor: '#d8e2ff' }}>
-                        <div className="flex flex-col md:flex-row md:items-start p-6 gap-6">
+                        <div className="flex flex-col p-6 gap-4">
                           <div className="flex-1 min-w-0 space-y-3">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="px-2.5 py-1 bg-secondary text-white rounded text-xs font-bold uppercase tracking-wider">
@@ -508,24 +509,25 @@ export default function BrowseJobs() {
                               <p className="text-lg font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
                             </div>
                           </div>
-                          <div className="shrink-0 flex flex-col items-stretch gap-2 w-36">
-                            <div className="flex flex-row flex-wrap items-center justify-end gap-1.5 mb-1">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex flex-wrap gap-1.5">
                               <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
                               <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
                                 <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
                                 {visCfg.label}
                               </span>
                             </div>
-                            <div className="flex-1 min-h-[3rem]" />
-                            <button onClick={() => navigate(`/jobs/${job.id}`)}
-                              className="w-full py-2.5 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all text-center">
-                              View &amp; Bid
-                            </button>
-                            <button onClick={() => toggleSave(job)}
-                              className={`w-full py-2 rounded-lg text-sm font-semibold border transition-all flex items-center justify-center gap-1.5 ${isSaved ? 'bg-secondary/15 border-secondary text-secondary' : 'border-secondary/30 text-secondary hover:bg-secondary/10'}`}>
-                              <span className="material-symbols-outlined text-[18px]">{isSaved ? 'bookmark_added' : 'bookmark'}</span>
-                              {isSaved ? 'Saved' : 'Save'}
-                            </button>
+                            <div className="flex gap-2">
+                              <button onClick={() => navigate(`/jobs/${job.id}`)}
+                                className="px-4 py-2 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all">
+                                View &amp; Bid
+                              </button>
+                              <button onClick={() => toggleSave(job)}
+                                className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all flex items-center gap-1.5 ${isSaved ? 'bg-secondary/15 border-secondary text-secondary' : 'border-secondary/30 text-secondary hover:bg-secondary/10'}`}>
+                                <span className="material-symbols-outlined text-[18px]">{isSaved ? 'bookmark_added' : 'bookmark'}</span>
+                                {isSaved ? 'Saved' : 'Save'}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </article>
@@ -534,7 +536,7 @@ export default function BrowseJobs() {
 
                   return (
                     <article key={job.id} className="tonal-card rounded-xl overflow-hidden hover:border-secondary/20 hover:shadow-md transition-all group border border-outline-variant">
-                      <div className="flex flex-col md:flex-row md:items-start p-6 gap-6">
+                      <div className="flex flex-col p-6 gap-4">
                         <div className="flex-1 min-w-0 space-y-3">
                           <div className="flex flex-wrap items-center gap-2">
                             {expCfg ? (
@@ -562,24 +564,25 @@ export default function BrowseJobs() {
                             <p className="text-lg font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
                           </div>
                         </div>
-                        <div className="shrink-0 flex flex-col items-stretch gap-2 w-36">
-                          <div className="flex flex-row flex-wrap items-center justify-end gap-1.5 mb-1">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap gap-1.5">
                             <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
                             <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
                               <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
                               {visCfg.label}
                             </span>
                           </div>
-                          <div className="flex-1 min-h-[3rem]" />
-                          <button onClick={() => navigate(`/jobs/${job.id}`)}
-                            className="w-full py-2.5 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all text-center">
-                            View &amp; Bid
-                          </button>
-                          <button onClick={() => toggleSave(job)}
-                            className={`w-full py-2 rounded-lg text-sm font-semibold border transition-all flex items-center justify-center gap-1.5 ${isSaved ? 'bg-secondary/10 border-secondary text-secondary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'}`}>
-                            <span className="material-symbols-outlined text-[18px]">{isSaved ? 'bookmark_added' : 'bookmark'}</span>
-                            {isSaved ? 'Saved' : 'Save'}
-                          </button>
+                          <div className="flex gap-2">
+                            <button onClick={() => navigate(`/jobs/${job.id}`)}
+                              className="px-4 py-2 bg-secondary text-white rounded-lg text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all">
+                              View &amp; Bid
+                            </button>
+                            <button onClick={() => toggleSave(job)}
+                              className={`px-3 py-2 rounded-lg text-sm font-semibold border transition-all flex items-center gap-1.5 ${isSaved ? 'bg-secondary/10 border-secondary text-secondary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container'}`}>
+                              <span className="material-symbols-outlined text-[18px]">{isSaved ? 'bookmark_added' : 'bookmark'}</span>
+                              {isSaved ? 'Saved' : 'Save'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </article>

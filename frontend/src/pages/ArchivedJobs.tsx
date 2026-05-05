@@ -199,8 +199,8 @@ export default function ArchivedJobs() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-h1 font-bold text-on-surface">Archived Jobs</h1>
-                <p className="text-body-md text-on-surface-variant mt-1">Jobs you've archived — repost or permanently remove them.</p>
+                <h1 className="text-h2 font-bold text-on-surface">Archived Jobs</h1>
+                <p className="text-sm text-on-surface-variant mt-0.5">Jobs you've archived — repost or permanently remove them.</p>
               </div>
               <button onClick={() => navigate('/client/jobs')}
                 className="flex items-center gap-2 px-5 h-10 border border-outline-variant text-on-surface-variant font-semibold rounded-lg hover:bg-slate-50 transition-colors flex-shrink-0 text-sm">

@@ -37,8 +37,6 @@ const ST_TOP: Record<string, string> = {
 
 const STATUS_TABS = ['ALL', 'OPEN', 'DRAFT', 'ASSIGNED', 'COMPLETED'] as const;
 type StatusFilter = (typeof STATUS_TABS)[number];
-type ViewMode = 'list' | 'grid';
-
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -548,7 +546,6 @@ export default function MyJobs() {
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<JobResponse | null>(null);
   const [archiveLoading, setArchiveLoading]     = useState(false);
   const [page, setPage]                         = useState(0);
-  const [viewMode, setViewMode]                 = useState<ViewMode>('list');
   const PAGE_SIZE = 10;
 
   const profileRef = useRef<HTMLDivElement>(null);
@@ -733,8 +730,8 @@ export default function MyJobs() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-h1 font-bold text-on-surface">My Jobs</h1>
-                <p className="text-body-md text-on-surface-variant mt-1">Manage all jobs you've posted on BidForge.</p>
+                <h1 className="text-h2 font-bold text-on-surface">My Jobs</h1>
+                <p className="text-sm text-on-surface-variant mt-0.5">Manage all jobs you've posted on BidForge.</p>
               </div>
               <button onClick={() => navigate('/client/post-job')}
                 className="flex items-center gap-2 px-6 h-12 bg-secondary text-white font-semibold rounded-lg shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0">
@@ -771,26 +768,12 @@ export default function MyJobs() {
               </div>
             </div>
 
-            {/* Toolbar: count + view toggle */}
+            {/* Toolbar: count */}
             {!loading && (
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-on-surface-variant">
-                  Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of{' '}
-                  <span className="font-semibold text-on-surface">{filtered.length}</span> active jobs
-                </p>
-                <div className="flex items-center gap-0.5 p-1 bg-slate-100 rounded-lg border border-slate-200">
-                  <button onClick={() => setViewMode('list')} title="List view"
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                    <span className="material-symbols-outlined text-[17px]">view_list</span>
-                    <span className="text-xs font-semibold">List</span>
-                  </button>
-                  <button onClick={() => setViewMode('grid')} title="Grid view"
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
-                    <span className="material-symbols-outlined text-[17px]">grid_view</span>
-                    <span className="text-xs font-semibold">Grid</span>
-                  </button>
-                </div>
-              </div>
+              <p className="text-sm text-on-surface-variant">
+                Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of{' '}
+                <span className="font-semibold text-on-surface">{filtered.length}</span> active jobs
+              </p>
             )}
 
             {/* ── Content ── */}
@@ -815,154 +798,73 @@ export default function MyJobs() {
               </div>
             ) : (
               <>
-                {/* ── LIST VIEW ── */}
-                {viewMode === 'list' ? (
-                  <div className="space-y-3">
-                    {paginated.map(job => {
-                      const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
-                      const isInviteOnly = job.visibility === 'INVITE_ONLY';
-                      const skills = parseSkills(job.requiredSkills);
-                      return (
-                        <article key={job.id} className="group tonal-card rounded-xl overflow-hidden transition-all hover:shadow-md">
-                          <div className={`h-[3px] ${ST_TOP[job.status] ?? 'bg-slate-300'}`} />
-                          <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-start gap-5">
-
-                            {/* Left: info */}
-                            <div className="flex-1 min-w-0 space-y-2.5">
-                              <div className="flex items-start gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <h3 className="text-[15px] font-bold text-on-surface leading-snug">{job.title}</h3>
-                                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${st.cls}`}>{st.label}</span>
-                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[11px] font-medium">{job.category}</span>
-                                    <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${isInviteOnly ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
-                                      <span className="material-symbols-outlined text-[11px]">{isInviteOnly ? 'lock' : 'public'}</span>
-                                      {isInviteOnly ? 'Invite Only' : 'Public'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-2">{job.description}</p>
-
-                              {skills.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {skills.slice(0, 5).map(s => (
-                                    <span key={s} className="px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-500">{s}</span>
-                                  ))}
-                                  {skills.length > 5 && <span className="text-xs text-slate-400 self-center">+{skills.length - 5} more</span>}
-                                </div>
-                              )}
-
-                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5">
-                                <span className="flex items-center gap-1 text-xs text-on-surface-variant">
-                                  <span className="material-symbols-outlined text-[13px]">calendar_today</span>
-                                  {formatDate(job.createdAt)}
-                                </span>
-                                {(job.status === 'OPEN' || job.status === 'ASSIGNED') && (
-                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant">
-                                    <span className="material-symbols-outlined text-[13px]">gavel</span>
-                                    {job.bidsCount ?? 0} bids
-                                  </span>
-                                )}
-                                {job.status === 'ASSIGNED' && job.assignedFreelancerName && (
-                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant">
-                                    <span className="material-symbols-outlined text-[13px]">person</span>
-                                    {job.assignedFreelancerName}
-                                  </span>
-                                )}
-                                {job.deadline && (
-                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant">
-                                    <span className="material-symbols-outlined text-[13px]">event</span>
-                                    Due {formatDate(job.deadline)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Right: actions → budget below */}
-                            <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-start gap-3 flex-shrink-0 sm:min-w-[160px]">
-                              {buildActions(job)}
-                              {/* Budget — below buttons */}
-                              <div className="sm:text-right">
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-0.5">Budget</p>
-                                <p className="text-sm font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
-                              </div>
-                            </div>
+                {/* ── GRID VIEW (always) ── */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {paginated.map(job => {
+                    const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
+                    const isInviteOnly = job.visibility === 'INVITE_ONLY';
+                    const skills = parseSkills(job.requiredSkills);
+                    return (
+                      <article key={job.id} className="group tonal-card rounded-xl overflow-hidden transition-all hover:shadow-md flex flex-col">
+                        <div className={`h-[3px] ${ST_TOP[job.status] ?? 'bg-slate-300'}`} />
+                        <div className="px-4 pt-3 pb-3 border-b border-slate-100">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${st.cls}`}>{st.label}</span>
+                            <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${isInviteOnly ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                              <span className="material-symbols-outlined text-[11px]">{isInviteOnly ? 'lock' : 'public'}</span>
+                              {isInviteOnly ? 'Invite Only' : 'Public'}
+                            </span>
                           </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  /* ── GRID VIEW ── */
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {paginated.map(job => {
-                      const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
-                      const isInviteOnly = job.visibility === 'INVITE_ONLY';
-                      const skills = parseSkills(job.requiredSkills);
-                      return (
-                        <article key={job.id} className="group tonal-card rounded-xl overflow-hidden transition-all hover:shadow-md flex flex-col">
-                          <div className={`h-[3px] ${ST_TOP[job.status] ?? 'bg-slate-300'}`} />
-                          <div className="px-4 pt-3 pb-3 border-b border-slate-100">
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${st.cls}`}>{st.label}</span>
-                              <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${isInviteOnly ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
-                                <span className="material-symbols-outlined text-[11px]">{isInviteOnly ? 'lock' : 'public'}</span>
-                                {isInviteOnly ? 'Invite Only' : 'Public'}
-                              </span>
-                            </div>
-                            <h3 className="text-[14px] font-bold text-on-surface leading-snug line-clamp-2">{job.title}</h3>
-                            <p className="text-[11px] text-on-surface-variant mt-0.5 font-medium">{job.category}</p>
+                          <h3 className="text-[14px] font-bold text-on-surface leading-snug line-clamp-2">{job.title}</h3>
+                          <p className="text-[11px] text-on-surface-variant mt-0.5 font-medium">{job.category}</p>
+                        </div>
+                        <div className="px-4 py-3 flex-1 flex flex-col gap-3">
+                          <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-3">{job.description}</p>
+                          <div className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Budget</p>
+                            <p className="text-sm font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
                           </div>
-                          <div className="px-4 py-3 flex-1 flex flex-col gap-3">
-                            <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-3">{job.description}</p>
-                            <div className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Budget</p>
-                              <p className="text-sm font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
+                          <div className="space-y-1.5 text-xs text-on-surface-variant">
+                            <div className="flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                              {formatDate(job.createdAt)}
                             </div>
-                            <div className="space-y-1.5 text-xs text-on-surface-variant">
+                            {(job.status === 'OPEN' || job.status === 'ASSIGNED') && (
                               <div className="flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                {formatDate(job.createdAt)}
-                              </div>
-                              {(job.status === 'OPEN' || job.status === 'ASSIGNED') && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="material-symbols-outlined text-[14px]">gavel</span>
-                                  {job.bidsCount ?? 0} bids received
-                                </div>
-                              )}
-                              {job.status === 'ASSIGNED' && job.assignedFreelancerName && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="material-symbols-outlined text-[14px]">person</span>
-                                  {job.assignedFreelancerName}
-                                </div>
-                              )}
-                              {job.deadline && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="material-symbols-outlined text-[14px]">event</span>
-                                  Due {formatDate(job.deadline)}
-                                </div>
-                              )}
-                            </div>
-                            {skills.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {skills.slice(0, 3).map(s => (
-                                  <span key={s} className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-500">{s}</span>
-                                ))}
-                                {skills.length > 3 && <span className="text-[11px] text-slate-400">+{skills.length - 3}</span>}
+                                <span className="material-symbols-outlined text-[14px]">gavel</span>
+                                {job.bidsCount ?? 0} bids received
                               </div>
                             )}
-                            <div className="flex-1" />
-                            <div className="pt-3 border-t border-slate-100">
-                              {buildActions(job, true)}
-                            </div>
+                            {job.status === 'ASSIGNED' && job.assignedFreelancerName && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[14px]">person</span>
+                                {job.assignedFreelancerName}
+                              </div>
+                            )}
+                            {job.deadline && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-[14px]">event</span>
+                                Due {formatDate(job.deadline)}
+                              </div>
+                            )}
                           </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                )}
+                          {skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {skills.slice(0, 3).map(s => (
+                                <span key={s} className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-500">{s}</span>
+                              ))}
+                              {skills.length > 3 && <span className="text-[11px] text-slate-400">+{skills.length - 3}</span>}
+                            </div>
+                          )}
+                          <div className="flex-1" />
+                          <div className="pt-3 border-t border-slate-100">
+                            {buildActions(job, true)}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (

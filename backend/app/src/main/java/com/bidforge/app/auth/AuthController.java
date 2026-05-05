@@ -1,8 +1,10 @@
 package com.bidforge.app.auth;
 
+import com.bidforge.app.auth.dto.request.ForgotPasswordRequest;
 import com.bidforge.app.auth.dto.request.LoginRequest;
 import com.bidforge.app.auth.dto.request.RefreshTokenRequest;
 import com.bidforge.app.auth.dto.request.RegisterRequest;
+import com.bidforge.app.auth.dto.request.ResetPasswordRequest;
 import com.bidforge.app.auth.dto.response.LoginResponse;
 import com.bidforge.app.user.dto.response.UserResponse;
 import jakarta.validation.Valid;
@@ -42,5 +44,17 @@ public class AuthController {
     public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
         authService.logout(request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok("If that email exists, a reset link has been sent.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok("Password reset successfully.");
     }
 }

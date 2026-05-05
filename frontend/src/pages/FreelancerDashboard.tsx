@@ -35,27 +35,27 @@ function StatCard({ icon, label, value, trend, trendColor, dark }: {
 }) {
   if (dark) {
     return (
-      <div className="p-6 rounded-xl flex flex-col gap-3 border border-white/10" style={{ backgroundColor: '#0A192F' }}>
+      <div className="p-4 rounded-xl flex flex-col gap-2 border border-white/10" style={{ backgroundColor: '#0A192F' }}>
         <div className="flex items-center justify-between">
-          <span className="material-symbols-outlined text-secondary text-[32px]">{icon}</span>
+          <span className="material-symbols-outlined text-secondary text-[20px]">{icon}</span>
           {trend && <span className={`font-bold text-label-sm ${trendColor}`}>{trend}</span>}
         </div>
         <div>
           <p className="text-white/60 text-label-md">{label}</p>
-          <h3 className="text-h2 font-bold text-white">{value}</h3>
+          <h3 className="text-base font-bold text-white">{value}</h3>
         </div>
       </div>
     );
   }
   return (
-    <div className="tonal-card p-6 rounded-xl flex flex-col gap-3">
+    <div className="tonal-card p-4 rounded-xl flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="material-symbols-outlined text-secondary text-[32px]">{icon}</span>
+        <span className="material-symbols-outlined text-secondary text-[20px]">{icon}</span>
         {trend && <span className={`font-bold text-label-sm ${trendColor}`}>{trend}</span>}
       </div>
       <div>
         <p className="text-on-surface-variant text-label-md">{label}</p>
-        <h3 className="text-h2 font-bold text-on-surface">{value}</h3>
+        <h3 className="text-base font-bold text-on-surface">{value}</h3>
       </div>
     </div>
   );
@@ -188,8 +188,8 @@ export default function FreelancerDashboard() {
             {/* Welcome */}
             <section className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div>
-                <h1 className="text-h1 font-bold text-on-surface">{data?.welcomeMessage ?? `Welcome back, ${user?.name.split(' ')[0] ?? 'there'} 👋`}</h1>
-                <p className="text-body-lg text-on-surface-variant mt-1">Find jobs, place bids, and grow your freelance career.</p>
+                <h1 className="text-h2 font-bold text-on-surface">{data?.welcomeMessage ?? `Welcome back, ${user?.name.split(' ')[0] ?? 'there'} 👋`}</h1>
+                <p className="text-sm text-on-surface-variant mt-0.5">Find jobs, place bids, and grow your freelance career.</p>
               </div>
               <button onClick={() => navigate('/browse')}
                 className="flex items-center justify-center gap-2 px-6 h-12 bg-secondary text-white font-semibold rounded-lg shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0">
@@ -211,7 +211,7 @@ export default function FreelancerDashboard() {
               <img src={HERO_IMAGE} alt="Freelancers working" className="absolute inset-0 w-full h-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#0A192F]/90 via-[#0A192F]/60 to-transparent" />
               <div className="relative z-10 p-8 md:p-12 max-w-lg">
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">Find your next big project</h2>
+                <h2 className="text-lg font-bold text-white mb-2 leading-tight">Find your next big project</h2>
                 <p className="text-white/70 text-sm mb-6">Browse thousands of listings and place winning bids.</p>
                 <div className="flex flex-wrap gap-3">
                   <button onClick={() => navigate('/browse')} className="px-5 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
@@ -229,7 +229,7 @@ export default function FreelancerDashboard() {
               {/* Recent Activity */}
               <div className="lg:col-span-2 tonal-card rounded-xl overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                  <h3 className="text-h3 font-semibold text-on-surface">Recent Activity</h3>
+                  <h3 className="text-sm font-semibold text-on-surface">Recent Activity</h3>
                   <button onClick={() => navigate('/freelancer/bids')} className="text-secondary font-semibold text-sm hover:underline">View All</button>
                 </div>
                 <div className="divide-y divide-slate-100">
@@ -246,7 +246,7 @@ export default function FreelancerDashboard() {
               {/* Profile Completion */}
               <div className="tonal-card rounded-xl p-6 flex flex-col gap-5">
                 <div>
-                  <h3 className="text-h3 font-semibold text-on-surface mb-1">Profile Completion</h3>
+                  <h3 className="text-sm font-semibold text-on-surface mb-1">Profile Completion</h3>
                   <p className="text-sm text-on-surface-variant">Complete your profile to attract more clients.</p>
                 </div>
 

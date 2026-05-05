@@ -39,6 +39,7 @@ export default function ClientInvites() {
   const [loading, setLoading] = useState(true);
   const [statusTab, setStatusTab] = useState<'ALL' | 'INVITED' | 'ACCEPTED' | 'DECLINED'>('ALL');
   const [page, setPage] = useState(0);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -132,8 +133,8 @@ export default function ClientInvites() {
           <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             <div>
-              <h1 className="text-h1 font-bold text-on-surface">Invites Sent</h1>
-              <p className="text-body-md text-on-surface-variant mt-1">Freelancers you've personally invited to your jobs.</p>
+              <h1 className="text-h2 font-bold text-on-surface">Invites Sent</h1>
+              <p className="text-sm text-on-surface-variant mt-0.5">Freelancers you've personally invited to your jobs.</p>
             </div>
 
             {loading ? (
@@ -151,21 +152,35 @@ export default function ClientInvites() {
             ) : (
               <div className="space-y-5">
 
-                {/* Status tabs */}
-                <div className="flex gap-1.5 flex-wrap">
-                  {([
-                    { key: 'ALL',      label: 'All',      count: counts.ALL      },
-                    { key: 'INVITED',  label: 'Sent',     count: counts.INVITED  },
-                    { key: 'ACCEPTED', label: 'Accepted', count: counts.ACCEPTED },
-                    { key: 'DECLINED', label: 'Declined', count: counts.DECLINED },
-                  ] as const).map(({ key, label, count }) => (
-                    <button key={key}
-                      onClick={() => { setStatusTab(key); setPage(0); }}
-                      className={['flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all', statusTab === key ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
-                      {label}
-                      <span className={['text-xs px-1.5 py-0.5 rounded-full font-bold', statusTab === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-on-surface-variant'].join(' ')}>{count}</span>
+                {/* Status tabs + view toggle */}
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex gap-1.5 flex-wrap">
+                    {([
+                      { key: 'ALL',      label: 'All',      count: counts.ALL      },
+                      { key: 'INVITED',  label: 'Sent',     count: counts.INVITED  },
+                      { key: 'ACCEPTED', label: 'Accepted', count: counts.ACCEPTED },
+                      { key: 'DECLINED', label: 'Declined', count: counts.DECLINED },
+                    ] as const).map(({ key, label, count }) => (
+                      <button key={key}
+                        onClick={() => { setStatusTab(key); setPage(0); }}
+                        className={['flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all', statusTab === key ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+                        {label}
+                        <span className={['text-xs px-1.5 py-0.5 rounded-full font-bold', statusTab === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-on-surface-variant'].join(' ')}>{count}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="hidden lg:flex items-center gap-0.5 p-1 bg-slate-100 rounded-lg border border-slate-200 flex-shrink-0">
+                    <button onClick={() => setViewMode('list')} title="List view"
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                      <span className="material-symbols-outlined text-[16px]">view_list</span>
+                      <span className="text-xs font-semibold">List</span>
                     </button>
-                  ))}
+                    <button onClick={() => setViewMode('grid')} title="Grid view"
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                      <span className="material-symbols-outlined text-[16px]">grid_view</span>
+                      <span className="text-xs font-semibold">Grid</span>
+                    </button>
+                  </div>
                 </div>
 
                 <p className="text-sm text-on-surface-variant">
@@ -179,46 +194,66 @@ export default function ClientInvites() {
                   </div>
                 ) : (
                   <>
-                    {/* Table */}
-                    <div className="tonal-card rounded-xl overflow-hidden">
-                      {/* Header — hidden on mobile */}
-                      <div className="hidden md:grid grid-cols-[1fr_1fr_120px_140px] gap-4 px-5 py-3 border-b border-outline-variant bg-slate-50/50">
-                        <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Freelancer</span>
-                        <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Job</span>
-                        <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Status</span>
-                        <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Invited On</span>
+                    {viewMode === 'list' ? (
+                      <div className="tonal-card rounded-xl overflow-hidden">
+                        <div className="hidden md:grid grid-cols-[1fr_1fr_120px_140px] gap-4 px-5 py-3 border-b border-outline-variant bg-slate-50/50">
+                          <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Freelancer</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Job</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Status</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">Invited On</span>
+                        </div>
+                        <div className="divide-y divide-outline-variant">
+                          {paginated.map(inv => {
+                            const badge = STATUS_BADGE[inv.status] ?? { label: inv.status, cls: 'bg-slate-100 text-slate-600' };
+                            return (
+                              <div key={inv.inviteId} className="px-5 py-4 flex flex-col md:grid md:grid-cols-[1fr_1fr_120px_140px] md:items-center gap-3 md:gap-4 hover:bg-slate-50/50 transition-colors">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-on-surface truncate">{inv.freelancerName}</p>
+                                  <p className="text-xs text-on-surface-variant truncate">{inv.freelancerEmail}</p>
+                                </div>
+                                <button onClick={() => navigate(`/jobs/${inv.jobId}`, { state: { from: 'myjobs' } })}
+                                  className="text-sm font-medium text-secondary hover:underline text-left truncate">{inv.jobTitle}</button>
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${badge.cls}`}>
+                                  {inv.status === 'INVITED'  && <span className="material-symbols-outlined text-[12px]">schedule</span>}
+                                  {inv.status === 'ACCEPTED' && <span className="material-symbols-outlined text-[12px]">check_circle</span>}
+                                  {inv.status === 'DECLINED' && <span className="material-symbols-outlined text-[12px]">cancel</span>}
+                                  {badge.label}
+                                </span>
+                                <p className="text-xs text-on-surface-variant">{formatDate(inv.invitedAt)}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-
-                      <div className="divide-y divide-outline-variant">
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                         {paginated.map(inv => {
                           const badge = STATUS_BADGE[inv.status] ?? { label: inv.status, cls: 'bg-slate-100 text-slate-600' };
                           return (
-                            <div key={inv.inviteId} className="px-5 py-4 flex flex-col md:grid md:grid-cols-[1fr_1fr_120px_140px] md:items-center gap-3 md:gap-4 hover:bg-slate-50/50 transition-colors">
-                              {/* Freelancer */}
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-on-surface truncate">{inv.freelancerName}</p>
-                                <p className="text-xs text-on-surface-variant truncate">{inv.freelancerEmail}</p>
+                            <div key={inv.inviteId} className="tonal-card rounded-xl p-4 flex flex-col gap-3">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-on-surface truncate">{inv.freelancerName}</p>
+                                  <p className="text-xs text-on-surface-variant truncate">{inv.freelancerEmail}</p>
+                                </div>
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${badge.cls}`}>
+                                  {inv.status === 'INVITED'  && <span className="material-symbols-outlined text-[12px]">schedule</span>}
+                                  {inv.status === 'ACCEPTED' && <span className="material-symbols-outlined text-[12px]">check_circle</span>}
+                                  {inv.status === 'DECLINED' && <span className="material-symbols-outlined text-[12px]">cancel</span>}
+                                  {badge.label}
+                                </span>
                               </div>
-                              {/* Job */}
-                              <button
-                                onClick={() => navigate(`/jobs/${inv.jobId}`, { state: { from: 'myjobs' } })}
-                                className="text-sm font-medium text-secondary hover:underline text-left truncate">
-                                {inv.jobTitle}
-                              </button>
-                              {/* Status */}
-                              <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${badge.cls}`}>
-                                {inv.status === 'INVITED'  && <span className="material-symbols-outlined text-[12px]">schedule</span>}
-                                {inv.status === 'ACCEPTED' && <span className="material-symbols-outlined text-[12px]">check_circle</span>}
-                                {inv.status === 'DECLINED' && <span className="material-symbols-outlined text-[12px]">cancel</span>}
-                                {badge.label}
-                              </span>
-                              {/* Date */}
-                              <p className="text-xs text-on-surface-variant">{formatDate(inv.invitedAt)}</p>
+                              <button onClick={() => navigate(`/jobs/${inv.jobId}`, { state: { from: 'myjobs' } })}
+                                className="text-xs font-semibold text-secondary hover:underline text-left truncate">{inv.jobTitle}</button>
+                              <p className="text-xs text-on-surface-variant flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[12px]">calendar_today</span>
+                                {formatDate(inv.invitedAt)}
+                              </p>
                             </div>
                           );
                         })}
                       </div>
-                    </div>
+                    )}
 
                     {totalPages > 1 && (
                       <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />
