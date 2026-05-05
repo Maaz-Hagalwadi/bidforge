@@ -546,6 +546,7 @@ export default function MyJobs() {
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<JobResponse | null>(null);
   const [archiveLoading, setArchiveLoading]     = useState(false);
   const [page, setPage]                         = useState(0);
+  const [viewMode, setViewMode]                 = useState<'list' | 'grid'>('list');
   const PAGE_SIZE = 10;
 
   const profileRef = useRef<HTMLDivElement>(null);
@@ -768,12 +769,26 @@ export default function MyJobs() {
               </div>
             </div>
 
-            {/* Toolbar: count */}
+            {/* Toolbar: count + view toggle */}
             {!loading && (
-              <p className="text-sm text-on-surface-variant">
-                Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of{' '}
-                <span className="font-semibold text-on-surface">{filtered.length}</span> active jobs
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-on-surface-variant">
+                  Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of{' '}
+                  <span className="font-semibold text-on-surface">{filtered.length}</span> active jobs
+                </p>
+                <div className="hidden lg:flex items-center gap-0.5 p-1 bg-slate-100 rounded-lg border border-slate-200">
+                  <button onClick={() => setViewMode('list')} title="List view"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                    <span className="material-symbols-outlined text-[16px]">view_list</span>
+                    <span className="text-xs font-semibold">List</span>
+                  </button>
+                  <button onClick={() => setViewMode('grid')} title="Grid view"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                    <span className="material-symbols-outlined text-[16px]">grid_view</span>
+                    <span className="text-xs font-semibold">Grid</span>
+                  </button>
+                </div>
+              </div>
             )}
 
             {/* ── Content ── */}
@@ -798,8 +813,72 @@ export default function MyJobs() {
               </div>
             ) : (
               <>
-                {/* ── GRID VIEW (always) ── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {viewMode === 'list' ? (
+                  /* ── LIST VIEW ── */
+                  <div className="space-y-3">
+                    {paginated.map(job => {
+                      const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
+                      const isInviteOnly = job.visibility === 'INVITE_ONLY';
+                      const skills = parseSkills(job.requiredSkills);
+                      return (
+                        <article key={job.id} className="group bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-secondary/30 transition-all relative overflow-hidden">
+                          {/* Left accent bar */}
+                          <div className={`absolute left-0 top-0 bottom-0 w-1 ${ST_TOP[job.status] ?? 'bg-slate-300'} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                          <div className="flex flex-col md:flex-row justify-between gap-4 p-5">
+                            {/* Left: info */}
+                            <div className="flex-1 min-w-0 space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${st.cls}`}>{st.label}</span>
+                                <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[10px] font-semibold ${isInviteOnly ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                                  <span className="material-symbols-outlined text-[10px]">{isInviteOnly ? 'lock' : 'public'}</span>
+                                  {isInviteOnly ? 'Invite Only' : 'Public'}
+                                </span>
+                                <span className="text-xs text-on-surface-variant">{job.category}</span>
+                              </div>
+                              <h3 className="text-sm font-bold text-on-surface group-hover:text-secondary transition-colors leading-snug">{job.title}</h3>
+                              <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                                {(job.status === 'OPEN' || job.status === 'ASSIGNED') && (
+                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                    <span className="material-symbols-outlined text-[13px]">gavel</span>
+                                    <strong className="text-on-surface">{job.bidsCount ?? 0}</strong> bids
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                  <span className="material-symbols-outlined text-[13px]">payments</span>
+                                  <strong className="text-on-surface">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</strong>
+                                </span>
+                                <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                  <span className="material-symbols-outlined text-[13px]">calendar_today</span>
+                                  {formatDate(job.createdAt)}
+                                </span>
+                                {job.status === 'ASSIGNED' && job.assignedFreelancerName && (
+                                  <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                    <span className="material-symbols-outlined text-[13px]">person</span>
+                                    {job.assignedFreelancerName}
+                                  </span>
+                                )}
+                              </div>
+                              {skills.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {skills.slice(0, 4).map(s => (
+                                    <span key={s} className="px-2 py-0.5 bg-slate-100 rounded text-[11px] text-slate-500">{s}</span>
+                                  ))}
+                                  {skills.length > 4 && <span className="text-[11px] text-slate-400">+{skills.length - 4}</span>}
+                                </div>
+                              )}
+                            </div>
+                            {/* Right: actions */}
+                            <div className="flex flex-col justify-center items-stretch gap-2 flex-shrink-0 md:min-w-[148px]">
+                              {buildActions(job)}
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* ── GRID VIEW ── */
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {paginated.map(job => {
                     const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
                     const isInviteOnly = job.visibility === 'INVITE_ONLY';
@@ -865,6 +944,7 @@ export default function MyJobs() {
                     );
                   })}
                 </div>
+                )}
 
                 {/* Pagination */}
                 {totalPages > 1 && (
