@@ -38,6 +38,8 @@ export default function ClientJobBids() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [job, setJob] = useState<JobResponse | null>(null);
   const [bids, setBids] = useState<BidResponse[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [statusTab, setStatusTab] = useState<'ALL' | BidStatus>('ALL');
@@ -51,11 +53,17 @@ export default function ClientJobBids() {
 
   useEffect(() => {
     if (!jobId) return;
-    Promise.all([jobsApi.getById(jobId), jobsApi.getJobBids(jobId)])
-      .then(([j, b]) => { setJob(j); setBids(b); })
+    setLoading(true);
+    Promise.all([jobsApi.getById(jobId), jobsApi.getJobBids(jobId, page, PAGE_SIZE)])
+      .then(([j, pageData]) => {
+        setJob(j);
+        setBids(pageData.content);
+        setTotalPages(pageData.totalPages);
+        setTotalElements(pageData.totalElements);
+      })
       .catch(() => setLoadError('Failed to load bids. You may not have permission to view this page.'))
       .finally(() => setLoading(false));
-  }, [jobId]);
+  }, [jobId, page]);
 
   useEffect(() => {
     function onMouseDown(e: MouseEvent) {
@@ -75,12 +83,14 @@ export default function ClientJobBids() {
       } else {
         await jobsApi.declineBid(confirmAction.bidId);
       }
-      const [updatedJob, updatedBids] = await Promise.all([
+      const [updatedJob, pageData] = await Promise.all([
         jobsApi.getById(jobId),
-        jobsApi.getJobBids(jobId),
+        jobsApi.getJobBids(jobId, page, PAGE_SIZE),
       ]);
       setJob(updatedJob);
-      setBids(updatedBids);
+      setBids(pageData.content);
+      setTotalPages(pageData.totalPages);
+      setTotalElements(pageData.totalElements);
       setConfirmAction(null);
     } catch {
       setActionError(`Failed to ${confirmAction.type} bid. Please try again.`);
@@ -94,15 +104,14 @@ export default function ClientJobBids() {
   const isAssigned = job?.status === 'ASSIGNED';
 
   const counts = {
-    ALL:      bids.length,
+    ALL:      totalElements,
     PENDING:  bids.filter(b => b.status === 'PENDING').length,
     ACCEPTED: bids.filter(b => b.status === 'ACCEPTED').length,
     REJECTED: bids.filter(b => b.status === 'REJECTED').length,
   };
 
   const filtered = statusTab === 'ALL' ? bids : bids.filter(b => b.status === statusTab);
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const paginated = filtered;
 
   const navRight = (
     <div className="flex items-center gap-1">
@@ -233,7 +242,7 @@ export default function ClientJobBids() {
                     </div>
 
                     <p className="text-sm text-on-surface-variant">
-                      Showing <span className="font-semibold text-on-surface">{paginated.length}</span> of <span className="font-semibold text-on-surface">{filtered.length}</span> bids
+                      Showing <span className="font-semibold text-on-surface">{bids.length}</span> of <span className="font-semibold text-on-surface">{totalElements}</span> bids
                     </p>
 
                     {filtered.length === 0 ? (

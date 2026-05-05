@@ -20,6 +20,9 @@ import com.bidforge.app.notification.EmailService;
 import com.bidforge.app.notification.NotificationService;
 import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.user.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -87,7 +90,7 @@ public class BidService {
         return mapToResponse(saved);
     }
 
-    public List<BidResponse> getBidsForJob(UUID jobId, User client) {
+    public Page<BidResponse> getBidsForJob(UUID jobId, User client, Pageable pageable) {
 
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new JobNotFoundException("Job not found"));
@@ -96,11 +99,8 @@ public class BidService {
             throw new AccessDeniedException("You do not own this job");
         }
 
-        return bidRepository.findByJob(job)
-                .stream()
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                .map(this::mapToResponse)
-                .toList();
+        return bidRepository.findByJobOrderByCreatedAtDesc(job, pageable)
+                .map(this::mapToResponse);
     }
 
     public List<BidResponse> getMyBids(User freelancer) {

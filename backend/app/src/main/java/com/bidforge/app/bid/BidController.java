@@ -5,6 +5,8 @@ import com.bidforge.app.bid.dto.CreateBidRequest;
 import com.bidforge.app.user.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,8 +30,12 @@ public class BidController {
 
     @GetMapping("/jobs/{jobId}/bids")
     @PreAuthorize("hasRole('CLIENT')")
-    public List<BidResponse> getBids(@PathVariable UUID jobId) {
-        return bidService.getBidsForJob(jobId, getCurrentUser());
+    public Page<BidResponse> getBids(
+            @PathVariable UUID jobId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return bidService.getBidsForJob(jobId, getCurrentUser(), PageRequest.of(page, size));
     }
 
     @PostMapping("/bids/{bidId}/accept")

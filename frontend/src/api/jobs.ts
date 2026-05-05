@@ -38,8 +38,8 @@ export const jobsApi = {
   getAllClientInvites: () =>
     api.get<JobInviteStatus[]>('/jobs/all-invites').then(r => r.data),
 
-  getJobBids: (jobId: string) =>
-    api.get<BidResponse[]>(`/jobs/${jobId}/bids`).then(r => r.data),
+  getJobBids: (jobId: string, page = 0, size = 10) =>
+    api.get<SpringPage<BidResponse>>(`/jobs/${jobId}/bids`, { params: { page, size } }).then(r => r.data),
 
   createBid: (jobId: string, payload: CreateBidPayload) =>
     api.post<BidResponse>(`/jobs/${jobId}/bids`, payload).then(r => r.data),
