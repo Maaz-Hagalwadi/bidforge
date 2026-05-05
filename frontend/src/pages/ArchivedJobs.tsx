@@ -255,8 +255,7 @@ export default function ArchivedJobs() {
                     return (
                       <article key={job.id} className="tonal-card rounded-xl overflow-hidden hover:shadow-md transition-all">
                         <div className="h-[3px] bg-slate-300" />
-                        <div className="px-5 py-4 flex flex-col sm:flex-row sm:items-start gap-5">
-
+                        <div className="px-4 py-4 flex flex-col gap-4">
                           {/* Info */}
                           <div className="flex-1 min-w-0 space-y-2.5">
                             <div>
@@ -272,9 +271,7 @@ export default function ArchivedJobs() {
                                 </span>
                               </div>
                             </div>
-
                             <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-2">{job.description}</p>
-
                             {skills.length > 0 && (
                               <div className="flex flex-wrap gap-1">
                                 {skills.slice(0, 5).map(s => (
@@ -283,7 +280,6 @@ export default function ArchivedJobs() {
                                 {skills.length > 5 && <span className="text-xs text-slate-400 self-center">+{skills.length - 5} more</span>}
                               </div>
                             )}
-
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5">
                               <span className="flex items-center gap-1 text-xs text-on-surface-variant">
                                 <span className="material-symbols-outlined text-[13px]">calendar_today</span>
@@ -298,9 +294,10 @@ export default function ArchivedJobs() {
                             </div>
                           </div>
 
-                          {/* Actions + budget */}
-                          <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-start gap-3 flex-shrink-0 sm:min-w-[160px]">
-                            <div className="flex flex-wrap items-center gap-1.5">
+                          {/* Actions + budget — always horizontal row */}
+                          <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                            <p className="text-sm font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
+                            <div className="flex items-center gap-1.5">
                               <button onClick={() => navigate(`/jobs/${job.id}`)}
                                 className="border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors">
                                 View
@@ -309,17 +306,12 @@ export default function ArchivedJobs() {
                                 className="flex items-center gap-1 bg-secondary text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:brightness-110 transition-all">
                                 <span className="material-symbols-outlined text-[13px]">replay</span>Repost
                               </button>
-                              <button onClick={() => setDeleteTarget(job)} title="Delete job"
+                              <button onClick={() => setDeleteTarget(job)} title="Delete"
                                 className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-red-500 hover:border-red-200 transition-colors">
                                 <span className="material-symbols-outlined text-[16px]">delete</span>
                               </button>
                             </div>
-                            <div className="sm:text-right">
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant mb-0.5">Budget</p>
-                              <p className="text-sm font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
-                            </div>
                           </div>
-
                         </div>
                       </article>
                     );
@@ -367,14 +359,18 @@ export default function ArchivedJobs() {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {sidebarLinks.map(({ icon, short, active, path }) => (
-          <button key={short} onClick={() => path && navigate(path)}
-            className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-            <span className="material-symbols-outlined text-[22px]">{icon}</span>
-            <span className="text-[10px] font-semibold leading-none">{short}</span>
-          </button>
+      {/* Mobile bottom nav — 4+4 */}
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+            {row.map(({ icon, short, active, path }) => (
+              <button key={short} onClick={() => path && navigate(path)}
+                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                <span className="text-[9px] font-semibold leading-none">{short}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
 

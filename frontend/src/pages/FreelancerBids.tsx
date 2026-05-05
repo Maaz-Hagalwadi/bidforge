@@ -16,7 +16,7 @@ const PAGE_SIZE = 10;
 const BID_STATUS_CFG: Record<BidStatus, { label: string; cls: string; icon: string }> = {
   PENDING:  { label: 'Pending',  cls: 'bg-amber-50 text-amber-700',  icon: 'schedule'     },
   ACCEPTED: { label: 'Accepted', cls: 'bg-green-100 text-green-700', icon: 'check_circle' },
-  REJECTED: { label: 'Rejected', cls: 'bg-slate-100 text-slate-500', icon: 'cancel'       },
+  REJECTED: { label: 'Rejected', cls: 'bg-red-100 text-red-600',    icon: 'cancel'       },
 };
 
 const JOB_STATUS_CFG: Record<string, { label: string; cls: string }> = {
@@ -270,13 +270,15 @@ export default function FreelancerBids() {
                                 )}
                               </div>
 
-                              <button
-                                onClick={() => navigate(`/jobs/${bid.jobId}`)}
-                                className="self-start flex items-center gap-1 text-xs font-semibold text-secondary hover:underline transition-colors"
-                              >
-                                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                                View Job
-                              </button>
+                              {bid.status === 'PENDING' && (
+                                <button
+                                  onClick={() => navigate(`/jobs/${bid.jobId}`)}
+                                  className="self-start flex items-center gap-1 text-xs font-semibold text-secondary hover:underline transition-colors"
+                                >
+                                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                  View Job
+                                </button>
+                              )}
                             </div>
                           </article>
                         );
@@ -297,13 +299,17 @@ export default function FreelancerBids() {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {sidebarLinks.map(({ icon, short, active, path }) => (
-          <button key={short} onClick={() => path && navigate(path)}
-            className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-            <span className="material-symbols-outlined text-[22px]">{icon}</span>
-            <span className="text-[10px] font-semibold leading-none">{short}</span>
-          </button>
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+            {row.map(({ icon, short, active, path }) => (
+              <button key={short} onClick={() => path && navigate(path)}
+                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                <span className="text-[9px] font-semibold leading-none">{short}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
     </div>

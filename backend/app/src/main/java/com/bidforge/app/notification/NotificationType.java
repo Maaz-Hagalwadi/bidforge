@@ -17,4 +17,5 @@ public enum NotificationType {
     MILESTONE_REJECTED,
     MILESTONE_REFUNDED,
     PAYMENT_RELEASED,
+    REVIEW_RECEIVED,
 }

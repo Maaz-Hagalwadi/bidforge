@@ -18,6 +18,8 @@ export interface ContractResponse {
   clientName: string;
   freelancerName: string;
   deliveryDays?: number;
+  reviewedByClient: boolean;
+  reviewedByFreelancer: boolean;
 }
 
 export interface SubmitWorkPayload {

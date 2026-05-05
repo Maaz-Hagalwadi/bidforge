@@ -1,7 +1,9 @@
 package com.bidforge.app.user;
 
 import com.bidforge.app.common.exception.UserNotFoundException;
+import com.bidforge.app.user.dto.request.PortfolioRequest;
 import com.bidforge.app.user.dto.request.UpdateUserRequest;
+import com.bidforge.app.user.dto.response.PortfolioResponse;
 import com.bidforge.app.user.dto.response.UserResponse;
 import com.stripe.model.Account;
 import lombok.RequiredArgsConstructor;
@@ -11,12 +13,14 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PortfolioRepository portfolioRepository;
 
     public UserResponse getCurrentUser() {
         User user = getAuthenticatedUser();
@@ -75,6 +79,48 @@ public class UserService {
                 .hourlyRate(user.getHourlyRate())
                 .skills(user.getSkills())
                 .createdAt(user.getCreatedAt())
+                .build();
+    }
+
+    public List<PortfolioResponse> getPortfolio(Long userId) {
+        return portfolioRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::mapPortfolioToResponse)
+                .toList();
+    }
+
+    public PortfolioResponse addPortfolioItem(PortfolioRequest request) {
+        User user = getAuthenticatedUser();
+        PortfolioItem item = PortfolioItem.builder()
+                .user(user)
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .imageUrl(request.getImageUrl())
+                .projectUrl(request.getProjectUrl())
+                .technologies(request.getTechnologies())
+                .build();
+        return mapPortfolioToResponse(portfolioRepository.save(item));
+    }
+
+    public void deletePortfolioItem(UUID itemId) {
+        User user = getAuthenticatedUser();
+        PortfolioItem item = portfolioRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Portfolio item not found"));
+        if (!item.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Not your portfolio item");
+        }
+        portfolioRepository.delete(item);
+    }
+
+    private PortfolioResponse mapPortfolioToResponse(PortfolioItem item) {
+        return PortfolioResponse.builder()
+                .id(item.getId())
+                .title(item.getTitle())
+                .description(item.getDescription())
+                .imageUrl(item.getImageUrl())
+                .projectUrl(item.getProjectUrl())
+                .technologies(item.getTechnologies())
+                .createdAt(item.getCreatedAt())
                 .build();
     }
 }

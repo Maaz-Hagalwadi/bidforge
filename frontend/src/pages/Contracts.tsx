@@ -5,6 +5,7 @@ import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/side
 import { useAuth } from '@/context/AuthContext';
 import { contractsApi } from '@/api/contracts';
 import { milestonesApi } from '@/api/milestones';
+import { reviewsApi } from '@/api/reviews';
 import type { MilestoneResponse } from '@/types/milestone';
 import { PaymentModal } from '@/components/PaymentModal';
 import { Navbar } from '@/components/Navbar';
@@ -105,6 +106,12 @@ export default function Contracts() {
   const [submittingMilestoneId, setSubmittingMilestoneId] = useState<string | null>(null);
   const [paymentMilestone,     setPaymentMilestone]     = useState<MilestoneResponse | null>(null);
 
+  const [showReviewModal,  setShowReviewModal]  = useState(false);
+  const [reviewRating,     setReviewRating]     = useState(0);
+  const [hoveredStar,      setHoveredStar]      = useState(0);
+  const [reviewComment,    setReviewComment]    = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+
   const profileRef = useRef<HTMLDivElement>(null);
 
   const fetchContracts = useCallback(async () => {
@@ -184,6 +191,22 @@ export default function Contracts() {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setToast({ message: msg ?? 'Failed to complete contract. Please try again.', error: true });
     } finally { setCompleting(false); }
+  };
+
+  const handleSubmitReview = async (contract: ContractResponse) => {
+    if (!reviewRating) { setToast({ message: 'Please select a star rating.', error: true }); return; }
+    setSubmittingReview(true);
+    try {
+      await reviewsApi.submitReview(contract.id, { rating: reviewRating, comment: reviewComment.trim() || undefined });
+      setToast({ message: 'Review submitted! Thank you for your feedback.' });
+      setShowReviewModal(false);
+      setReviewRating(0);
+      setReviewComment('');
+      await fetchContracts();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setToast({ message: msg ?? 'Failed to submit review.', error: true });
+    } finally { setSubmittingReview(false); }
   };
 
   const handleFundMilestone = (milestoneId: string) => {
@@ -401,45 +424,44 @@ export default function Contracts() {
             {pagedContracts.map(c => {
               const cfg = STATUS_CFG[c.status];
               const party = user?.role === 'CLIENT' ? c.freelancerName : c.clientName;
-              const partyLabel = user?.role === 'CLIENT' ? 'Freelancer' : 'Client';
               return (
                 <article key={c.id}
                   className="bg-white rounded-xl border border-outline-variant hover:border-secondary/30 hover:shadow-md transition-all group cursor-pointer"
                   onClick={() => navigate(`/contracts/${c.id}`)}>
-                  <div className="flex flex-col md:flex-row md:items-center p-5 gap-4">
-                    <div className="flex-1 min-w-0 space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold ${cfg.cls}`}>
-                          <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
-                          {cfg.label}
-                        </span>
-                        <span className="text-xs text-on-surface-variant font-medium">{shortId(c.id)}</span>
-                        <span className="text-xs text-on-surface-variant">· {formatDate(c.createdAt)}</span>
-                      </div>
-                      <h3 className="text-base font-bold text-on-surface group-hover:text-secondary transition-colors leading-snug">{c.jobTitle}</h3>
-                      <div className="flex flex-wrap gap-4 text-sm text-on-surface-variant">
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-secondary text-[16px]">payments</span>
-                          <strong className="text-on-surface">{formatCurrency(c.amount)}</strong>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[16px]">person</span>
-                          {partyLabel}: <strong className="text-on-surface ml-0.5">{party}</strong>
-                        </span>
-                        {c.deadline && (
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-                            Due: <strong className="text-on-surface ml-0.5">{formatDate(c.deadline)}</strong>
+                  <div className="flex flex-col p-4 md:p-5 gap-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold ${cfg.cls}`}>
+                            <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
+                            {cfg.label}
                           </span>
-                        )}
+                          <span className="text-xs text-on-surface-variant font-medium">{shortId(c.id)}</span>
+                          <span className="text-xs text-on-surface-variant hidden md:inline">· {formatDate(c.createdAt)}</span>
+                        </div>
+                        <h3 className="text-sm md:text-base font-bold text-on-surface group-hover:text-secondary transition-colors leading-snug">{c.jobTitle}</h3>
+                        <div className="flex flex-wrap gap-3 md:gap-4 text-xs md:text-sm text-on-surface-variant">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-secondary text-[14px] md:text-[16px]">payments</span>
+                            <strong className="text-on-surface">{formatCurrency(c.amount)}</strong>
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px] md:text-[16px]">person</span>
+                            <strong className="text-on-surface">{party}</strong>
+                          </span>
+                          {c.deadline && (
+                            <span className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px] md:text-[16px]">calendar_today</span>
+                              <strong className="text-on-surface">{formatDate(c.deadline)}</strong>
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="shrink-0">
                       <button
                         onClick={e => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                        View Details
-                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                        className="flex-shrink-0 flex items-center gap-1 px-3 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all whitespace-nowrap">
+                        Details
+                        <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
                       </button>
                     </div>
                   </div>
@@ -1112,10 +1134,18 @@ export default function Contracts() {
                   </button>
                 )}
                 {isFreelancer && contract.status === 'COMPLETED' && (
-                  <button disabled className="w-full bg-emerald-100 text-emerald-700 py-3.5 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined text-[18px]">task_alt</span>
-                    Contract Completed
-                  </button>
+                  contract.reviewedByFreelancer ? (
+                    <button disabled className="w-full bg-emerald-100 text-emerald-700 py-3.5 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">task_alt</span>
+                      Review Submitted
+                    </button>
+                  ) : (
+                    <button onClick={() => setShowReviewModal(true)}
+                      className="w-full bg-amber-500 text-white py-3.5 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      Leave a Review
+                    </button>
+                  )
                 )}
 
                 {/* Client actions */}
@@ -1175,10 +1205,18 @@ export default function Contracts() {
                   </button>
                 )}
                 {isClient && contract.status === 'COMPLETED' && (
-                  <button disabled className="w-full bg-emerald-100 text-emerald-700 py-3.5 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
-                    <span className="material-symbols-outlined text-[18px]">task_alt</span>
-                    Payment Released
-                  </button>
+                  contract.reviewedByClient ? (
+                    <button disabled className="w-full bg-emerald-100 text-emerald-700 py-3.5 rounded-xl text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">task_alt</span>
+                      Payment Released · Review Submitted
+                    </button>
+                  ) : (
+                    <button onClick={() => setShowReviewModal(true)}
+                      className="w-full bg-amber-500 text-white py-3.5 rounded-xl text-sm font-bold hover:brightness-110 shadow-lg shadow-amber-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      Leave a Review
+                    </button>
+                  )
                 )}
 
               </div>
@@ -1282,16 +1320,104 @@ export default function Contracts() {
 
       {/* Mobile bottom nav */}
       {user && (
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-          {sidebarLinks.map(({ icon, short, active, path }) => (
-            <button key={short} onClick={() => path && navigate(path)}
-              className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-              <span className="material-symbols-outlined text-[22px]">{icon}</span>
-              <span className="text-[10px] font-semibold leading-none">{short}</span>
-            </button>
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+          {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
+            <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+              {row.map(({ icon, short, active, path }) => (
+                <button key={short} onClick={() => path && navigate(path)}
+                  className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                  <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                  <span className="text-[9px] font-semibold leading-none">{short}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
       )}
+
+      {/* Review modal */}
+      {showReviewModal && contractId && (() => {
+        const contract = contracts.find(c => c.id === contractId);
+        if (!contract) return null;
+        const revieweeName = user?.role === 'CLIENT' ? contract.freelancerName : contract.clientName;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+            onClick={() => setShowReviewModal(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-lg font-bold text-slate-900">Leave a Review</h3>
+                <button onClick={() => setShowReviewModal(false)} className="text-slate-400 hover:text-slate-700 transition-colors">
+                  <span className="material-symbols-outlined text-[22px]">close</span>
+                </button>
+              </div>
+
+              <p className="text-sm text-slate-500 mb-5">
+                How was your experience working with <span className="font-semibold text-slate-700">{revieweeName}</span>?
+              </p>
+
+              {/* Star rating */}
+              <div className="flex items-center justify-center gap-2 mb-5">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setReviewRating(star)}
+                    onMouseEnter={() => setHoveredStar(star)}
+                    onMouseLeave={() => setHoveredStar(0)}
+                    className="text-[40px] transition-transform hover:scale-110 active:scale-95"
+                  >
+                    <span
+                      className="material-symbols-outlined text-[40px] leading-none"
+                      style={{
+                        fontVariationSettings: "'FILL' 1",
+                        color: star <= (hoveredStar || reviewRating) ? '#f59e0b' : '#e2e8f0',
+                      }}
+                    >
+                      star
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {reviewRating > 0 && (
+                <p className="text-center text-sm font-semibold text-amber-600 mb-4">
+                  {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][reviewRating]}
+                </p>
+              )}
+
+              {/* Comment */}
+              <div className="mb-5">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                  Comment <span className="text-slate-400 font-normal normal-case">(optional)</span>
+                </label>
+                <textarea
+                  value={reviewComment}
+                  onChange={e => setReviewComment(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  placeholder="Share your experience…"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all resize-none"
+                />
+                <p className="text-right text-xs text-slate-400 mt-1">{reviewComment.length}/500</p>
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => setShowReviewModal(false)}
+                  className="flex-1 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-xl hover:bg-slate-50 transition-colors">
+                  Cancel
+                </button>
+                <button onClick={() => handleSubmitReview(contract)} disabled={submittingReview || !reviewRating}
+                  className="flex-1 py-2.5 bg-secondary text-white text-sm font-bold rounded-xl hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2">
+                  {submittingReview ? (
+                    <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Submitting…</>
+                  ) : (
+                    <><span className="material-symbols-outlined text-[16px]">send</span>Submit Review</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Payment modal */}
       {paymentMilestone && (

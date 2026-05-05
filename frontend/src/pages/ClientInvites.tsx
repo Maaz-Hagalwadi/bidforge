@@ -206,14 +206,22 @@ export default function ClientInvites() {
                           {paginated.map(inv => {
                             const badge = STATUS_BADGE[inv.status] ?? { label: inv.status, cls: 'bg-slate-100 text-slate-600' };
                             return (
-                              <div key={inv.inviteId} className="px-5 py-4 flex flex-col md:grid md:grid-cols-[1fr_1fr_120px_140px] md:items-center gap-3 md:gap-4 hover:bg-slate-50/50 transition-colors">
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-on-surface truncate">{inv.freelancerName}</p>
-                                  <p className="text-xs text-on-surface-variant truncate">{inv.freelancerEmail}</p>
+                              <div key={inv.inviteId} className="px-4 py-4 flex flex-col md:grid md:grid-cols-[1fr_1fr_120px_140px] md:items-center gap-2 md:gap-4 hover:bg-slate-50/50 transition-colors">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-on-surface truncate">{inv.freelancerName}</p>
+                                    <p className="text-xs text-on-surface-variant truncate">{inv.freelancerEmail}</p>
+                                  </div>
+                                  <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 md:hidden ${badge.cls}`}>
+                                    {inv.status === 'INVITED'  && <span className="material-symbols-outlined text-[12px]">schedule</span>}
+                                    {inv.status === 'ACCEPTED' && <span className="material-symbols-outlined text-[12px]">check_circle</span>}
+                                    {inv.status === 'DECLINED' && <span className="material-symbols-outlined text-[12px]">cancel</span>}
+                                    {badge.label}
+                                  </span>
                                 </div>
                                 <button onClick={() => navigate(`/jobs/${inv.jobId}`, { state: { from: 'myjobs' } })}
                                   className="text-sm font-medium text-secondary hover:underline text-left truncate">{inv.jobTitle}</button>
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${badge.cls}`}>
+                                <span className={`hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${badge.cls}`}>
                                   {inv.status === 'INVITED'  && <span className="material-symbols-outlined text-[12px]">schedule</span>}
                                   {inv.status === 'ACCEPTED' && <span className="material-symbols-outlined text-[12px]">check_circle</span>}
                                   {inv.status === 'DECLINED' && <span className="material-symbols-outlined text-[12px]">cancel</span>}
@@ -268,13 +276,17 @@ export default function ClientInvites() {
         </main>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex items-stretch" style={{ backgroundColor: '#0A192F' }}>
-        {sidebarLinks.map(({ icon, short, active, path }) => (
-          <button key={short} onClick={() => path && navigate(path)}
-            className={['flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-            <span className="material-symbols-outlined text-[22px]">{icon}</span>
-            <span className="text-[10px] font-semibold leading-none">{short}</span>
-          </button>
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+            {row.map(({ icon, short, active, path }) => (
+              <button key={short} onClick={() => path && navigate(path)}
+                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                <span className="text-[9px] font-semibold leading-none">{short}</span>
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
     </div>
