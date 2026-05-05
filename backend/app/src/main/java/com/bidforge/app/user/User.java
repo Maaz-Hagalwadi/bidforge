@@ -57,6 +57,11 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String skills;
 
+    @Column(nullable = false)
+    private boolean isOnline = false;
+
+    private LocalDateTime lastSeen;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

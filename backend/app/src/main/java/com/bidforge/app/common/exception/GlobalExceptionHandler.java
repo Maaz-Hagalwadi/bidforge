@@ -8,6 +8,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 
 import java.time.LocalDateTime;
@@ -179,6 +180,13 @@ public class GlobalExceptionHandler {
             com.stripe.exception.StripeException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.BAD_GATEWAY, "STRIPE_ERROR",
                 "Payment processing failed: " + ex.getUserMessage(), request);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSize(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE, "FILE_TOO_LARGE",
+                "File size exceeds the maximum allowed limit (20MB)", request);
     }
 
     @ExceptionHandler(Exception.class)
