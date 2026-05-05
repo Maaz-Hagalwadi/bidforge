@@ -636,7 +636,7 @@ export default function Contracts() {
                     </div>
                   </div>
                 </div>
-                <button onClick={() => navigate('/messages')}
+                <button onClick={() => navigate('/messages', { state: { contractId } })}
                   className="flex items-center gap-2 text-secondary text-sm font-semibold hover:bg-secondary/5 px-4 py-2 rounded-lg transition-colors flex-shrink-0 border border-secondary/20">
                   <span className="material-symbols-outlined text-[18px]">chat</span>
                   Open Chat
