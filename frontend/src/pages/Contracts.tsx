@@ -83,6 +83,7 @@ export default function Contracts() {
   const [loading,      setLoading]      = useState(true);
   const [listPage,     setListPage]     = useState(1);
   const LIST_PAGE_SIZE = 6;
+  const [viewMode,     setViewMode]     = useState<'list' | 'grid'>('list');
   const [toast,        setToast]        = useState<{ message: string; error?: boolean } | null>(null);
   const [submitNote,   setSubmitNote]   = useState('');
   const [submitUrl,    setSubmitUrl]    = useState('');
@@ -358,8 +359,8 @@ export default function Contracts() {
   const listView = (
     <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
       <div>
-        <h1 className="text-h1 font-bold text-on-surface">My Contracts</h1>
-        <p className="text-body-md text-on-surface-variant mt-1">
+        <h1 className="text-h2 font-bold text-on-surface">My Contracts</h1>
+        <p className="text-sm text-on-surface-variant mt-0.5">
           {contracts.length} contract{contracts.length !== 1 ? 's' : ''} found
         </p>
       </div>
@@ -381,6 +382,21 @@ export default function Contracts() {
         </div>
       ) : (
         <>
+          {/* View toggle */}
+          <div className="hidden lg:flex items-center gap-0.5 p-1 bg-slate-100 rounded-lg border border-slate-200 w-fit">
+            <button onClick={() => setViewMode('list')} title="List view"
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+              <span className="material-symbols-outlined text-[16px]">view_list</span>
+              <span className="text-xs font-semibold">List</span>
+            </button>
+            <button onClick={() => setViewMode('grid')} title="Grid view"
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+              <span className="material-symbols-outlined text-[16px]">grid_view</span>
+              <span className="text-xs font-semibold">Grid</span>
+            </button>
+          </div>
+
+          {viewMode === 'list' ? (
           <div className="space-y-4">
             {pagedContracts.map(c => {
               const cfg = STATUS_CFG[c.status];
@@ -418,12 +434,12 @@ export default function Contracts() {
                         )}
                       </div>
                     </div>
-                    <div className="shrink-0 flex items-center gap-2">
+                    <div className="shrink-0">
                       <button
                         onClick={e => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                        className="flex items-center gap-1.5 px-3 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
                         View Details
-                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                       </button>
                     </div>
                   </div>
@@ -431,6 +447,55 @@ export default function Contracts() {
               );
             })}
           </div>
+          ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+            {pagedContracts.map(c => {
+              const cfg = STATUS_CFG[c.status];
+              const party = user?.role === 'CLIENT' ? c.freelancerName : c.clientName;
+              const partyLabel = user?.role === 'CLIENT' ? 'Freelancer' : 'Client';
+              return (
+                <article key={c.id}
+                  className="bg-white rounded-xl border border-outline-variant hover:border-secondary/30 hover:shadow-md transition-all group cursor-pointer flex flex-col"
+                  onClick={() => navigate(`/contracts/${c.id}`)}>
+                  <div className="p-4 flex flex-col gap-3 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`flex items-center gap-1 px-2.5 py-1 rounded text-xs font-semibold ${cfg.cls}`}>
+                        <span className="material-symbols-outlined text-[13px]">{cfg.icon}</span>
+                        {cfg.label}
+                      </span>
+                      <span className="text-xs text-on-surface-variant font-mono">{shortId(c.id)}</span>
+                    </div>
+                    <h3 className="text-sm font-bold text-on-surface group-hover:text-secondary transition-colors leading-snug line-clamp-2">{c.jobTitle}</h3>
+                    <div className="space-y-1.5 text-xs text-on-surface-variant">
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-secondary text-[14px]">payments</span>
+                        <strong className="text-on-surface">{formatCurrency(c.amount)}</strong>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[14px]">person</span>
+                        {partyLabel}: <strong className="text-on-surface ml-0.5">{party}</strong>
+                      </div>
+                      {c.deadline && (
+                        <div className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                          Due: <strong className="text-on-surface ml-0.5">{formatDate(c.deadline)}</strong>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-auto pt-3 border-t border-slate-100">
+                      <button
+                        onClick={e => { e.stopPropagation(); navigate(`/contracts/${c.id}`); }}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-secondary text-white text-xs font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                        View Details
+                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          )}
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-2">

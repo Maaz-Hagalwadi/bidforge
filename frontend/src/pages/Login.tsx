@@ -19,7 +19,8 @@ export default function Login() {
   const location = useLocation();
   const { login } = useAuth();
 
-  const justRegistered = (location.state as { registered?: boolean } | null)?.registered === true;
+  const justRegistered = (location.state as { registered?: boolean; passwordReset?: boolean } | null)?.registered === true;
+  const passwordReset = (location.state as { registered?: boolean; passwordReset?: boolean } | null)?.passwordReset === true;
 
   const {
     register,
@@ -84,6 +85,14 @@ export default function Login() {
               </p>
             </div>
 
+            {/* Success banner after password reset */}
+            {passwordReset && (
+              <div className="flex items-center gap-sm bg-green-500/10 border border-green-500/30 rounded-lg px-md py-sm text-green-400 text-body-sm">
+                <span className="material-symbols-outlined text-base">check_circle</span>
+                Password reset! Please log in with your new password.
+              </div>
+            )}
+
             {/* Success banner after registration */}
             {justRegistered && (
               <div className="flex items-center gap-sm bg-green-500/10 border border-green-500/30 rounded-lg px-md py-sm text-green-400 text-body-sm">
@@ -131,9 +140,9 @@ export default function Login() {
               </FormField>
 
               <div className="flex justify-end">
-                <a href="#" className="text-secondary text-body-sm hover:underline">
+                <Link to="/forgot-password" className="text-secondary text-body-sm hover:underline">
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               <button

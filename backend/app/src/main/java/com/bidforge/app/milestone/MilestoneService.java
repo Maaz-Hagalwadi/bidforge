@@ -9,6 +9,7 @@ import com.bidforge.app.milestone.dto.MilestoneSummary;
 import com.bidforge.app.payment.*;
 import com.bidforge.app.payment.dto.FundMilestoneRequest;
 import com.bidforge.app.payment.dto.PaymentIntentResponse;
+import com.bidforge.app.notification.EmailService;
 import com.bidforge.app.notification.NotificationService;
 import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.user.User;
@@ -31,6 +32,7 @@ public class MilestoneService {
     private final PaymentRepository paymentRepository;
     private final StripeService stripeService;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Transactional
     public void createMilestones(UUID contractId,
@@ -122,6 +124,7 @@ public class MilestoneService {
                 NotificationType.MILESTONE_FUNDED,
                 milestone.getContract().getId()
         );
+        emailService.sendMilestoneFundedEmail(milestone.getContract().getFreelancer().getEmail(), milestone.getContract().getFreelancer().getName(), milestone.getTitle());
     }
 
     public MilestoneSummary getSummaryForClient(User client) {
@@ -272,6 +275,7 @@ public class MilestoneService {
                 NotificationType.MILESTONE_SUBMITTED,
                 m.getContract().getId()
         );
+        emailService.sendMilestoneSubmittedEmail(m.getContract().getClient().getEmail(), m.getContract().getClient().getName(), m.getTitle());
     }
 
     // ✅ Client approves → release payment
@@ -314,6 +318,7 @@ public class MilestoneService {
                 NotificationType.MILESTONE_APPROVED,
                 m.getContract().getId()
         );
+        emailService.sendMilestoneApprovedEmail(m.getContract().getFreelancer().getEmail(), m.getContract().getFreelancer().getName(), m.getTitle());
     }
 
     @Transactional
@@ -339,6 +344,7 @@ public class MilestoneService {
                 NotificationType.MILESTONE_REJECTED,
                 m.getContract().getId()
         );
+        emailService.sendMilestoneRejectedEmail(m.getContract().getFreelancer().getEmail(), m.getContract().getFreelancer().getName(), m.getTitle());
     }
 
     @Transactional

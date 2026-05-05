@@ -24,6 +24,8 @@ import { ProtectedRoute, ClientRoute, FreelancerRoute } from '@/components/Prote
 import Landing from '@/pages/Landing';
 import Register from '@/pages/Register';
 import Login from '@/pages/Login';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 import ClientDashboard from '@/pages/ClientDashboard';
 import FreelancerDashboard from '@/pages/FreelancerDashboard';
 import PostJob from '@/pages/PostJob';
@@ -52,6 +54,8 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route
             path="/client/dashboard"

@@ -56,6 +56,7 @@ export default function Payments() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<PaymentFilter>('ALL');
   const [page, setPage] = useState(0);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -164,8 +165,8 @@ export default function Payments() {
           <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             <div>
-              <h1 className="text-h1 font-bold text-on-surface">Payments</h1>
-              <p className="text-body-md text-on-surface-variant mt-1">
+              <h1 className="text-h2 font-bold text-on-surface">Payments</h1>
+              <p className="text-sm text-on-surface-variant mt-0.5">
                 {isClient ? 'Track escrow payments across your milestone contracts.' : 'Track your earnings and pending milestone payments.'}
               </p>
             </div>
@@ -220,21 +221,35 @@ export default function Payments() {
                   </div>
                 </div>
 
-                {/* Filter tabs */}
-                <div className="flex gap-1.5 flex-wrap">
-                  {([
-                    { key: 'ALL'      as PaymentFilter, label: 'All',         count: milestones.length },
-                    { key: 'PENDING'  as PaymentFilter, label: 'Pending',     count: pending.length    },
-                    { key: 'ESCROWED' as PaymentFilter, label: 'In Escrow',   count: escrowed.length   },
-                    { key: 'RELEASED' as PaymentFilter, label: 'Released',    count: released.length   },
-                  ]).map(({ key, label, count }) => (
-                    <button key={key}
-                      onClick={() => { setFilter(key); setPage(0); }}
-                      className={['flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all', filter === key ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
-                      {label}
-                      <span className={['text-xs px-1.5 py-0.5 rounded-full font-bold', filter === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-on-surface-variant'].join(' ')}>{count}</span>
+                {/* Filter tabs + view toggle */}
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="flex gap-1.5 flex-wrap">
+                    {([
+                      { key: 'ALL'      as PaymentFilter, label: 'All',         count: milestones.length },
+                      { key: 'PENDING'  as PaymentFilter, label: 'Pending',     count: pending.length    },
+                      { key: 'ESCROWED' as PaymentFilter, label: 'In Escrow',   count: escrowed.length   },
+                      { key: 'RELEASED' as PaymentFilter, label: 'Released',    count: released.length   },
+                    ]).map(({ key, label, count }) => (
+                      <button key={key}
+                        onClick={() => { setFilter(key); setPage(0); }}
+                        className={['flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all', filter === key ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+                        {label}
+                        <span className={['text-xs px-1.5 py-0.5 rounded-full font-bold', filter === key ? 'bg-white/20 text-white' : 'bg-slate-100 text-on-surface-variant'].join(' ')}>{count}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="hidden lg:flex items-center gap-0.5 p-1 bg-slate-100 rounded-lg border border-slate-200 flex-shrink-0">
+                    <button onClick={() => setViewMode('list')} title="List view"
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                      <span className="material-symbols-outlined text-[16px]">view_list</span>
+                      <span className="text-xs font-semibold">List</span>
                     </button>
-                  ))}
+                    <button onClick={() => setViewMode('grid')} title="Grid view"
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-secondary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>
+                      <span className="material-symbols-outlined text-[16px]">grid_view</span>
+                      <span className="text-xs font-semibold">Grid</span>
+                    </button>
+                  </div>
                 </div>
 
                 <p className="text-sm text-on-surface-variant">
@@ -248,6 +263,7 @@ export default function Payments() {
                   </div>
                 ) : (
                   <>
+                    {viewMode === 'list' ? (
                     <div className="space-y-3">
                       {paginated.map(m => {
                         const state = getPaymentState(m);
@@ -255,42 +271,22 @@ export default function Payments() {
                         return (
                           <article key={m.id} className="bg-white rounded-xl border border-outline-variant hover:border-secondary/30 hover:shadow-sm transition-all p-5">
                             <div className="flex items-center gap-4">
-
-                              {/* Icon */}
                               <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg}`}>
-                                <span className={`material-symbols-outlined text-[20px] ${state === 'RELEASED' ? 'text-emerald-600' : state === 'ESCROWED' ? 'text-amber-600' : 'text-slate-500'}`}>
-                                  {cfg.icon}
-                                </span>
+                                <span className={`material-symbols-outlined text-[20px] ${state === 'RELEASED' ? 'text-emerald-600' : state === 'ESCROWED' ? 'text-amber-600' : 'text-slate-500'}`}>{cfg.icon}</span>
                               </div>
-
-                              {/* Info */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 mb-0.5">
                                   <p className="text-sm font-bold text-on-surface truncate">{m.title}</p>
                                   <span className={`px-2 py-0.5 rounded text-xs font-semibold ${cfg.cls}`}>{cfg.label}</span>
                                 </div>
                                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
-                                  {m.jobTitle && (
-                                    <span className="flex items-center gap-1">
-                                      <span className="material-symbols-outlined text-[12px]">work</span>
-                                      {m.jobTitle}
-                                    </span>
-                                  )}
-                                  <span className="flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-[12px]">calendar_today</span>
-                                    {formatDate(m.createdAt)}
-                                  </span>
-                                  <button
-                                    onClick={() => navigate(`/contracts/${m.contractId}`)}
-                                    className="flex items-center gap-1 text-secondary font-semibold hover:underline"
-                                  >
-                                    <span className="material-symbols-outlined text-[12px]">open_in_new</span>
-                                    View Contract
+                                  {m.jobTitle && <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">work</span>{m.jobTitle}</span>}
+                                  <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">calendar_today</span>{formatDate(m.createdAt)}</span>
+                                  <button onClick={() => navigate(`/contracts/${m.contractId}`)} className="flex items-center gap-1 text-secondary font-semibold hover:underline">
+                                    <span className="material-symbols-outlined text-[12px]">open_in_new</span>View Contract
                                   </button>
                                 </div>
                               </div>
-
-                              {/* Amount */}
                               <div className="text-right flex-shrink-0">
                                 <p className={`text-lg font-bold ${state === 'RELEASED' ? 'text-emerald-600' : state === 'ESCROWED' ? 'text-amber-600' : 'text-on-surface'}`}>
                                   {state === 'RELEASED' ? '+' : ''}{formatCurrency(m.amount)}
@@ -302,6 +298,35 @@ export default function Payments() {
                         );
                       })}
                     </div>
+                    ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {paginated.map(m => {
+                        const state = getPaymentState(m);
+                        const cfg = STATUS_CFG[state];
+                        return (
+                          <article key={m.id} className="bg-white rounded-xl border border-outline-variant hover:border-secondary/30 hover:shadow-sm transition-all p-4 flex flex-col gap-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg}`}>
+                                <span className={`material-symbols-outlined text-[18px] ${state === 'RELEASED' ? 'text-emerald-600' : state === 'ESCROWED' ? 'text-amber-600' : 'text-slate-500'}`}>{cfg.icon}</span>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${cfg.cls}`}>{cfg.label}</span>
+                            </div>
+                            <p className="text-sm font-bold text-on-surface line-clamp-2">{m.title}</p>
+                            <p className={`text-base font-bold ${state === 'RELEASED' ? 'text-emerald-600' : state === 'ESCROWED' ? 'text-amber-600' : 'text-on-surface'}`}>
+                              {state === 'RELEASED' ? '+' : ''}{formatCurrency(m.amount)}
+                            </p>
+                            <div className="space-y-1 text-xs text-on-surface-variant">
+                              {m.jobTitle && <p className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">work</span>{m.jobTitle}</p>}
+                              <p className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">calendar_today</span>{formatDate(m.createdAt)}</p>
+                            </div>
+                            <button onClick={() => navigate(`/contracts/${m.contractId}`)} className="mt-auto flex items-center justify-center gap-1 text-xs font-semibold text-secondary hover:underline">
+                              <span className="material-symbols-outlined text-[12px]">open_in_new</span>View Contract
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    )}
 
                     {totalPages > 1 && (
                       <PaginationBar page={page} totalPages={totalPages} onPageChange={setPage} />

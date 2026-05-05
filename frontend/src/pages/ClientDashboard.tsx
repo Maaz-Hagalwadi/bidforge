@@ -59,9 +59,9 @@ function mapProject(p: RecentProject): {
 
 function StatCard({ icon, label, value, trend, trendColor }: { icon: string; label: string; value: string; trend: string; trendColor: string }) {
   return (
-    <div className="tonal-card p-6 rounded-xl flex flex-col gap-3">
+    <div className="tonal-card p-4 rounded-xl flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="material-symbols-outlined text-secondary text-[32px]">{icon}</span>
+        <span className="material-symbols-outlined text-secondary text-[20px]">{icon}</span>
         {trend && <span className={`font-bold text-label-sm ${trendColor}`}>{trend}</span>}
       </div>
       <div>
@@ -255,8 +255,8 @@ export default function ClientDashboard() {
             {/* Welcome */}
             <section className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div>
-                <h1 className="text-h1 font-bold text-on-surface">Welcome back, {user?.name.split(' ')[0] ?? 'there'} 👋</h1>
-                <p className="text-body-lg text-on-surface-variant mt-1">Manage your projects and discover top talent for your next big idea.</p>
+                <h1 className="text-h2 font-bold text-on-surface">Welcome back, {user?.name.split(' ')[0] ?? 'there'} 👋</h1>
+                <p className="text-sm text-on-surface-variant mt-0.5">Manage your projects and discover top talent for your next big idea.</p>
               </div>
               <button onClick={() => navigate('/client/post-job')}
                 className="flex items-center justify-center gap-2 px-6 h-12 bg-secondary text-white font-semibold rounded-lg shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0">
@@ -276,7 +276,7 @@ export default function ClientDashboard() {
             {/* Recent projects */}
             <section className="tonal-card rounded-xl overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-h3 font-semibold text-on-surface">Recent Project Activity</h3>
+                <h3 className="text-sm font-semibold text-on-surface">Recent Project Activity</h3>
                 <button onClick={() => navigate('/client/jobs')} className="text-secondary font-semibold text-sm hover:underline">View All →</button>
               </div>
               <div className="divide-y divide-slate-100">
@@ -291,7 +291,7 @@ export default function ClientDashboard() {
             {/* Talent + News */}
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">
-                <h3 className="text-h3 font-semibold text-on-surface">Recommended for You</h3>
+                <h3 className="text-sm font-semibold text-on-surface">Recommended for You</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {dashboardData?.recommendedFreelancers.map(f => (
                       <TalentCard key={f.name} name={f.name} specialty={f.title} rating={String(f.rating)} reviews={f.reviewsCount} />
@@ -299,7 +299,7 @@ export default function ClientDashboard() {
                   </div>
               </div>
               <div className="space-y-4">
-                <h3 className="text-h3 font-semibold text-on-surface">Network News</h3>
+                <h3 className="text-sm font-semibold text-on-surface">Network News</h3>
                 {dashboardData?.news.map(n => (
                   <div key={n.title} className="tonal-card p-6 rounded-xl border-l-4 border-l-secondary bg-gradient-to-br from-white to-slate-50">
                     <p className="text-label-sm font-bold text-secondary mb-2 uppercase tracking-wide">System Update</p>
