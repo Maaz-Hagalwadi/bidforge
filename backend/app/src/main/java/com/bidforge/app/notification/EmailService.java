@@ -20,6 +20,12 @@ public class EmailService {
     @Value("${app.mail.from}")
     private String from;
 
+    @Value("${app.mail.test-mode:true}")
+    private boolean testMode;
+
+    @Value("${app.mail.test-email:maaz.hagalwadi570@gmail.com}")
+    private String testEmail;
+
     public EmailService(@Value("${resend.api-key}") String apiKey, TemplateEngine templateEngine) {
         this.resend = new Resend(apiKey);
         this.templateEngine = templateEngine;
@@ -153,13 +159,20 @@ public class EmailService {
 
     private void send(String to, String subject, String html) {
         try {
+            // In test mode, send all emails to the verified test email
+            String recipient = testMode ? testEmail : to;
+            
             CreateEmailOptions params = CreateEmailOptions.builder()
                     .from(from)
-                    .to(to)
-                    .subject(subject)
+                    .to(recipient)
+                    .subject(subject + (testMode ? " [TEST - Original: " + to + "]" : ""))
                     .html(html)
                     .build();
             resend.emails().send(params);
+            
+            if (testMode) {
+                log.info("Email sent in test mode to {} (original recipient: {})", recipient, to);
+            }
         } catch (ResendException e) {
             log.error("Failed to send email to {}: {}", to, e.getMessage());
         }
