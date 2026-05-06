@@ -46,6 +46,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/health").permitAll()
                         .requestMatchers("/auth/login", "/auth/register",
                                 "/auth/refresh", "/auth/logout",
                                 "/auth/forgot-password", "/auth/reset-password",

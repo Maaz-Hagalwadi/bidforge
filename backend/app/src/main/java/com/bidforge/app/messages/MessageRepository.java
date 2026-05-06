@@ -1,5 +1,7 @@
 package com.bidforge.app.messages;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +13,7 @@ import java.util.UUID;
 
 public interface MessageRepository extends JpaRepository<Message, UUID> {
     List<Message> findByChatRoomOrderBySentAtAsc(ChatRoom chatRoom);
+    Page<Message> findByChatRoomOrderBySentAtAsc(ChatRoom chatRoom, Pageable pageable);
 
     // 🔹 count unread
     @Query("""
