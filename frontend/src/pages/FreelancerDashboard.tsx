@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
+import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { FreelancerDashboardData, FreelancerActivity } from '@/types/dashboard';
 
 
@@ -90,6 +91,7 @@ export default function FreelancerDashboard() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [data, setData] = useState<FreelancerDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -120,6 +122,12 @@ export default function FreelancerDashboard() {
     { icon: 'payments',  label: 'Total Earned',       value: `$${data.overview.totalEarned.toLocaleString()}`, dark: true },
   ] : [];
 
+  const navLeft = (
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+      <span className="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+  );
+
   const navRight = (
     <div className="flex items-center gap-1">
       <NotificationBell />
@@ -140,7 +148,8 @@ export default function FreelancerDashboard() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar variant="app" authRight={navRight} />
+      <Navbar variant="app" authRight={navRight} navLeft={navLeft} />
+      <MobileNavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} links={sidebarLinks} onLogout={handleLogout} />
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
@@ -183,17 +192,17 @@ export default function FreelancerDashboard() {
 
         {/* Main content */}
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col bg-surface">
-          <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 space-y-8 max-w-[1280px] w-full mx-auto">
+          <div className="flex-1 p-4 pb-6 lg:p-8 space-y-6 lg:space-y-8 max-w-[1280px] w-full mx-auto">
 
             {/* Welcome */}
-            <section className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <section className="flex flex-row items-start justify-between gap-4">
               <div>
                 <h1 className="text-h2 font-bold text-on-surface">{data?.welcomeMessage ?? `Welcome back, ${user?.name.split(' ')[0] ?? 'there'} 👋`}</h1>
                 <p className="text-sm text-on-surface-variant mt-0.5">Find jobs, place bids, and grow your freelance career.</p>
               </div>
               <button onClick={() => navigate('/browse')}
-                className="flex items-center justify-center gap-2 px-6 h-12 bg-secondary text-white font-semibold rounded-lg shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0">
-                <span className="material-symbols-outlined">search</span>Browse Jobs
+                className="flex items-center justify-center gap-1.5 px-3 h-8 text-xs md:px-6 md:h-12 md:text-sm md:gap-2 bg-secondary text-white font-semibold rounded-lg shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex-shrink-0">
+                <span className="material-symbols-outlined text-[18px] md:text-[20px]">search</span>Browse Jobs
               </button>
             </section>
 
@@ -201,7 +210,7 @@ export default function FreelancerDashboard() {
             {loading ? (
               <PageLoader message="Loading dashboard…" />
             ) : (
-              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                 {stats.map(s => <StatCard key={s.label} {...s} />)}
               </section>
             )}
@@ -290,20 +299,6 @@ export default function FreelancerDashboard() {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
-        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
-            {row.map(({ icon, short, active, path }) => (
-              <button key={short} onClick={() => path && navigate(path)}
-                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-                <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                <span className="text-[9px] font-semibold leading-none">{short}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      </nav>
     </div>
   );
 }

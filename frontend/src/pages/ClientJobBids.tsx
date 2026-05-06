@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
+import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { BidResponse, BidStatus, JobResponse } from '@/types/job';
 
 const SIDEBAR_BG = '#0A192F';
@@ -36,6 +37,7 @@ export default function ClientJobBids() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [job, setJob] = useState<JobResponse | null>(null);
   const [bids, setBids] = useState<BidResponse[]>([]);
   const [totalPages, setTotalPages] = useState(0);
@@ -113,6 +115,12 @@ export default function ClientJobBids() {
   const filtered = statusTab === 'ALL' ? bids : bids.filter(b => b.status === statusTab);
   const paginated = filtered;
 
+  const navLeft = (
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+      <span className="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+  );
+
   const navRight = (
     <div className="flex items-center gap-1">
       <NotificationBell />
@@ -133,7 +141,8 @@ export default function ClientJobBids() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar variant="app" authRight={navRight} />
+      <Navbar variant="app" authRight={navRight} navLeft={navLeft} />
+      <MobileNavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} links={sidebarLinks} onLogout={handleLogout} />
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
@@ -174,7 +183,7 @@ export default function ClientJobBids() {
 
         {/* Main */}
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col bg-surface">
-          <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
+          <div className="flex-1 p-6 pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             {/* Back */}
             <button onClick={() => navigate('/client/jobs')}
@@ -341,21 +350,6 @@ export default function ClientJobBids() {
           <Footer />
         </main>
       </div>
-
-      {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
-        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
-            {row.map(({ icon, short, active, path }) => (
-              <button key={short} onClick={() => path && navigate(path)}
-                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-                <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                <span className="text-[9px] font-semibold leading-none">{short}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      </nav>
 
       {/* Confirm modal */}
       {confirmAction && (

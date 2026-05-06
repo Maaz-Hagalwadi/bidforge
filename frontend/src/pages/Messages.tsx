@@ -7,6 +7,7 @@ import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/side
 import { useAuth } from '@/context/AuthContext';
 import { Navbar } from '@/components/Navbar';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
+import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import { chatApi, type ChatRoom, type ChatMessage } from '@/api/chat';
 
 const SIDEBAR_BG = '#0A192F';
@@ -74,6 +75,7 @@ export default function Messages() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null);
@@ -99,7 +101,7 @@ export default function Messages() {
   const typingSubRef = useRef<{ unsubscribe: () => void } | null>(null);
   const readReceiptSubRef = useRef<{ unsubscribe: () => void } | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const selectRoomRef = useRef<(room: ChatRoom) => void>(() => {});
+  const selectRoomRef = useRef<(room: ChatRoom, switchToChat?: boolean) => void>(() => {});
 
   // ── Load rooms ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -132,7 +134,7 @@ export default function Messages() {
           }
           selectRoomRef.current(targetRoom);
         } else if (allRooms.length > 0) {
-          selectRoomRef.current(allRooms[0]);
+          selectRoomRef.current(allRooms[0], false);
         }
       } finally {
         setLoadingRooms(false);
@@ -269,9 +271,9 @@ export default function Messages() {
   }, []);
 
   // ── Select room ─────────────────────────────────────────────────────────────
-  const selectRoom = useCallback(async (room: ChatRoom) => {
+  const selectRoom = useCallback(async (room: ChatRoom, switchToChat = true) => {
     setSelectedRoom(room);
-    setMobileView('chat');
+    if (switchToChat) setMobileView('chat');
     setLoadingMessages(true);
     // Mark messages as read
     chatApi.markRead(room.roomId).catch(() => {});
@@ -368,6 +370,12 @@ export default function Messages() {
   function getOtherId(room: ChatRoom) {
     return user?.id === room.clientId ? room.freelancerId : room.clientId;
   }
+
+  const navLeft = (
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+      <span className="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+  );
 
   const navRight = (
     <div className="flex items-center gap-1">
@@ -636,7 +644,8 @@ export default function Messages() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      <Navbar variant="app" authRight={navRight} />
+      <Navbar variant="app" authRight={navRight} navLeft={navLeft} />
+      <MobileNavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} links={sidebarLinks} onLogout={handleLogout} />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* App sidebar */}
@@ -680,22 +689,6 @@ export default function Messages() {
           {ChatWindow}
         </main>
       </div>
-
-      {user && mobileView !== 'chat' && (
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
-          {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-            <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
-              {row.map(({ icon, short, active, path }) => (
-                <button key={short} onClick={() => path && navigate(path)}
-                  className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-                  <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                  <span className="text-[9px] font-semibold leading-none">{short}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-      )}
 
       {lightboxUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"

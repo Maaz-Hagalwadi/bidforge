@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
+import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { InviteWithJobResponse } from '@/types/job';
 
 const SIDEBAR_BG = '#0A192F';
@@ -60,6 +61,7 @@ export default function FreelancerInvites() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [invites, setInvites] = useState<InviteWithJobResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState<Set<string>>(new Set());
@@ -172,6 +174,12 @@ export default function FreelancerInvites() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
+  const navLeft = (
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+      <span className="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+  );
+
   const navRight = (
     <div className="flex items-center gap-1">
       <NotificationBell />
@@ -192,7 +200,8 @@ export default function FreelancerInvites() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar variant="app" authRight={navRight} />
+      <Navbar variant="app" authRight={navRight} navLeft={navLeft} />
+      <MobileNavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} links={sidebarLinks} onLogout={handleLogout} />
 
       <div className="flex flex-1 min-h-0">
         <aside
@@ -231,7 +240,7 @@ export default function FreelancerInvites() {
         </aside>
 
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col bg-surface">
-          <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
+          <div className="flex-1 p-6 pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             {/* Header */}
             <div>
@@ -240,7 +249,7 @@ export default function FreelancerInvites() {
             </div>
 
             {/* Search form — only fires on submit */}
-            <form onSubmit={handleSearch} className="tonal-card rounded-xl p-5 space-y-4">
+            <form onSubmit={handleSearch} className="hidden lg:block tonal-card rounded-xl p-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="lg:col-span-2">
                   <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Keyword</label>
@@ -387,20 +396,6 @@ export default function FreelancerInvites() {
         </main>
       </div>
 
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
-        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
-            {row.map(({ icon, short, active, path }) => (
-              <button key={short} onClick={() => path && navigate(path)}
-                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-                <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                <span className="text-[9px] font-semibold leading-none">{short}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      </nav>
-
       {/* Confirmation modal */}
       {confirmAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setConfirmAction(null)}>
@@ -469,89 +464,101 @@ function InviteCard({
   const skills = parseSkills(inv.requiredSkills);
 
   return (
-    <article className={['tonal-card rounded-xl overflow-hidden transition-all', dimmed ? 'opacity-50' : 'hover:shadow-md group'].join(' ')}>
-      <div className="p-6 flex flex-col md:flex-row md:items-start gap-6">
-        <div className="flex-1 min-w-0 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold flex items-center gap-1">
-              <span className="material-symbols-outlined text-[13px]">lock</span>Invite Only
-            </span>
-            <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{inv.category}</span>
-            <span className="px-2.5 py-1 bg-secondary/10 text-secondary rounded-full text-xs font-semibold">
-              {inv.budgetType === 'HOURLY' ? 'Hourly' : 'Fixed Price'}
-            </span>
-            {inv.inviteStatus === 'ACCEPTED' && (
-              <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold flex items-center gap-1">
-                <span className="material-symbols-outlined text-[13px]">check_circle</span>Accepted
+    <article className={['tonal-card rounded-xl p-5 transition-all', dimmed ? 'opacity-60' : 'hover:shadow-md group'].join(' ')}>
+      <div className="flex flex-col gap-4">
+
+        {/* Row 1: title + status badge */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-semibold flex items-center gap-1">
+                <span className="material-symbols-outlined text-[13px]">lock</span>Invite Only
               </span>
-            )}
-            {inv.inviteStatus === 'DECLINED' && (
-              <span className="px-2.5 py-1 bg-slate-100 text-slate-500 rounded-full text-xs font-semibold flex items-center gap-1">
-                <span className="material-symbols-outlined text-[13px]">cancel</span>Declined
-              </span>
-            )}
-          </div>
-          <h3 className={['text-lg font-bold text-on-surface', !dimmed ? 'group-hover:text-secondary transition-colors' : ''].join(' ')}>{inv.title}</h3>
-          <p className="text-sm text-on-surface-variant line-clamp-2">{inv.description}</p>
-          {skills.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {skills.slice(0, 5).map(s => (
-                <span key={s} className="px-2.5 py-1 bg-slate-100 border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
-              ))}
-              {skills.length > 5 && <span className="text-xs text-on-surface-variant px-2">+{skills.length - 5} more</span>}
+              <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{inv.category}</span>
             </div>
+            <h3 className={['text-sm font-bold text-on-surface line-clamp-1', !dimmed ? 'group-hover:text-secondary transition-colors' : ''].join(' ')}>{inv.title}</h3>
+          </div>
+          {inv.inviteStatus === 'INVITED' && (
+            <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 bg-amber-50 text-amber-700">
+              <span className="material-symbols-outlined text-[13px]">schedule</span>Pending
+            </span>
           )}
-          {error && (
-            <p className="text-xs text-red-500 font-medium flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">error</span>{error}
-            </p>
+          {inv.inviteStatus === 'ACCEPTED' && (
+            <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 bg-green-100 text-green-700">
+              <span className="material-symbols-outlined text-[13px]">check_circle</span>Accepted
+            </span>
+          )}
+          {inv.inviteStatus === 'DECLINED' && (
+            <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 bg-slate-100 text-slate-500">
+              <span className="material-symbols-outlined text-[13px]">cancel</span>Declined
+            </span>
           )}
         </div>
-        <div className="flex flex-col gap-3 md:items-end flex-shrink-0 w-full md:w-auto">
-          <div className="md:text-right">
-            <p className="text-xs text-on-surface-variant mb-0.5">Budget</p>
-            <p className="text-lg font-bold text-secondary">{formatBudget(inv.budgetMin, inv.budgetMax, inv.budgetType)}</p>
+
+        {/* Description */}
+        <p className="text-sm text-on-surface-variant line-clamp-2">{inv.description}</p>
+
+        {/* Meta row */}
+        <div className="flex flex-wrap gap-4">
+          <div>
+            <p className="text-xs text-on-surface-variant">Budget</p>
+            <p className="text-base font-bold text-secondary">{formatBudget(inv.budgetMin, inv.budgetMax, inv.budgetType)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-on-surface-variant">Type</p>
+            <p className="text-sm font-semibold text-on-surface">{inv.budgetType === 'HOURLY' ? 'Hourly' : 'Fixed Price'}</p>
           </div>
           {inv.deadline && (
-            <div className="md:text-right">
-              <p className="text-xs text-on-surface-variant mb-0.5">Deadline</p>
+            <div>
+              <p className="text-xs text-on-surface-variant">Deadline</p>
               <p className="text-sm font-semibold text-on-surface">
                 {new Date(inv.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </p>
             </div>
           )}
-          <div className="flex flex-col gap-2 md:items-end">
-            {inv.inviteStatus === 'INVITED' && (
-              <>
-                <button
-                  onClick={onAccept}
-                  disabled={isProcessing}
-                  className="w-full md:w-auto flex items-center justify-center gap-1.5 px-5 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all">
-                  {isProcessing ? (
-                    <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-                  ) : (
-                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                  )}
-                  Accept
-                </button>
-                <button
-                  onClick={onDecline}
-                  disabled={isProcessing}
-                  className="w-full md:w-auto flex items-center justify-center gap-1.5 px-5 py-2 border border-outline-variant text-on-surface-variant text-sm font-semibold rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-600 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] transition-all">
-                  <span className="material-symbols-outlined text-[16px]">cancel</span>
-                  Decline
-                </button>
-              </>
-            )}
-            {inv.inviteStatus === 'ACCEPTED' && (
-              <button onClick={onViewBid}
-                className="w-full md:w-auto flex items-center justify-center gap-1.5 px-5 py-2 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                <span className="material-symbols-outlined text-[16px]">gavel</span>
-                View &amp; Bid
-              </button>
-            )}
-          </div>
         </div>
+
+        {/* Skills */}
+        {skills.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {skills.slice(0, 5).map(s => (
+              <span key={s} className="px-2.5 py-1 bg-slate-100 border border-outline-variant rounded-full text-xs text-on-surface-variant">{s}</span>
+            ))}
+            {skills.length > 5 && <span className="text-xs text-on-surface-variant px-2 self-center">+{skills.length - 5} more</span>}
+          </div>
+        )}
+
+        {error && (
+          <p className="text-xs text-red-500 font-medium flex items-center gap-1">
+            <span className="material-symbols-outlined text-[14px]">error</span>{error}
+          </p>
+        )}
+
+        {/* Action buttons — same size as Browse Jobs button */}
+        {inv.inviteStatus === 'INVITED' && (
+          <div className="flex items-center gap-2">
+            <button onClick={onAccept} disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm bg-green-600 text-white font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all">
+              {isProcessing
+                ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                : <span className="material-symbols-outlined text-[16px]">check_circle</span>}
+              Accept
+            </button>
+            <button onClick={onDecline} disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm border border-outline-variant text-on-surface-variant font-semibold rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-600 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] transition-all">
+              <span className="material-symbols-outlined text-[16px]">cancel</span>
+              Decline
+            </button>
+          </div>
+        )}
+        {inv.inviteStatus === 'ACCEPTED' && (
+          <button onClick={onViewBid}
+            className="self-start flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm bg-secondary text-white font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+            <span className="material-symbols-outlined text-[16px]">gavel</span>
+            View &amp; Bid
+          </button>
+        )}
+
       </div>
     </article>
   );
