@@ -10,6 +10,9 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
@@ -71,8 +74,11 @@ public class ChatService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    public List<ChatMessageResponse> getMessages(ChatRoom room) {
-        return messageRepo.findByChatRoomOrderBySentAtAsc(room)
+    public List<ChatMessageResponse> getMessages(ChatRoom room, int page, int size) {
+        return messageRepo.findByChatRoomOrderBySentAtAsc(
+                        room,
+                        PageRequest.of(page, size, Sort.by("sentAt").ascending()))
+                .getContent()
                 .stream()
                 .map(this::mapToResponse)
                 .toList();

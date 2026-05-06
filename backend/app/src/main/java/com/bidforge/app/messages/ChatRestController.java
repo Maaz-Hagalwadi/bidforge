@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -50,7 +51,10 @@ public class ChatRestController {
     }
 
     @GetMapping("/chat/{roomId}/messages")
-    public List<ChatMessageResponse> getMessages(@PathVariable UUID roomId) {
+    public List<ChatMessageResponse> getMessages(
+            @PathVariable UUID roomId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "50") int size) {
 
         User user = getCurrentUser();
 
@@ -58,7 +62,7 @@ public class ChatRestController {
 
         chatService.validateUserInRoom(room, user);
 
-        return chatService.getMessages(room);
+        return chatService.getMessages(room, page, size);
     }
 
     @GetMapping("/chat/my-rooms")
