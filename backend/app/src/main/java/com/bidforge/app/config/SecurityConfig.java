@@ -78,7 +78,8 @@ public class SecurityConfig {
             "http://localhost:5173",
             "http://localhost:*",
             "https://*.vercel.app",
-            "https://bidforge-eight.vercel.app"
+            "https://bidforge-eight.vercel.app",
+            "https://bidforge.mzdev.co.in"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
