@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
+import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { JobResponse } from '@/types/job';
 
 const SIDEBAR_BG = '#0A192F';
@@ -72,6 +73,7 @@ export default function ArchivedJobs() {
 
   const [sidebarOpen, setSidebarOpen]       = useState(true);
   const [profileOpen, setProfileOpen]       = useState(false);
+  const [drawerOpen, setDrawerOpen]         = useState(false);
   const [jobs, setJobs]                     = useState<JobResponse[]>([]);
   const [loading, setLoading]               = useState(true);
   const [search, setSearch]                 = useState('');
@@ -133,6 +135,12 @@ export default function ArchivedJobs() {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
+  const navLeft = (
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+      <span className="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+  );
+
   const navRight = (
     <div className="flex items-center gap-1">
       <NotificationBell />
@@ -153,7 +161,8 @@ export default function ArchivedJobs() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar variant="app" authRight={navRight} />
+      <Navbar variant="app" authRight={navRight} navLeft={navLeft} />
+      <MobileNavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} links={sidebarLinks} onLogout={handleLogout} />
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
@@ -194,7 +203,7 @@ export default function ArchivedJobs() {
 
         {/* Main */}
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col bg-surface">
-          <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
+          <div className="flex-1 p-6 pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -255,15 +264,14 @@ export default function ArchivedJobs() {
                     return (
                       <article key={job.id} className="tonal-card rounded-xl overflow-hidden hover:shadow-md transition-all">
                         <div className="h-[3px] bg-slate-300" />
-                        <div className="px-4 py-4 flex flex-col gap-4">
-                          {/* Info */}
-                          <div className="flex-1 min-w-0 space-y-2.5">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2 mb-1">
-                                <h3 className="text-[15px] font-bold text-on-surface leading-snug">{job.title}</h3>
+                        <div className="px-4 py-4 flex flex-col gap-3">
+
+                          {/* Top row: title + action buttons */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-[15px] font-bold text-on-surface leading-snug line-clamp-1">{job.title}</h3>
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                                 <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[11px] font-bold">Archived</span>
-                              </div>
-                              <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[11px] font-medium">{job.category}</span>
                                 <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${job.visibility === 'INVITE_ONLY' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
                                   <span className="material-symbols-outlined text-[11px]">{job.visibility === 'INVITE_ONLY' ? 'lock' : 'public'}</span>
@@ -271,33 +279,7 @@ export default function ArchivedJobs() {
                                 </span>
                               </div>
                             </div>
-                            <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-2">{job.description}</p>
-                            {skills.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {skills.slice(0, 5).map(s => (
-                                  <span key={s} className="px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-500">{s}</span>
-                                ))}
-                                {skills.length > 5 && <span className="text-xs text-slate-400 self-center">+{skills.length - 5} more</span>}
-                              </div>
-                            )}
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5">
-                              <span className="flex items-center gap-1 text-xs text-on-surface-variant">
-                                <span className="material-symbols-outlined text-[13px]">calendar_today</span>
-                                Posted {formatDate(job.createdAt)}
-                              </span>
-                              {job.deadline && (
-                                <span className="flex items-center gap-1 text-xs text-on-surface-variant">
-                                  <span className="material-symbols-outlined text-[13px]">event</span>
-                                  Deadline {formatDate(job.deadline)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Actions + budget — always horizontal row */}
-                          <div className="flex items-center justify-between border-t border-slate-100 pt-3">
-                            <p className="text-sm font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
                               <button onClick={() => navigate(`/jobs/${job.id}`)}
                                 className="border border-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-slate-50 transition-colors">
                                 View
@@ -312,6 +294,35 @@ export default function ArchivedJobs() {
                               </button>
                             </div>
                           </div>
+
+                          {/* Description */}
+                          <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-2">{job.description}</p>
+
+                          {/* Skills */}
+                          {skills.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {skills.slice(0, 5).map(s => (
+                                <span key={s} className="px-2 py-0.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-500">{s}</span>
+                              ))}
+                              {skills.length > 5 && <span className="text-xs text-slate-400 self-center">+{skills.length - 5} more</span>}
+                            </div>
+                          )}
+
+                          {/* Meta: budget + dates */}
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-0.5">
+                            <span className="text-sm font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</span>
+                            <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                              <span className="material-symbols-outlined text-[13px]">calendar_today</span>
+                              Posted {formatDate(job.createdAt)}
+                            </span>
+                            {job.deadline && (
+                              <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                <span className="material-symbols-outlined text-[13px]">event</span>
+                                Deadline {formatDate(job.deadline)}
+                              </span>
+                            )}
+                          </div>
+
                         </div>
                       </article>
                     );
@@ -358,21 +369,6 @@ export default function ArchivedJobs() {
           <Footer />
         </main>
       </div>
-
-      {/* Mobile bottom nav — 4+4 */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
-        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
-            {row.map(({ icon, short, active, path }) => (
-              <button key={short} onClick={() => path && navigate(path)}
-                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-                <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                <span className="text-[9px] font-semibold leading-none">{short}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      </nav>
 
       {/* Repost confirmation */}
       {repostTarget && (

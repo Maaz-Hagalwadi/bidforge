@@ -12,6 +12,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
+import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { ContractResponse } from '@/types/contract';
 
 const SIDEBAR_BG = '#0A192F';
@@ -80,6 +81,7 @@ export default function Contracts() {
 
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
   const [profileOpen,  setProfileOpen]  = useState(false);
+  const [drawerOpen,   setDrawerOpen]   = useState(false);
   const [contracts,    setContracts]    = useState<ContractResponse[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [listPage,     setListPage]     = useState(1);
@@ -314,6 +316,12 @@ export default function Contracts() {
 
   // ── Navbar right ────────────────────────────────────────────────────────────
 
+  const navLeft = (
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+      <span className="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+  );
+
   const navRight = (
     <div className="flex items-center gap-1">
       <NotificationBell />
@@ -380,7 +388,7 @@ export default function Contracts() {
   const pagedContracts = sortedContracts.slice((listPage - 1) * LIST_PAGE_SIZE, listPage * LIST_PAGE_SIZE);
 
   const listView = (
-    <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
+    <div className="flex-1 p-6 pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
       <div>
         <h1 className="text-h2 font-bold text-on-surface">My Contracts</h1>
         <p className="text-sm text-on-surface-variant mt-0.5">
@@ -602,7 +610,7 @@ export default function Contracts() {
     })();
 
     return (
-      <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
+      <div className="flex-1 p-6 pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
         {/* Back */}
         <button onClick={() => navigate('/contracts')}
@@ -1290,7 +1298,8 @@ export default function Contracts() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar variant="app" authRight={navRight} />
+      <Navbar variant="app" authRight={navRight} navLeft={navLeft} />
+      <MobileNavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} links={sidebarLinks} onLogout={handleLogout} />
 
       <div className="flex flex-1 min-h-0">
         {sidebar}
@@ -1317,23 +1326,6 @@ export default function Contracts() {
           <Footer />
         </main>
       </div>
-
-      {/* Mobile bottom nav */}
-      {user && (
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
-          {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-            <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
-              {row.map(({ icon, short, active, path }) => (
-                <button key={short} onClick={() => path && navigate(path)}
-                  className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-                  <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                  <span className="text-[9px] font-semibold leading-none">{short}</span>
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-      )}
 
       {/* Review modal */}
       {showReviewModal && contractId && (() => {

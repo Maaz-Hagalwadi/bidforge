@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
+import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { JobResponse, SpringPage } from '@/types/job';
 
 const SIDEBAR_BG = '#0A192F';
@@ -129,6 +130,8 @@ export default function BrowseJobs() {
   );
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Live form-input state
   const [keyword, setKeyword] = useState('');
@@ -243,9 +246,19 @@ export default function BrowseJobs() {
     </button>
   );
 
+  const navLeft = user ? (
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+      <span className="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+  ) : null;
+
+  // count active filters for badge
+  const activeFilterCount = [applied.keyword, applied.category, applied.minBudget || applied.maxBudget, applied.skills, applied.postedAfter].filter(Boolean).length;
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar variant="app" authRight={navRight} />
+      <Navbar variant="app" authRight={navRight} navLeft={navLeft} />
+      {user && <MobileNavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} links={sidebarLinks} onLogout={handleLogout} />}
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar — only shown when logged in */}
@@ -286,7 +299,7 @@ export default function BrowseJobs() {
 
         {/* Main */}
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col bg-surface">
-          <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
+          <div className="flex-1 p-4 pb-6 lg:p-8 max-w-[1280px] w-full mx-auto space-y-4 lg:space-y-6">
 
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -381,60 +394,84 @@ export default function BrowseJobs() {
             )}
 
             {/* Filters */}
-            {activeTab === 'browse' && <form onSubmit={handleSearch} className="tonal-card rounded-xl p-5 space-y-4">
-              <div className="flex flex-col md:flex-row gap-3">
-                <div className="flex-1 relative">
-                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                  <input
-                    type="text"
-                    value={keyword}
-                    onChange={e => setKeyword(e.target.value)}
-                    placeholder="Search for jobs, skills, or companies…"
-                    className="w-full pl-10 pr-4 py-3 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white"
-                  />
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <button type="button" onClick={handleClear}
-                    className="px-4 py-3 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
-                    Clear
+            {activeTab === 'browse' && (
+              <form onSubmit={handleSearch} className="tonal-card rounded-xl p-4 space-y-3">
+                {/* Search row — always visible */}
+                <div className="flex gap-2">
+                  <div className="flex-1 relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+                    <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)}
+                      placeholder="Search jobs, skills…"
+                      className="w-full pl-10 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
+                  </div>
+                  {/* Mobile: filters toggle */}
+                  <button type="button" onClick={() => setFiltersOpen(o => !o)}
+                    className={`lg:hidden relative flex items-center gap-1.5 px-3 py-2.5 border rounded-lg text-sm font-semibold transition-colors flex-shrink-0 ${filtersOpen ? 'border-secondary text-secondary bg-secondary/5' : 'border-outline-variant text-on-surface-variant hover:bg-white'}`}>
+                    <span className="material-symbols-outlined text-[18px]">tune</span>
+                    {activeFilterCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center">{activeFilterCount}</span>
+                    )}
                   </button>
-                  <button type="submit"
-                    className="flex items-center gap-2 px-5 py-3 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                    <span className="material-symbols-outlined text-[18px]">filter_list</span>
-                    Search Jobs
-                  </button>
+                  {/* Desktop: Clear + Search always visible */}
+                  <div className="hidden lg:flex gap-2 flex-shrink-0">
+                    <button type="button" onClick={handleClear}
+                      className="px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
+                      Clear
+                    </button>
+                    <button type="submit"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                      <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                      Search
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-on-surface-variant px-1">Category</label>
-                  <select value={category} onChange={e => setCategory(e.target.value === 'All Categories' ? '' : e.target.value)}
-                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                  </select>
+
+                {/* Filter grid — always on desktop, collapsible on mobile */}
+                <div className={`${filtersOpen ? 'block' : 'hidden'} lg:block`}>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Category</label>
+                      <select value={category} onChange={e => setCategory(e.target.value === 'All Categories' ? '' : e.target.value)}
+                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Budget</label>
+                      <select value={budgetRange} onChange={e => setBudgetRange(e.target.value)}
+                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                        {BUDGET_RANGES.map(r => <option key={r.label} value={r.label}>{r.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Skills</label>
+                      <input type="text" value={skills} onChange={e => setSkills(e.target.value)}
+                        placeholder="e.g. React, Python"
+                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Posted</label>
+                      <select value={postedDate} onChange={e => setPostedDate(e.target.value)}
+                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                        {POSTED_DATE_OPTIONS.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  {/* Mobile: Clear + Search inside expanded panel */}
+                  <div className="flex gap-2 mt-3 lg:hidden">
+                    <button type="button" onClick={handleClear}
+                      className="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
+                      Clear
+                    </button>
+                    <button type="submit" onClick={() => setFiltersOpen(false)}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                      <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                      Search
+                    </button>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-on-surface-variant px-1">Budget Range</label>
-                  <select value={budgetRange} onChange={e => setBudgetRange(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
-                    {BUDGET_RANGES.map(r => <option key={r.label} value={r.label}>{r.label}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-on-surface-variant px-1">Skills</label>
-                  <input type="text" value={skills} onChange={e => setSkills(e.target.value)}
-                    placeholder="e.g. React, Python"
-                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-on-surface-variant px-1">Posted Date</label>
-                  <select value={postedDate} onChange={e => setPostedDate(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
-                    {POSTED_DATE_OPTIONS.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
-                  </select>
-                </div>
-              </div>
-            </form>}
+              </form>
+            )}
 
             {activeTab === 'browse' && <>
             {/* Header & count */}
@@ -682,19 +719,6 @@ export default function BrowseJobs() {
         </main>
       </div>
 
-      {user && <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
-        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
-            {row.map(({ icon, short, active, path }) => (
-              <button key={short} onClick={() => path && navigate(path)}
-                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-                <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                <span className="text-[9px] font-semibold leading-none">{short}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      </nav>}
     </div>
   );
 }

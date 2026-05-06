@@ -5,9 +5,10 @@ import { useAuth } from '@/context/AuthContext';
 interface NavbarProps {
   variant?: 'app' | 'auth';
   authRight?: React.ReactNode;
+  navLeft?: React.ReactNode;
 }
 
-export function Navbar({ variant = 'app', authRight }: NavbarProps) {
+export function Navbar({ variant = 'app', authRight, navLeft }: NavbarProps) {
   const { pathname } = useLocation();
   const { isAuthenticated, user } = useAuth();
   const dashPath = user?.role === 'FREELANCER' ? '/freelancer/dashboard' : '/client/dashboard';
@@ -19,10 +20,13 @@ export function Navbar({ variant = 'app', authRight }: NavbarProps) {
     >
       <div className="relative w-full px-6 h-16 flex items-center justify-between">
 
-        {/* Left — logo */}
-        <Link to="/" className="flex-shrink-0 z-10">
-          <BidForgeLogo variant="light" />
-        </Link>
+        {/* Left — hamburger (mobile) + logo */}
+        <div className="flex items-center gap-2 flex-shrink-0 z-10">
+          {navLeft && <div className="lg:hidden">{navLeft}</div>}
+          <Link to="/">
+            <BidForgeLogo variant="light" />
+          </Link>
+        </div>
 
         {/* Center — tagline (auth only, desktop) */}
         {variant === 'auth' && (

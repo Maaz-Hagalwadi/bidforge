@@ -8,6 +8,7 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
+import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { MilestoneResponse } from '@/types/milestone';
 
 const SIDEBAR_BG = '#0A192F';
@@ -52,6 +53,7 @@ export default function Payments() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [milestones, setMilestones] = useState<MilestoneResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<PaymentFilter>('ALL');
@@ -101,6 +103,12 @@ export default function Payments() {
 
   const isClient = user?.role === 'CLIENT';
 
+  const navLeft = (
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+      <span className="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+  );
+
   const navRight = (
     <div className="flex items-center gap-1">
       <NotificationBell />
@@ -121,7 +129,8 @@ export default function Payments() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar variant="app" authRight={navRight} />
+      <Navbar variant="app" authRight={navRight} navLeft={navLeft} />
+      <MobileNavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} links={sidebarLinks} onLogout={handleLogout} />
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
@@ -162,7 +171,7 @@ export default function Payments() {
 
         {/* Main */}
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col bg-surface">
-          <div className="flex-1 p-6 pb-24 lg:pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
+          <div className="flex-1 p-6 pb-8 lg:p-8 max-w-[1280px] w-full mx-auto space-y-6">
 
             <div>
               <h1 className="text-h2 font-bold text-on-surface">Payments</h1>
@@ -191,31 +200,31 @@ export default function Payments() {
               <div className="space-y-5">
 
                 {/* Summary cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-white rounded-xl border border-outline-variant p-5 flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-secondary text-[22px]">payments</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl border border-outline-variant p-5 flex flex-col gap-3 min-h-[110px]">
+                    <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-secondary text-[20px]">payments</span>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-on-surface">{formatCurrency(totalAll)}</p>
+                      <p className="text-lg font-bold text-on-surface leading-tight">{formatCurrency(totalAll)}</p>
                       <p className="text-xs text-on-surface-variant mt-0.5">Total Milestones Value</p>
                     </div>
                   </div>
-                  <div className="bg-white rounded-xl border border-outline-variant p-5 flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-amber-600 text-[22px]">lock</span>
+                  <div className="bg-white rounded-xl border border-outline-variant p-5 flex flex-col gap-3 min-h-[110px]">
+                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-amber-600 text-[20px]">lock</span>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-on-surface">{formatCurrency(totalEscrowed)}</p>
+                      <p className="text-lg font-bold text-on-surface leading-tight">{formatCurrency(totalEscrowed)}</p>
                       <p className="text-xs text-on-surface-variant mt-0.5">{isClient ? 'Held in Escrow' : 'Awaiting Release'}</p>
                     </div>
                   </div>
-                  <div className="bg-white rounded-xl border border-outline-variant p-5 flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-emerald-600 text-[22px]">task_alt</span>
+                  <div className="bg-white rounded-xl border border-outline-variant p-5 flex flex-col gap-3 min-h-[110px] col-span-2 sm:col-span-1">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-emerald-600 text-[20px]">task_alt</span>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-on-surface">{formatCurrency(totalReleased)}</p>
+                      <p className="text-lg font-bold text-on-surface leading-tight">{formatCurrency(totalReleased)}</p>
                       <p className="text-xs text-on-surface-variant mt-0.5">{isClient ? 'Released to Freelancers' : 'Earned'}</p>
                     </div>
                   </div>
@@ -341,20 +350,6 @@ export default function Payments() {
         </main>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
-        {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
-            {row.map(({ icon, short, active, path }) => (
-              <button key={short} onClick={() => path && navigate(path)}
-                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
-                <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                <span className="text-[9px] font-semibold leading-none">{short}</span>
-              </button>
-            ))}
-          </div>
-        ))}
-      </nav>
     </div>
   );
 }
