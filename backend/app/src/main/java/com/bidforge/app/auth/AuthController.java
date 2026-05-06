@@ -46,6 +46,18 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/verify-email")
+    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
+        authService.verifyEmail(token);
+        return ResponseEntity.ok("Email verified successfully.");
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<String> resendVerification(@RequestBody java.util.Map<String, String> body) {
+        authService.resendVerification(body.getOrDefault("email", ""));
+        return ResponseEntity.ok("If that email exists and is unverified, a new link has been sent.");
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);

@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { authApi } from '@/api/auth';
 
 import { loginSchema, type LoginFormValues } from '@/lib/schemas';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +24,15 @@ export default function Login() {
   const justRegistered = (location.state as { registered?: boolean; passwordReset?: boolean } | null)?.registered === true;
   const passwordReset = (location.state as { registered?: boolean; passwordReset?: boolean } | null)?.passwordReset === true;
 
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+  const [resendSent, setResendSent] = useState(false);
+
+  const handleResend = async () => {
+    if (!unverifiedEmail) return;
+    await authApi.resendVerification(unverifiedEmail).catch(() => {});
+    setResendSent(true);
+  };
+
   const {
     register,
     handleSubmit,
@@ -39,6 +50,10 @@ export default function Login() {
         const apiErr = err.response?.data as ApiError;
         if (!err.response) {
           setError('root', { message: 'Cannot reach the server. Please wait a moment and try again.' });
+        } else if (apiErr?.error === 'EMAIL_NOT_VERIFIED') {
+          setUnverifiedEmail(values.email);
+          setResendSent(false);
+          setError('root', { message: apiErr.message });
         } else if (err.response.status === 401) {
           setError('root', { message: 'Invalid email or password.' });
         } else {
@@ -102,8 +117,26 @@ export default function Login() {
             )}
 
             {/* Global error */}
-            {errors.root && (
+            {errors.root && !unverifiedEmail && (
               <p className="field-error text-center">{errors.root.message}</p>
+            )}
+
+            {/* Email not verified banner */}
+            {unverifiedEmail && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-4 py-3 text-amber-300 text-sm">
+                <p className="font-semibold mb-1">Email not verified</p>
+                <p className="text-amber-400/80 text-xs mb-2">Please verify your email address before logging in.</p>
+                {resendSent ? (
+                  <p className="text-green-400 text-xs flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                    Verification email resent. Check your inbox.
+                  </p>
+                ) : (
+                  <button onClick={handleResend} className="text-xs underline text-amber-300 hover:text-white transition-colors">
+                    Resend verification email
+                  </button>
+                )}
+              </div>
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-lg" noValidate>

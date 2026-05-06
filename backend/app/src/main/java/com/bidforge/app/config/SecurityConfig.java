@@ -48,7 +48,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login", "/auth/register",
                                 "/auth/refresh", "/auth/logout",
-                                "/auth/forgot-password", "/auth/reset-password").permitAll()
+                                "/auth/forgot-password", "/auth/reset-password",
+                                "/auth/verify-email", "/auth/resend-verification").permitAll()
                         .requestMatchers(HttpMethod.POST, "/webhooks/stripe").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()

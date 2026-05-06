@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
@@ -18,6 +19,7 @@ const HERO_IMAGE =
 export default function Register() {
   const navigate = useNavigate();
   const { register: registerUser } = useAuth();
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   const {
     register,
@@ -39,7 +41,7 @@ export default function Register() {
         phoneNumber: values.phoneNumber,
         role: values.role,
       });
-      navigate('/login', { state: { registered: true } });
+      setRegisteredEmail(values.email);
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const apiErr = err.response?.data as ApiError;
@@ -57,6 +59,29 @@ export default function Register() {
       }
     }
   };
+
+  if (registeredEmail) {
+    return (
+      <div className="min-h-screen bg-dark-navy flex flex-col">
+        <Navbar variant="auth" />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-10 text-center">
+            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-5">
+              <span className="material-symbols-outlined text-secondary text-4xl">mark_email_unread</span>
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Check your inbox</h2>
+            <p className="text-slate-500 text-sm mb-1">We sent a verification link to</p>
+            <p className="text-secondary font-semibold text-sm mb-6">{registeredEmail}</p>
+            <p className="text-slate-400 text-xs mb-6">Click the link in the email to activate your account. Check your spam folder if you don't see it.</p>
+            <button onClick={() => navigate('/login')}
+              className="w-full py-3 bg-secondary text-white font-semibold rounded-xl hover:brightness-110 transition-all">
+              Go to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-dark-navy antialiased flex flex-col h-screen overflow-hidden">

@@ -8,6 +8,7 @@ import com.bidforge.app.auth.dto.request.RegisterRequest;
 import com.bidforge.app.auth.dto.request.ResetPasswordRequest;
 import com.bidforge.app.auth.dto.response.LoginResponse;
 import com.bidforge.app.common.exception.EmailAlreadyExistsException;
+import com.bidforge.app.common.exception.EmailNotVerifiedException;
 import com.bidforge.app.common.exception.InvalidCredentialsException;
 import com.bidforge.app.common.exception.PhoneAlreadyExistsException;
 import com.bidforge.app.user.Role;
@@ -50,16 +51,21 @@ public class AuthService {
         Role role = (request.getRole() != null && request.getRole() != Role.ADMIN)
                 ? request.getRole() : Role.CLIENT;
 
+        String verificationToken = UUID.randomUUID().toString();
+
         User user = User.builder()
                 .name(request.getName())
                 .email(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .phoneNumber(request.getPhoneNumber())
                 .role(role)
+                .emailVerified(false)
+                .emailVerificationToken(verificationToken)
                 .build();
 
         User saved = userRepository.save(user);
-        emailService.sendWelcomeEmail(saved.getEmail(), saved.getName());
+        String verifyUrl = baseUrl + "/verify-email?token=" + verificationToken;
+        emailService.sendVerificationEmail(saved.getEmail(), saved.getName(), verifyUrl);
 
         return UserResponse.builder()
                 .id(saved.getId())
@@ -78,6 +84,10 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new InvalidCredentialsException("Invalid email or password");
+        }
+
+        if (!user.isEmailVerified()) {
+            throw new EmailNotVerifiedException("Please verify your email address before logging in.");
         }
 
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
@@ -105,6 +115,26 @@ public class AuthService {
 
     public void logout(RefreshTokenRequest request) {
         refreshTokenService.revokeByToken(request.getRefreshToken());
+    }
+
+    public void verifyEmail(String token) {
+        User user = userRepository.findByEmailVerificationToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired verification link."));
+        user.setEmailVerified(true);
+        user.setEmailVerificationToken(null);
+        userRepository.save(user);
+    }
+
+    public void resendVerification(String email) {
+        userRepository.findByEmail(email.toLowerCase().trim()).ifPresent(user -> {
+            if (!user.isEmailVerified()) {
+                String token = UUID.randomUUID().toString();
+                user.setEmailVerificationToken(token);
+                userRepository.save(user);
+                String verifyUrl = baseUrl + "/verify-email?token=" + token;
+                emailService.sendVerificationEmail(user.getEmail(), user.getName(), verifyUrl);
+            }
+        });
     }
 
     public void forgotPassword(ForgotPasswordRequest request) {

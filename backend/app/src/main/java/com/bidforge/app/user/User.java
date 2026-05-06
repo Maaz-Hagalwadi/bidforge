@@ -58,6 +58,11 @@ public class User {
     private String skills;
 
     @Column(nullable = false)
+    private boolean emailVerified = false;
+
+    private String emailVerificationToken;
+
+    @Column(nullable = false)
     private boolean isOnline = false;
 
     private LocalDateTime lastSeen;
