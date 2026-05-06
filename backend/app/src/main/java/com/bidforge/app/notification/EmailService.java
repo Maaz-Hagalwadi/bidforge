@@ -34,6 +34,15 @@ public class EmailService {
     }
 
     @Async
+    public void sendVerificationEmail(String to, String name, String verifyUrl) {
+        Context ctx = new Context();
+        ctx.setVariable("name", name);
+        ctx.setVariable("verifyUrl", verifyUrl);
+        String html = templateEngine.process("email/verify-email", ctx);
+        send(to, "Verify Your BidForge Email", html);
+    }
+
+    @Async
     public void sendForgotPasswordEmail(String to, String name, String resetUrl) {
         Context ctx = new Context();
         ctx.setVariable("name", name);
