@@ -501,10 +501,6 @@ function InviteCard({
         {/* Meta row */}
         <div className="flex flex-wrap gap-4">
           <div>
-            <p className="text-xs text-on-surface-variant">Budget</p>
-            <p className="text-base font-bold text-secondary">{formatBudget(inv.budgetMin, inv.budgetMax, inv.budgetType)}</p>
-          </div>
-          <div>
             <p className="text-xs text-on-surface-variant">Type</p>
             <p className="text-sm font-semibold text-on-surface">{inv.budgetType === 'HOURLY' ? 'Hourly' : 'Fixed Price'}</p>
           </div>
@@ -534,30 +530,34 @@ function InviteCard({
           </p>
         )}
 
-        {/* Action buttons — same size as Browse Jobs button */}
-        {inv.inviteStatus === 'INVITED' && (
-          <div className="flex items-center gap-2">
-            <button onClick={onAccept} disabled={isProcessing}
-              className="flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm bg-green-600 text-white font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all">
-              {isProcessing
-                ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-                : <span className="material-symbols-outlined text-[16px]">check_circle</span>}
-              Accept
+        {/* Action row: budget left, buttons right */}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-base font-bold text-secondary">{formatBudget(inv.budgetMin, inv.budgetMax, inv.budgetType)}</span>
+
+          {inv.inviteStatus === 'INVITED' && (
+            <div className="flex items-center gap-2">
+              <button onClick={onAccept} disabled={isProcessing}
+                className="flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm bg-green-600 text-white font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all">
+                {isProcessing
+                  ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                  : <span className="material-symbols-outlined text-[16px]">check_circle</span>}
+                Accept
+              </button>
+              <button onClick={onDecline} disabled={isProcessing}
+                className="flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm border border-outline-variant text-on-surface-variant font-semibold rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-600 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] transition-all">
+                <span className="material-symbols-outlined text-[16px]">cancel</span>
+                Decline
+              </button>
+            </div>
+          )}
+          {inv.inviteStatus === 'ACCEPTED' && (
+            <button onClick={onViewBid}
+              className="flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm bg-secondary text-white font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+              <span className="material-symbols-outlined text-[16px]">gavel</span>
+              View &amp; Bid
             </button>
-            <button onClick={onDecline} disabled={isProcessing}
-              className="flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm border border-outline-variant text-on-surface-variant font-semibold rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-600 disabled:opacity-60 disabled:cursor-not-allowed active:scale-[0.98] transition-all">
-              <span className="material-symbols-outlined text-[16px]">cancel</span>
-              Decline
-            </button>
-          </div>
-        )}
-        {inv.inviteStatus === 'ACCEPTED' && (
-          <button onClick={onViewBid}
-            className="self-start flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm bg-secondary text-white font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-            <span className="material-symbols-outlined text-[16px]">gavel</span>
-            View &amp; Bid
-          </button>
-        )}
+          )}
+        </div>
 
       </div>
     </article>

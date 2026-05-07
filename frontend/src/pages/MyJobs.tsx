@@ -921,48 +921,49 @@ export default function MyJobs() {
                           <div className={`absolute left-0 top-0 bottom-0 w-1 ${ST_TOP[job.status] ?? 'bg-slate-300'} opacity-0 group-hover:opacity-100 transition-opacity`} />
 
                           {/* ── Mobile layout (< md): clean stacked ── */}
-                          <div className="flex flex-col gap-4 p-4 md:hidden">
+                          <div className="flex flex-col gap-3 p-4 md:hidden">
+                            {/* Title + [visibility + status] badges */}
                             <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 min-w-0 space-y-1.5">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-semibold">{job.category}</span>
-                                  <span className={`inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full text-xs font-semibold ${isInviteOnly ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-600'}`}>
-                                    <span className="material-symbols-outlined text-[11px]">{isInviteOnly ? 'lock' : 'public'}</span>
-                                    {isInviteOnly ? 'Invite Only' : 'Public'}
-                                  </span>
-                                </div>
-                                <h3 className="text-sm font-bold text-on-surface line-clamp-1">{job.title}</h3>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-sm font-bold text-on-surface line-clamp-2 leading-snug">{job.title}</h3>
+                                <span className="text-xs text-on-surface-variant mt-0.5 block">{job.category}</span>
                               </div>
-                              <span className={`px-2.5 py-1.5 rounded-full text-xs font-semibold flex-shrink-0 ${st.cls}`}>{st.label}</span>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <span className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[11px] font-semibold ${isInviteOnly ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-600'}`}>
+                                  <span className="material-symbols-outlined text-[10px]">{isInviteOnly ? 'lock' : 'public'}</span>
+                                  {isInviteOnly ? 'Invite Only' : 'Public'}
+                                </span>
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${st.cls}`}>{st.label}</span>
+                              </div>
                             </div>
-                            <div className="flex flex-wrap gap-4">
-                              <div>
-                                <p className="text-xs text-on-surface-variant">Budget</p>
-                                <p className="text-base font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</p>
-                              </div>
+                            {/* Budget */}
+                            <span className="text-base font-bold text-secondary">{formatBudget(job.budgetMin, job.budgetMax, job.budgetType)}</span>
+                            {/* Compact meta row */}
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                               {(job.status === 'OPEN' || job.status === 'ASSIGNED') && (
-                                <div>
-                                  <p className="text-xs text-on-surface-variant">Bids</p>
-                                  <p className="text-sm font-semibold text-on-surface">{job.bidsCount ?? 0}</p>
-                                </div>
+                                <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                  <span className="material-symbols-outlined text-[13px]">gavel</span>
+                                  {job.bidsCount ?? 0} bids
+                                </span>
                               )}
-                              <div>
-                                <p className="text-xs text-on-surface-variant">Posted</p>
-                                <p className="text-sm font-semibold text-on-surface">{formatDate(job.createdAt)}</p>
-                              </div>
+                              <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                <span className="material-symbols-outlined text-[13px]">calendar_today</span>
+                                {formatDate(job.createdAt)}
+                              </span>
                               {job.deadline && (
-                                <div>
-                                  <p className="text-xs text-on-surface-variant">Deadline</p>
-                                  <p className="text-sm font-semibold text-on-surface">{formatDate(job.deadline)}</p>
-                                </div>
+                                <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                  <span className="material-symbols-outlined text-[13px]">event</span>
+                                  Due {formatDate(job.deadline)}
+                                </span>
                               )}
                               {job.status === 'ASSIGNED' && job.assignedFreelancerName && (
-                                <div>
-                                  <p className="text-xs text-on-surface-variant">Assigned To</p>
-                                  <p className="text-sm font-semibold text-on-surface">{job.assignedFreelancerName}</p>
-                                </div>
+                                <span className="flex items-center gap-1 text-xs text-on-surface-variant">
+                                  <span className="material-symbols-outlined text-[13px]">person</span>
+                                  {job.assignedFreelancerName}
+                                </span>
                               )}
                             </div>
+                            {/* Skills */}
                             {skills.length > 0 && (
                               <div className="flex flex-wrap gap-1.5">
                                 {skills.slice(0, 4).map(s => (
