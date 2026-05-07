@@ -29,7 +29,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://localhost:5173",
                         "http://localhost:*",
                         "https://*.vercel.app",
-                        "https://bidforge-eight.vercel.app"
+                        "https://bidforge-eight.vercel.app",
+                        "https://bidforge.mzdev.co.in"
                 )
                 .withSockJS();
     }
