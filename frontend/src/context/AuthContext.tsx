@@ -9,6 +9,7 @@ interface AuthContextValue {
   isLoading: boolean;
   user: UserProfile | null;
   login: (payload: LoginPayload) => Promise<UserProfile>;
+  loginWithOtp: (accessToken: string) => Promise<UserProfile>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -51,6 +52,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return u;
   }, []);
 
+  const loginWithOtp = useCallback(async (accessToken: string): Promise<UserProfile> => {
+    sessionStorage.setItem('accessToken', accessToken);
+    const u = await userApi.getMe();
+    setUser(u);
+    setIsAuthenticated(true);
+    return u;
+  }, []);
+
   const register = useCallback(async (payload: RegisterPayload) => {
     await authApi.register(payload);
   }, []);
@@ -72,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, loginWithOtp, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

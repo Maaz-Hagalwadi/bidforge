@@ -25,4 +25,10 @@ export const authApi = {
 
   resendVerification: (email: string) =>
     api.post('/auth/resend-verification', { email }),
+
+  sendOtp: (email: string) =>
+    api.post('/auth/send-otp', { email }),
+
+  verifyOtp: (email: string, otp: string) =>
+    api.post<{ token: string }>('/auth/verify-otp', { email, otp }).then((r) => r.data),
 };
