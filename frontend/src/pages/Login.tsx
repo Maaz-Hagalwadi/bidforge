@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
+import { useGoogleLogin } from '@react-oauth/google';
 import { authApi } from '@/api/auth';
 
 import {
@@ -25,13 +26,18 @@ type OtpStep = 'email' | 'code';
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, loginWithOtp } = useAuth();
+  const { login, loginWithOtp, loginWithGoogle } = useAuth();
 
   const justRegistered = (location.state as { registered?: boolean; passwordReset?: boolean } | null)?.registered === true;
   const passwordReset = (location.state as { registered?: boolean; passwordReset?: boolean } | null)?.passwordReset === true;
 
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [resendSent, setResendSent] = useState(false);
+
+  const [googlePending, setGooglePending] = useState<string | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+  const [showRolePicker, setShowRolePicker] = useState(false);
 
   const [mode, setMode] = useState<Mode>('password');
   const [otpStep, setOtpStep] = useState<OtpStep>('email');
@@ -159,6 +165,59 @@ export default function Login() {
     }
   };
 
+  const googleOAuth = useGoogleLogin({
+    onSuccess: (tokenResponse) => handleGoogleSuccess(tokenResponse.access_token),
+    onError: () => setGoogleError('Google sign-in was cancelled or failed.'),
+  });
+
+  const handleGoogleSuccess = async (accessToken: string) => {
+    setGoogleLoading(true);
+    setGoogleError(null);
+    try {
+      const loggedInUser = await loginWithGoogle(accessToken);
+      const dest = loggedInUser.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard';
+      navigate(dest, { replace: true });
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const apiErr = err.response?.data as ApiError;
+        if (err.response?.status === 409 && apiErr?.error === 'ROLE_REQUIRED') {
+          setGooglePending(accessToken);
+          setShowRolePicker(true);
+        } else if (apiErr?.error === 'INVALID_GOOGLE_TOKEN') {
+          setGoogleError('Google sign-in failed. Please try again.');
+        } else {
+          setGoogleError(apiErr?.message ?? 'Google sign-in failed. Please try again.');
+        }
+      } else {
+        setGoogleError('An unexpected error occurred.');
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleRoleSelect = async (role: 'CLIENT' | 'FREELANCER') => {
+    if (!googlePending) return;
+    setGoogleLoading(true);
+    setGoogleError(null);
+    try {
+      const loggedInUser = await loginWithGoogle(googlePending!, role);
+      const dest = loggedInUser.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard';
+      navigate(dest, { replace: true });
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        const apiErr = err.response?.data as ApiError;
+        setGoogleError(apiErr?.message ?? 'Could not complete sign-in. Please try again.');
+      } else {
+        setGoogleError('An unexpected error occurred.');
+      }
+      setShowRolePicker(false);
+      setGooglePending(null);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   const onResendOtp = async () => {
     try {
       await authApi.sendOtp(otpEmail);
@@ -176,11 +235,53 @@ export default function Login() {
     }
   };
 
-  const anyLoading = isSubmitting || otpEmailForm.formState.isSubmitting || otpCodeForm.formState.isSubmitting;
+  const anyLoading = isSubmitting || otpEmailForm.formState.isSubmitting || otpCodeForm.formState.isSubmitting || googleLoading;
 
   return (
     <div className="bg-dark-navy antialiased flex flex-col h-screen overflow-hidden">
-      {anyLoading && <BidForgeLoader message={isSubmitting ? 'Signing in…' : otpCodeForm.formState.isSubmitting ? 'Verifying…' : 'Sending code…'} />}
+      {anyLoading && <BidForgeLoader message={googleLoading ? 'Signing in with Google…' : isSubmitting ? 'Signing in…' : otpCodeForm.formState.isSubmitting ? 'Verifying…' : 'Sending code…'} />}
+
+      {/* Role picker modal — shown when a new Google user has no role yet */}
+      {showRolePicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-primary-container rounded-2xl border border-slate-700 p-8 max-w-sm w-full space-y-6 shadow-2xl">
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-full bg-secondary/10 border border-secondary/30 flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-secondary text-3xl">manage_accounts</span>
+              </div>
+              <h3 className="text-white text-h3">One last step</h3>
+              <p className="text-slate-400 text-body-sm mt-1">How will you use BidForge?</p>
+            </div>
+            <div className="grid grid-cols-2 gap-md">
+              {(['CLIENT', 'FREELANCER'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  disabled={googleLoading}
+                  onClick={() => handleRoleSelect(r)}
+                  className="flex flex-col items-center gap-3 py-lg px-md rounded-xl border-2 border-slate-700 bg-slate-900/60 text-slate-300 hover:border-secondary hover:text-white hover:bg-secondary/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="material-symbols-outlined text-4xl">
+                    {r === 'CLIENT' ? 'person_search' : 'work'}
+                  </span>
+                  <div>
+                    <p className="text-label-md">{r === 'CLIENT' ? 'Client' : 'Freelancer'}</p>
+                    <p className="text-slate-500 text-xs mt-0.5">{r === 'CLIENT' ? 'Hire talent' : 'Find work'}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => { setShowRolePicker(false); setGooglePending(null); setGoogleError(null); }}
+              className="w-full text-slate-500 hover:text-slate-300 text-body-sm transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <Navbar variant="auth" />
 
       <main className="flex-1 w-full flex flex-col md:flex-row overflow-hidden min-h-0">
@@ -430,6 +531,35 @@ export default function Login() {
                 )}
               </>
             )}
+
+            {/* Google Sign-In */}
+            <div className="relative my-md">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-slate-700" />
+              </div>
+              <div className="relative flex justify-center text-label-sm uppercase tracking-widest">
+                <span className="bg-dark-navy px-md text-slate-500">Or continue with</span>
+              </div>
+            </div>
+
+            {googleError && (
+              <p className="field-error text-center">{googleError}</p>
+            )}
+
+            <button
+              type="button"
+              onClick={() => googleOAuth()}
+              disabled={googleLoading}
+              className="w-full flex items-center justify-center gap-3 py-[11px] px-lg rounded-lg border border-slate-600/70 bg-slate-800/40 hover:bg-slate-700/50 text-white text-label-md transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              {googleLoading ? 'Connecting…' : 'Continue with Google'}
+            </button>
 
             <p className="text-center text-slate-500 text-body-sm">
               Don't have an account?{' '}

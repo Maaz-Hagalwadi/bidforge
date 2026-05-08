@@ -31,4 +31,7 @@ export const authApi = {
 
   verifyOtp: (email: string, otp: string) =>
     api.post<{ token: string }>('/auth/verify-otp', { email, otp }).then((r) => r.data),
+
+  googleLogin: (accessToken: string, role?: 'CLIENT' | 'FREELANCER') =>
+    api.post<AuthTokens>('/auth/google', { accessToken, role }).then((r) => r.data),
 };
