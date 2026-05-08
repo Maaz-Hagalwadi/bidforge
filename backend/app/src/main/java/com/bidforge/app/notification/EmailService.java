@@ -67,6 +67,8 @@ public class EmailService {
         ));
     }
 
+
+
     @Async
     public void sendBidPlacedEmail(String to, String freelancerName, String jobTitle) {
         send(to, "New Bid on Your Job", notification(
@@ -156,6 +158,20 @@ public class EmailService {
         ctx.setVariable("subtext", subtext);
         return templateEngine.process("email/notification", ctx);
     }
+
+
+    @Async
+    public void sendOtpEmail(String to, String otp) {
+
+        Context ctx = new Context();
+        ctx.setVariable("otp", otp);
+
+        String html = templateEngine.process("email/login-otp", ctx);
+
+        send(to, "Your BidForge Login OTP", html);
+    }
+
+
 
     private void send(String to, String subject, String html) {
         try {

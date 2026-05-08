@@ -29,6 +29,72 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, "NOT_FOUND", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(OtpExpiredException.class)
+    public ResponseEntity<ErrorResponse> handleOtpExpired(
+            OtpExpiredException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "OTP_EXPIRED",
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(InvalidOtpException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidOtp(
+            InvalidOtpException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "INVALID_OTP",
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(OtpRateLimitException.class)
+    public ResponseEntity<ErrorResponse> handleOtpRateLimit(
+            OtpRateLimitException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.TOO_MANY_REQUESTS,
+                "OTP_RATE_LIMIT",
+                ex.getMessage(),
+                request
+        );
+    }
+
+    @ExceptionHandler(OtpNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleOtpNotFound(
+            OtpNotFoundException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                "OTP_NOT_FOUND",
+                ex.getMessage(),
+                request
+        );
+    }
+
+
+    @ExceptionHandler(OtpAlreadyUsedException.class)
+    public ResponseEntity<ErrorResponse> handleOtpAlreadyUsed(
+            OtpAlreadyUsedException ex,
+            HttpServletRequest request
+    ) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "OTP_ALREADY_USED",
+                ex.getMessage(),
+                request
+        );
+    }
+
     @ExceptionHandler(BidNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleBidNotFound(
             BidNotFoundException ex,

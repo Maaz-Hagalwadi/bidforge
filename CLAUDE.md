@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented: auth, user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, milestones with escrow-style payments, dashboards, real-time notifications (WebSocket + REST), and Stripe payment integration (partially wired). Planned: Chat module.
+**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented: auth (password + OTP email), user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, milestones with escrow-style payments, dashboards, real-time notifications (WebSocket + REST), real-time chat (WebSocket + REST), reviews, file uploads, and Stripe payment integration (partially wired).
 
 ---
 
@@ -21,9 +21,9 @@ All Maven commands run from `backend/app/`:
 ```
 
 **Prerequisites**: PostgreSQL on `localhost:5433`, database `bidforge`, user `admin`, password `admin`.  
-Override with env vars `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`.
+Override with env vars: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `RESEND_API_KEY` (email via Resend), `EMAIL_TEST_MODE` (set `true` to avoid real sends), `APP_BASE_URL` (frontend origin, default `http://localhost:5173`), `APP_SERVER_URL` (backend origin, default `http://localhost:8080`), `APP_UPLOAD_DIR` (file storage path, default `uploads`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`.
 
-`spring.jpa.hibernate.ddl-auto=update` — schema is auto-updated on startup. Tests use H2 in-memory with `create-drop`.
+`spring.jpa.hibernate.ddl-auto=none` — schema is managed by Flyway migrations in `src/main/resources/db/migration/` (V1–V11). Tests use H2 in-memory with `create-drop`.
 
 ### Package structure (`com.bidforge.app`)
 
@@ -66,9 +66,22 @@ dashboard/     DashboardController, DashboardService (stats aggregation)
 notification/  Notification (entity), NotificationController, NotificationService,
                NotificationRepository, NotificationType (enum), NotificationEventListener
                (event-driven: Spring ApplicationEvent → listener → persist + push via WS)
+messages/      ChatRoom (entity), Message (entity), ChatController (WS @MessageMapping),
+               ChatRestController (REST under /contracts/**), ChatService,
+               ChatRoomRepository, MessageRepository, OnlineUserTracker
+               dto/  ChatMessageRequest, ChatMessageResponse, ChatRoomResponse,
+                     OnlineStatusEvent, ReadReceiptEvent, TypingEvent, UnreadNotification
+otp/           OtpAuthController, OtpService, EmailOtp (entity), EmailOtpRepository,
+               OtpEmailTemplate, OtpConstants
+               dto/  SendOtpRequest, VerifyOtpRequest, AuthResponse
+review/        ReviewController, ReviewService, Review (entity), ReviewRepository
+               dto/  CreateReviewRequest, ReviewResponse
+files/         FileController — uploads to `{APP_UPLOAD_DIR}/chat/`; allowed types:
+               images + pdf/doc/docx/xls/xlsx/txt/zip; max 20 MB; returns `fileUrl`, `fileName`, `fileType`
 websocket/     WebSocketConfig (STOMP/SockJS on /ws, brokers /topic /queue /user),
                WebSocketAuthInterceptor (JWT auth on CONNECT frame)
-config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler
+config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler,
+               HealthController (GET /health)
 common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 ```
 
@@ -114,6 +127,8 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | POST | `/auth/login` | No | Returns `accessToken`, `refreshToken`, `tokenType` |
 | POST | `/auth/refresh` | No | Rotates refresh token |
 | POST | `/auth/logout` | No | Revokes refresh token |
+| POST | `/auth/send-otp` | No | Send OTP email to `{ email }` |
+| POST | `/auth/verify-otp` | No | Verify OTP `{ email, otp }`; returns `{ token }` (access token only) |
 | GET | `/users/me` | Yes | Current user profile |
 | PATCH | `/users/me` | Yes | Update `name` or `profileImageUrl` |
 | GET | `/users/search?q=` | CLIENT | Search freelancers by name/email (max 10 results) |
@@ -157,6 +172,19 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/notifications/unread-count` | Yes | Count of unread notifications |
 | PATCH | `/notifications/{id}/read` | Yes | Mark a notification as read; pushes updated count via WS |
 | PATCH | `/notifications/read-all` | Yes | Mark all notifications read; pushes count=0 via WS |
+| GET | `/contracts/{contractId}/chat` | Yes | Get or create `ChatRoom` for a contract |
+| GET | `/contracts/chat/{roomId}/messages` | Yes | Paginated message history (`?page=0&size=50`) |
+| GET | `/contracts/chat/my-rooms` | Yes | All chat rooms for the caller |
+| POST | `/contracts/chat/{roomId}/mark-read` | Yes | Mark messages read; broadcasts `ReadReceiptEvent` to `/topic/read/{roomId}` |
+| GET | `/contracts/chat/{roomId}/unread-count` | Yes | Unread message count for a room |
+| POST | `/contracts/user/online` | Yes | Set caller online status to true |
+| POST | `/contracts/user/offline` | Yes | Set caller online status to false |
+| POST | `/contracts/{contractId}/review` | Yes | Submit a review for a completed contract |
+| GET | `/contracts/{contractId}/my-review` | Yes | Get caller's review for a contract (204 if none) |
+| GET | `/users/{userId}/reviews` | Yes | All reviews received by a user |
+| GET | `/users/{userId}/reviews/given` | Yes | All reviews given by a user |
+| POST | `/files/upload` | Yes | Upload file (multipart); returns `{ fileUrl, fileName, fileType }` |
+| GET | `/health` | No | Health check |
 
 ### Exception → HTTP mapping
 
@@ -178,16 +206,20 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 
 `ErrorResponse` shape: `{ timestamp, status, error, message, path, errors? }`.
 
-### WebSocket & real-time notifications
+### WebSocket & real-time
 
 - STOMP over SockJS endpoint: `ws://localhost:8080/ws`
 - `WebSocketAuthInterceptor` reads the JWT from the `Authorization` STOMP header on `CONNECT` and sets the Spring `Principal` to the user's email.
-- `NotificationService` pushes to two user-specific destinations after any create/mark-read operation:
+- **Notifications** — `NotificationService` pushes after any create/mark-read:
   - `/user/{email}/queue/notifications` — the new `Notification` object
   - `/user/{email}/queue/notification-count` — updated unread count (`long`)
-- Events fire via Spring `ApplicationEventPublisher` (e.g. `JobCreatedEvent`); `NotificationEventListener` handles them and delegates to `NotificationService`. New domain events go in `job/events/` or a module-specific `events/` sub-package.
-- `NotificationService.createNotification` runs in `Propagation.REQUIRES_NEW` so a failure there doesn't roll back the calling transaction.
-- **Env var required**: `stripe.secret-key` (and optionally `app.base-url`) for Stripe features; missing key causes startup failure if `StripeService` is loaded.
+  - Events via Spring `ApplicationEventPublisher` (e.g. `JobCreatedEvent`) → `NotificationEventListener`. New domain events go in `job/events/` or a module-specific `events/` sub-package.
+  - `NotificationService.createNotification` runs in `Propagation.REQUIRES_NEW`.
+- **Chat** — `ChatController` handles two `@MessageMapping` destinations:
+  - `/app/chat.send` (`ChatMessageRequest` with `roomId`) → persists message, broadcasts to `/topic/chat/{roomId}`, pushes unread count to `/topic/notifications/{receiverId}`
+  - `/app/chat.typing` (`TypingEvent`) → broadcasts to `/topic/typing/{roomId}`
+  - Read receipts pushed to `/topic/read/{roomId}` by `ChatRestController.markMessagesAsRead`
+- **Env var required**: `STRIPE_SECRET_KEY` for Stripe features; missing key causes startup failure.
 
 ### Testing strategy
 
@@ -221,6 +253,9 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 | `/` | `Landing` | — |
 | `/register` | `Register` | — |
 | `/login` | `Login` | — |
+| `/forgot-password` | `ForgotPassword` | — |
+| `/reset-password` | `ResetPassword` | — |
+| `/verify-email` | `VerifyEmail` | — |
 | `/client/dashboard` | `ClientDashboard` | `ClientRoute` |
 | `/client/post-job` | `PostJob` | `ClientRoute` |
 | `/client/jobs` | `MyJobs` | `ClientRoute` |
@@ -236,7 +271,8 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 | `/contracts` | `Contracts` | `ProtectedRoute` |
 | `/contracts/:contractId` | `Contracts` | `ProtectedRoute` |
 | `/payments` | `Payments` | `ProtectedRoute` |
-| `/messages` | `Messages` | `ProtectedRoute` | (UI-only, mock data — no backend) |
+| `/messages` | `Messages` | `ProtectedRoute` |
+| `/reviews` | `Reviews` | `ProtectedRoute` |
 | `/profile/:id` | `Profile` | — (public) |
 | `/dashboard` | redirect → `/client/dashboard` | — |
 

@@ -55,8 +55,21 @@ export const resetPasswordSchema = z.object({
   path: ['confirmPassword'],
 });
 
+export const otpEmailSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+});
+
+export const otpCodeSchema = z.object({
+  otp: z
+    .string()
+    .length(6, 'OTP must be exactly 6 digits')
+    .regex(/^\d+$/, 'OTP must be numeric'),
+});
+
 export type PostJobFormValues = z.infer<typeof postJobSchema>;
 export type RegisterFormValues = z.infer<typeof registerSchema>;
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+export type OtpEmailFormValues = z.infer<typeof otpEmailSchema>;
+export type OtpCodeFormValues = z.infer<typeof otpCodeSchema>;
