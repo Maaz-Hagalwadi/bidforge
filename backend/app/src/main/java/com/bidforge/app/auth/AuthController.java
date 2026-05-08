@@ -1,6 +1,7 @@
 package com.bidforge.app.auth;
 
 import com.bidforge.app.auth.dto.request.ForgotPasswordRequest;
+import com.bidforge.app.auth.dto.request.GoogleLoginRequest;
 import com.bidforge.app.auth.dto.request.LoginRequest;
 import com.bidforge.app.auth.dto.request.RefreshTokenRequest;
 import com.bidforge.app.auth.dto.request.RegisterRequest;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final GoogleAuthService googleAuthService;
 
     @GetMapping("/test")
     public String test() {
@@ -68,5 +70,10 @@ public class AuthController {
     public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
         return ResponseEntity.ok("Password reset successfully.");
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<LoginResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return ResponseEntity.ok(googleAuthService.loginWithGoogle(request));
     }
 }

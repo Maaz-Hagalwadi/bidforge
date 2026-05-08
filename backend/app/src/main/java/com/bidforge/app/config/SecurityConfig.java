@@ -51,7 +51,8 @@ public class SecurityConfig {
                                 "/auth/refresh", "/auth/logout",
                                 "/auth/forgot-password", "/auth/reset-password",
                                 "/auth/verify-email", "/auth/resend-verification",
-                                "/auth/send-otp", "/auth/verify-otp").permitAll()
+                                "/auth/send-otp", "/auth/verify-otp",
+                                "/auth/google").permitAll()
                         .requestMatchers(HttpMethod.POST, "/webhooks/stripe").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()

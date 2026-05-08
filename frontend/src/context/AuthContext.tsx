@@ -10,6 +10,7 @@ interface AuthContextValue {
   user: UserProfile | null;
   login: (payload: LoginPayload) => Promise<UserProfile>;
   loginWithOtp: (accessToken: string) => Promise<UserProfile>;
+  loginWithGoogle: (idToken: string, role?: 'CLIENT' | 'FREELANCER') => Promise<UserProfile>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -60,6 +61,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return u;
   }, []);
 
+  const loginWithGoogle = useCallback(async (idToken: string, role?: 'CLIENT' | 'FREELANCER'): Promise<UserProfile> => {
+    const tokens = await authApi.googleLogin(idToken, role);
+    sessionStorage.setItem('accessToken', tokens.accessToken);
+    localStorage.setItem('refreshToken', tokens.refreshToken);
+    const u = await userApi.getMe();
+    setUser(u);
+    setIsAuthenticated(true);
+    return u;
+  }, []);
+
   const register = useCallback(async (payload: RegisterPayload) => {
     await authApi.register(payload);
   }, []);
@@ -81,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, loginWithOtp, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, loginWithOtp, loginWithGoogle, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

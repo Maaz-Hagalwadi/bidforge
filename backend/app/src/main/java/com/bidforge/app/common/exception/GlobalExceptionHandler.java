@@ -95,6 +95,18 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(RoleRequiredException.class)
+    public ResponseEntity<ErrorResponse> handleRoleRequired(
+            RoleRequiredException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.CONFLICT, "ROLE_REQUIRED", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidGoogleTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidGoogleToken(
+            InvalidGoogleTokenException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "INVALID_GOOGLE_TOKEN", ex.getMessage(), request);
+    }
+
     @ExceptionHandler(BidNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleBidNotFound(
             BidNotFoundException ex,
