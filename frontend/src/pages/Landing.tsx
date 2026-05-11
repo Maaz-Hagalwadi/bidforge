@@ -64,7 +64,7 @@ export default function Landing() {
               </div>
               {/* Floating badge */}
               <div className="absolute -bottom-6 -left-6 bg-white p-md rounded-xl shadow-xl border border-outline-variant hidden md:flex items-center gap-md">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-white flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white flex-shrink-0">
                   <span className="material-symbols-outlined text-lg">check_circle</span>
                 </div>
                 <div>
@@ -77,7 +77,7 @@ export default function Landing() {
         </section>
 
         {/* ── Stats Bar ── */}
-        <section className="bg-primary-container py-xl">
+        <section className="bg-white dark:bg-white dark:bg-primary-container py-xl">
           <div className="max-w-8xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-xl text-center">
             {STATS.map(({ value, label }) => (
               <div key={label} className="flex flex-col gap-xs">
@@ -105,7 +105,7 @@ export default function Landing() {
               {/* Post Jobs — large */}
               <div className="md:col-span-8 bg-white border border-outline-variant p-xl rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden">
                 <div>
-                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-white mb-lg">
+                  <div className="w-12 h-12 bg-secondary rounded-xl flex items-center justify-center text-slate-900 dark:text-white mb-lg">
                     <span className="material-symbols-outlined text-2xl">post_add</span>
                   </div>
                   <h3 className="text-h3 mb-md">Post Jobs</h3>
@@ -124,13 +124,13 @@ export default function Landing() {
               </div>
 
               {/* Secure Payments */}
-              <div className="md:col-span-4 bg-dark-navy text-white p-xl rounded-2xl flex flex-col justify-between hover:scale-[1.02] transition-transform">
-                <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center mb-lg">
+              <div className="md:col-span-4 bg-slate-50 dark:bg-dark-navy text-slate-900 dark:text-white p-xl rounded-2xl flex flex-col justify-between hover:scale-[1.02] transition-transform">
+                <div className="w-12 h-12 bg-slate-200 dark:bg-white/10 rounded-xl flex items-center justify-center mb-lg">
                   <span className="material-symbols-outlined text-2xl text-sky-300">payments</span>
                 </div>
                 <div>
-                  <h3 className="text-h3 text-white mb-md">Secure Payments</h3>
-                  <p className="text-body-sm text-slate-400">
+                  <h3 className="text-h3 text-slate-900 dark:text-white mb-md">Secure Payments</h3>
+                  <p className="text-body-sm text-slate-500 dark:text-slate-500 dark:text-slate-400">
                     Enterprise-grade escrow services and global payout options in multiple
                     currencies.
                   </p>
@@ -185,8 +185,8 @@ export default function Landing() {
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
             <div className="relative z-10">
-              <h2 className="text-h2 text-white mb-md">Ready to start forging your future?</h2>
-              <p className="text-body-lg text-white/80 max-w-2xl mx-auto mb-xl">
+              <h2 className="text-h2 text-slate-900 dark:text-white mb-md">Ready to start forging your future?</h2>
+              <p className="text-body-lg text-slate-900 dark:text-white/80 max-w-2xl mx-auto mb-xl">
                 Join the world's most disciplined and professional freelance ecosystem today.
               </p>
               <div className="flex flex-col sm:flex-row justify-center gap-md">
@@ -198,7 +198,7 @@ export default function Landing() {
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-dark-navy text-white px-xl py-md rounded-xl text-label-md hover:bg-black/80 transition-all font-semibold"
+                  className="bg-slate-50 dark:bg-dark-navy text-slate-900 dark:text-white px-xl py-md rounded-xl text-label-md hover:bg-slate-100 dark:hover:bg-black/80 transition-all font-semibold"
                 >
                   Post a Job Proposal
                 </Link>

@@ -161,7 +161,7 @@ export default function Profile() {
         <Navbar variant="app" />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <span className="material-symbols-outlined text-5xl text-slate-300">person_off</span>
+            <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300">person_off</span>
             <p className="mt-3 text-slate-500 text-lg">{error || 'Profile not found.'}</p>
           </div>
         </div>
@@ -190,7 +190,7 @@ export default function Profile() {
         {isOwnProfile && !editing && (
           <button
             onClick={() => setEditing(true)}
-            className="absolute top-4 right-4 md:top-6 md:right-8 flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white text-sm font-semibold px-4 py-2 rounded-xl border border-white/20 transition-all"
+            className="absolute top-4 right-4 md:top-6 md:right-8 flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-slate-900 dark:text-white text-sm font-semibold px-4 py-2 rounded-xl border border-white/20 transition-all"
           >
             <span className="material-symbols-outlined text-[18px]">edit</span>
             Edit Profile
@@ -216,7 +216,7 @@ export default function Profile() {
                     onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 ) : (
-                  <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl bg-secondary flex items-center justify-center text-white font-bold text-4xl border-4 border-white shadow-lg select-none">
+                  <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl bg-secondary flex items-center justify-center text-slate-900 dark:text-white font-bold text-4xl border-4 border-white shadow-lg select-none">
                     {getInitials(profile.name)}
                   </div>
                 )}
@@ -243,24 +243,24 @@ export default function Profile() {
                       <span className="flex items-center gap-1 text-amber-600 font-semibold">
                         <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                         {avg.toFixed(1)}
-                        <span className="text-slate-400 font-normal">({reviews.length} review{reviews.length !== 1 ? 's' : ''})</span>
+                        <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400 font-normal">({reviews.length} review{reviews.length !== 1 ? 's' : ''})</span>
                       </span>
                     );
                   })()}
                   {profile.location && (
                     <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[18px] text-slate-400">location_on</span>
+                      <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">location_on</span>
                       {profile.location}
                     </span>
                   )}
                   {profile.hourlyRate != null && (
                     <span className="flex items-center gap-1 font-semibold text-slate-700">
-                      <span className="material-symbols-outlined text-[18px] text-slate-400">payments</span>
+                      <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">payments</span>
                       ${profile.hourlyRate}/hr
                     </span>
                   )}
                   <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[18px] text-slate-400">calendar_month</span>
+                    <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">calendar_month</span>
                     Member since {formatMemberSince(profile.createdAt)}
                   </span>
                 </div>
@@ -273,7 +273,7 @@ export default function Profile() {
                     <span className="material-symbols-outlined text-[18px]">chat_bubble</span>
                     Message
                   </button>
-                  <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:brightness-110"
+                  <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-slate-900 dark:text-white text-sm font-semibold transition-all hover:brightness-110"
                     style={{ backgroundColor: '#0059bb' }}>
                     <span className="material-symbols-outlined text-[18px]">handshake</span>
                     Hire
@@ -299,7 +299,7 @@ export default function Profile() {
                   Cancel
                 </button>
                 <button onClick={handleSave} disabled={saving}
-                  className="px-5 py-2 text-sm font-semibold text-white rounded-xl hover:brightness-110 disabled:opacity-60 transition-all"
+                  className="px-5 py-2 text-sm font-semibold text-slate-900 dark:text-white rounded-xl hover:brightness-110 disabled:opacity-60 transition-all"
                   style={{ backgroundColor: '#0059bb' }}>
                   {saving ? 'Saving…' : 'Save Changes'}
                 </button>
@@ -368,21 +368,21 @@ export default function Profile() {
               {displayBio ? (
                 <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{displayBio}</p>
               ) : (
-                <p className="text-sm text-slate-400 italic">No bio provided yet.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">No bio provided yet.</p>
               )}
               <div className="mt-4 pt-4 border-t border-slate-100 space-y-2.5">
                 {displayLocation && (
                   <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <span className="material-symbols-outlined text-[18px] text-slate-400">location_on</span>
+                    <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">location_on</span>
                     {displayLocation}
                   </div>
                 )}
                 <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="material-symbols-outlined text-[18px] text-slate-400">calendar_month</span>
+                  <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">calendar_month</span>
                   Joined {formatMemberSince(profile.createdAt)}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="material-symbols-outlined text-[18px] text-slate-400">mail</span>
+                  <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">mail</span>
                   {profile.email}
                 </div>
               </div>
@@ -405,7 +405,7 @@ export default function Profile() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-400 italic">No skills listed yet.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">No skills listed yet.</p>
               )}
             </div>
           </div>
@@ -478,7 +478,7 @@ export default function Profile() {
                     <button
                       onClick={handleAddPortfolio}
                       disabled={portfolioSaving || !portfolioForm.title.trim()}
-                      className="px-4 py-1.5 text-xs font-semibold text-white rounded-xl disabled:opacity-60 hover:brightness-110 transition-all"
+                      className="px-4 py-1.5 text-xs font-semibold text-slate-900 dark:text-white rounded-xl disabled:opacity-60 hover:brightness-110 transition-all"
                       style={{ backgroundColor: '#0059bb' }}
                     >
                       {portfolioSaving ? 'Saving…' : 'Save'}
@@ -495,9 +495,9 @@ export default function Profile() {
 
               {portfolio.length === 0 && !showPortfolioForm ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <span className="material-symbols-outlined text-5xl text-slate-200 mb-3">folder_open</span>
-                  <p className="text-sm font-semibold text-slate-400">No portfolio items yet</p>
-                  {isOwnProfile && <p className="text-xs text-slate-300 mt-1">Add your first project above</p>}
+                  <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300 dark:text-slate-600 mb-3">folder_open</span>
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-500 dark:text-slate-400">No portfolio items yet</p>
+                  {isOwnProfile && <p className="text-xs text-slate-600 dark:text-slate-600 dark:text-slate-300 mt-1">Add your first project above</p>}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -517,7 +517,7 @@ export default function Profile() {
                           {isOwnProfile && (
                             <button
                               onClick={() => handleDeletePortfolio(item.id)}
-                              className="flex-shrink-0 text-slate-300 hover:text-red-400 transition-colors"
+                              className="flex-shrink-0 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-red-400 transition-colors"
                               title="Delete"
                             >
                               <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -528,7 +528,7 @@ export default function Profile() {
                           <p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.description}</p>
                         )}
                         {item.technologies && (
-                          <p className="text-xs text-slate-400 mt-1.5">{item.technologies}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1.5">{item.technologies}</p>
                         )}
                         {item.projectUrl && (
                           <a
@@ -562,16 +562,16 @@ export default function Profile() {
                       <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                       {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)}
                     </span>
-                    <span className="text-xs text-slate-400">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
                   </div>
                 )}
               </div>
 
               {reviews.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <span className="material-symbols-outlined text-5xl text-slate-200 mb-3">rate_review</span>
-                  <p className="text-sm font-semibold text-slate-400">No reviews yet</p>
-                  <p className="text-xs text-slate-300 mt-1">Reviews appear after completed contracts</p>
+                  <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300 dark:text-slate-600 mb-3">rate_review</span>
+                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-500 dark:text-slate-400">No reviews yet</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-600 dark:text-slate-300 mt-1">Reviews appear after completed contracts</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -580,7 +580,7 @@ export default function Profile() {
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div>
                           <p className="text-sm font-semibold text-slate-800">{r.reviewerName}</p>
-                          <p className="text-xs text-slate-400">{r.jobTitle}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400">{r.jobTitle}</p>
                         </div>
                         <div className="flex items-center gap-0.5 flex-shrink-0">
                           {[1, 2, 3, 4, 5].map(s => (
@@ -594,7 +594,7 @@ export default function Profile() {
                       {r.comment && (
                         <p className="text-sm text-slate-600 leading-relaxed">{r.comment}</p>
                       )}
-                      <p className="text-xs text-slate-400 mt-2">
+                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-2">
                         {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>

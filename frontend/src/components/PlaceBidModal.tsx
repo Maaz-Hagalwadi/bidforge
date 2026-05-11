@@ -157,7 +157,7 @@ export function PlaceBidModal({ jobId, onSuccess, onClose }: Props) {
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60"
+              className="flex-1 py-2.5 bg-secondary text-slate-900 dark:text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60"
             >
               {submitting ? 'Submitting…' : 'Submit Bid'}
             </button>

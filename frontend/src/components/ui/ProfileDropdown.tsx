@@ -30,18 +30,18 @@ export function ProfileDropdown({ user, onUpdated, onLogout }: {
   const initials = getInitials(user.name);
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden">
-      <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+    <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-[#0d1c32] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+      <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3">
         {user.profileImageUrl ? (
-          <img src={user.profileImageUrl} className="w-12 h-12 rounded-full object-cover border border-slate-200 flex-shrink-0" alt={user.name} />
+          <img src={user.profileImageUrl} className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0" alt={user.name} />
         ) : (
           <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-lg flex-shrink-0 select-none">{initials}</div>
         )}
         <div className="min-w-0">
-          <p className="font-semibold text-slate-900 truncate">{user.name}</p>
-          <p className="text-sm text-slate-500 truncate">{user.email}</p>
+          <p className="font-semibold text-slate-900 dark:text-white truncate">{user.name}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300 truncate">{user.email}</p>
           {user.phoneNumber && (
-            <p className="text-xs text-slate-400 truncate mt-0.5">{user.phoneNumber}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{user.phoneNumber}</p>
           )}
           <div className="mt-1 flex items-center gap-1.5 flex-wrap">
             <span className="inline-block px-2 py-0.5 bg-secondary/10 text-secondary text-xs font-semibold rounded-full">
@@ -59,16 +59,16 @@ export function ProfileDropdown({ user, onUpdated, onLogout }: {
 
       {mode === 'view' && (
         <div className="p-2">
-          <Link to={`/profile/${user.id}`} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors">
-            <span className="material-symbols-outlined text-[20px] text-slate-400">person</span> View Profile
+          <Link to={`/profile/${user.id}`} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors">
+            <span className="material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400">person</span> View Profile
           </Link>
-          <button onClick={() => setMode('name')} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left">
-            <span className="material-symbols-outlined text-[20px] text-slate-400">edit</span> Edit Name
+          <button onClick={() => setMode('name')} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">
+            <span className="material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400">edit</span> Edit Name
           </button>
-          <button onClick={() => setMode('photo')} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left">
-            <span className="material-symbols-outlined text-[20px] text-slate-400">add_a_photo</span> Change Profile Photo
+          <button onClick={() => setMode('photo')} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors text-left">
+            <span className="material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400">add_a_photo</span> Change Profile Photo
           </button>
-          <div className="my-1 border-t border-slate-100" />
+          <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
           <button onClick={onLogout} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors text-left">
             <span className="material-symbols-outlined text-[20px]">logout</span> Sign Out
           </button>
@@ -77,27 +77,27 @@ export function ProfileDropdown({ user, onUpdated, onLogout }: {
 
       {mode === 'name' && (
         <div className="p-4">
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
+          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
           <input autoFocus value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && save({ name: name.trim() })}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Your full name" />
+            className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-secondary transition-colors bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="Your full name" />
           {err && <p className="text-xs text-red-500 mt-1.5">{err}</p>}
           <div className="flex gap-2 mt-3">
             <button disabled={saving || !name.trim()} onClick={() => save({ name: name.trim() })} className="flex-1 bg-secondary text-white text-sm font-semibold py-2 rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">{saving ? 'Saving…' : 'Save'}</button>
-            <button onClick={() => { setMode('view'); setName(user.name); setErr(''); }} className="flex-1 border border-slate-200 text-slate-700 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
+            <button onClick={() => { setMode('view'); setName(user.name); setErr(''); }} className="flex-1 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
           </div>
         </div>
       )}
 
       {mode === 'photo' && (
         <div className="p-4">
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Photo URL</label>
-          {photo && <img src={photo} className="w-14 h-14 rounded-full object-cover border border-slate-200 mb-3" alt="Preview" onError={e => (e.currentTarget.style.display = 'none')} />}
+          <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Photo URL</label>
+          {photo && <img src={photo} className="w-14 h-14 rounded-full object-cover border border-slate-200 dark:border-slate-700 mb-3" alt="Preview" onError={e => (e.currentTarget.style.display = 'none')} />}
           <input autoFocus value={photo} onChange={e => setPhoto(e.target.value)}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="https://example.com/photo.jpg" />
+            className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-secondary transition-colors bg-white dark:bg-slate-800 text-slate-900 dark:text-white" placeholder="https://example.com/photo.jpg" />
           {err && <p className="text-xs text-red-500 mt-1.5">{err}</p>}
           <div className="flex gap-2 mt-3">
             <button disabled={saving} onClick={() => save({ profileImageUrl: photo.trim() || undefined })} className="flex-1 bg-secondary text-white text-sm font-semibold py-2 rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">{saving ? 'Saving…' : 'Save'}</button>
-            <button onClick={() => { setMode('view'); setPhoto(user.profileImageUrl ?? ''); setErr(''); }} className="flex-1 border border-slate-200 text-slate-700 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50 transition-colors">Cancel</button>
+            <button onClick={() => { setMode('view'); setPhoto(user.profileImageUrl ?? ''); setErr(''); }} className="flex-1 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm font-semibold py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Cancel</button>
           </div>
         </div>
       )}

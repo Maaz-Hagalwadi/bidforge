@@ -17,10 +17,10 @@ export default function VerifyEmail() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-dark-navy flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-navy flex flex-col">
       <Navbar variant="auth" />
       <div className="flex-1 flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-10 text-center">
+        <div className="bg-white dark:bg-white rounded-2xl shadow-xl max-w-md w-full p-10 text-center">
           {status === 'loading' && (
             <>
               <div className="w-12 h-12 border-4 border-secondary border-t-transparent rounded-full animate-spin mx-auto mb-5" />

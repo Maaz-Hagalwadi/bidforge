@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext';
 import { useState, useRef, useEffect } from 'react';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -11,7 +12,6 @@ import { PageLoader } from '@/components/ui/PageLoader';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { ReviewResponse } from '@/types/review';
 
-const SIDEBAR_BG = '#0A192F';
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -39,12 +39,12 @@ function ReviewCard({ review, name }: { review: ReviewResponse; name: string }) 
     <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-white text-sm font-bold flex-shrink-0 select-none">
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold flex-shrink-0 select-none">
             {getInitials(name)}
           </div>
           <div>
             <p className="text-sm font-bold text-slate-900">{name}</p>
-            <p className="text-xs text-slate-400">Reviewed</p>
+            <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400">Reviewed</p>
           </div>
         </div>
         <StarRow rating={review.rating} />
@@ -53,15 +53,16 @@ function ReviewCard({ review, name }: { review: ReviewResponse; name: string }) 
       {review.comment ? (
         <p className="text-sm text-slate-600 leading-relaxed">{review.comment}</p>
       ) : (
-        <p className="text-sm text-slate-400 italic">No comment left.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">No comment left.</p>
       )}
-      <p className="text-xs text-slate-400 mt-3">{formatDate(review.createdAt)}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-3">{formatDate(review.createdAt)}</p>
     </div>
   );
 }
 
 export default function Reviews() {
   const { user, logout, refreshUser } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -97,7 +98,7 @@ export default function Reviews() {
   const initials = user ? getInitials(user.name) : '?';
 
   const navLeft = (
-    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
       <span className="material-symbols-outlined text-[22px]">menu</span>
     </button>
   );
@@ -107,13 +108,13 @@ export default function Reviews() {
       <NotificationBell />
       <div className="relative" ref={profileRef}>
         <button onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen} aria-label="Profile menu"
-          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-white/10 transition-colors">
+          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
           {user?.profileImageUrl ? (
-            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-white/20" alt={user.name} />
+            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-slate-300 dark:border-white/20" alt={user.name} />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-sm font-bold select-none">{initials}</div>
+            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none">{initials}</div>
           )}
-          <span className="material-symbols-outlined text-white/60 text-base leading-none">expand_more</span>
+          <span className="material-symbols-outlined text-slate-900 dark:text-white/60 text-base leading-none">expand_more</span>
         </button>
         {profileOpen && user && <ProfileDropdown user={user} onUpdated={refreshUser} onLogout={handleLogout} />}
       </div>
@@ -122,10 +123,10 @@ export default function Reviews() {
 
   const sidebar = (
     <aside className={`hidden lg:flex flex-col flex-shrink-0 transition-all duration-200 ${sidebarOpen ? 'w-60' : 'w-16'}`}
-      style={{ backgroundColor: SIDEBAR_BG }}>
-      <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
-        {sidebarOpen && <span className="text-white font-bold text-sm tracking-wide">BidForge</span>}
-        <button onClick={() => setSidebarOpen(o => !o)} className="text-white/60 hover:text-white transition-colors ml-auto">
+      style={{ backgroundColor: theme === 'dark' ? '#0A192F' : '#ffffff' }}>
+      <div className="flex items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-white/10">
+        {sidebarOpen && <span className="text-slate-900 dark:text-white font-bold text-sm tracking-wide">BidForge</span>}
+        <button onClick={() => setSidebarOpen(o => !o)} className="text-slate-500 dark:text-white/60 hover:text-slate-900 dark:hover:text-white transition-colors ml-auto">
           <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
         </button>
       </div>
@@ -134,9 +135,9 @@ export default function Reviews() {
           <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
             className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium',
               sidebarOpen ? 'px-3' : 'justify-center px-2',
-              active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary'
-                : path ? 'text-white/60 hover:bg-white/10 hover:text-white'
-                : 'text-white/30 cursor-default'].join(' ')}>
+              active ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white font-bold border-l-4 border-secondary'
+                : path ? 'text-slate-500 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white'
+                : 'text-slate-300 dark:text-white/30 cursor-default'].join(' ')}>
             <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
             {sidebarOpen && <span className="text-sm truncate">{label}</span>}
           </button>
@@ -181,9 +182,9 @@ export default function Reviews() {
               {/* Review list */}
               {given.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <span className="material-symbols-outlined text-6xl text-slate-200 mb-4">rate_review</span>
-                  <p className="text-base font-semibold text-slate-400">You haven't given any reviews yet</p>
-                  <p className="text-sm text-slate-300 mt-1">After a contract completes, you can leave a review for the other party.</p>
+                  <span className="material-symbols-outlined text-6xl text-slate-600 dark:text-slate-300 dark:text-slate-600 mb-4">rate_review</span>
+                  <p className="text-base font-semibold text-slate-500 dark:text-slate-500 dark:text-slate-400">You haven't given any reviews yet</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-600 dark:text-slate-300 mt-1">After a contract completes, you can leave a review for the other party.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

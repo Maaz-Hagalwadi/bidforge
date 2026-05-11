@@ -67,7 +67,7 @@ function NotificationItem({
   return (
     <button
       onClick={() => onClickItem(n)}
-      className="w-full flex gap-3 items-start px-4 py-3 hover:bg-white/5 transition-colors text-left"
+      className="w-full flex gap-3 items-start px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors text-left"
     >
       <div
         className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
@@ -79,10 +79,10 @@ function NotificationItem({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <p className="text-sm leading-tight text-white font-semibold">{n.title}</p>
-          <span className="text-[10px] text-white/30 flex-shrink-0">{timeAgo(n.createdAt)}</span>
+          <p className="text-sm leading-tight text-slate-900 dark:text-white font-semibold">{n.title}</p>
+          <span className="text-[10px] text-slate-400 dark:text-white/30 flex-shrink-0">{timeAgo(n.createdAt)}</span>
         </div>
-        <p className="text-xs text-white/40 mt-0.5 leading-snug line-clamp-2">{n.message}</p>
+        <p className="text-xs text-slate-500 dark:text-white/40 mt-0.5 leading-snug line-clamp-2">{n.message}</p>
       </div>
       <div className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0 mt-2" />
     </button>
@@ -125,7 +125,7 @@ export function NotificationBell() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => { setOpen(o => !o); setShowAll(false); }}
-        className="relative p-2 text-white/70 hover:text-white transition-colors"
+        className="relative p-2 text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white transition-colors"
         aria-label="Notifications"
       >
         <span className="material-symbols-outlined">notifications</span>
@@ -138,27 +138,26 @@ export function NotificationBell() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-80 rounded-xl shadow-2xl border border-white/10 overflow-hidden z-[150]"
-          style={{ backgroundColor: '#0d1c32' }}
+          className="absolute right-0 top-full mt-2 w-80 rounded-xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden z-[150] bg-white dark:bg-[#0d1c32]"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-            <span className="text-sm font-semibold text-white">
-              Notifications {unreadCount > 0 && <span className="text-white/40 font-normal">({unreadCount})</span>}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-white/10">
+            <span className="text-sm font-semibold text-slate-900 dark:text-white">
+              Notifications {unreadCount > 0 && <span className="text-slate-400 dark:text-white/40 font-normal">({unreadCount})</span>}
             </span>
             {unreadCount > 0 && (
-              <button onClick={handleMarkAll} className="text-[11px] text-blue-400 hover:text-blue-300 transition-colors">
+              <button onClick={handleMarkAll} className="text-[11px] text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors">
                 Mark all as read
               </button>
             )}
           </div>
 
           {/* List */}
-          <div className="max-h-[400px] overflow-y-auto divide-y divide-white/5">
+          <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-100 dark:divide-white/5">
             {unread.length === 0 ? (
               <div className="py-10 text-center">
-                <span className="material-symbols-outlined text-white/20 text-3xl block mb-2">notifications_off</span>
-                <p className="text-white/30 text-sm">All caught up!</p>
+                <span className="material-symbols-outlined text-slate-300 dark:text-white/20 text-3xl block mb-2">notifications_off</span>
+                <p className="text-slate-400 dark:text-white/30 text-sm">All caught up!</p>
               </div>
             ) : (
               visible.map(n => (
@@ -169,10 +168,10 @@ export function NotificationBell() {
 
           {/* View All / Show Less */}
           {unread.length > 5 && (
-            <div className="px-4 py-2.5 border-t border-white/10 text-center">
+            <div className="px-4 py-2.5 border-t border-slate-100 dark:border-white/10 text-center">
               <button
                 onClick={() => setShowAll(v => !v)}
-                className="text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+                className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 font-semibold transition-colors">
                 {showAll ? 'Show less' : `View all ${unread.length} notifications`}
               </button>
             </div>

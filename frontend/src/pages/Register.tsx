@@ -104,17 +104,17 @@ export default function Register() {
   /* ── Email verification success screen ── */
   if (registeredEmail) {
     return (
-      <div className="min-h-screen bg-dark-navy flex flex-col">
+      <div className="min-h-screen bg-slate-50 dark:bg-dark-navy flex flex-col">
         <Navbar variant="auth" />
         <div className="flex-1 flex items-center justify-center p-6">
-          <div className="bg-[#0d1c32] border border-slate-700/60 rounded-2xl shadow-2xl max-w-md w-full p-10 text-center">
+          <div className="bg-white dark:bg-[#0d1c32] border border-slate-200 dark:border-slate-700/60 rounded-2xl shadow-2xl max-w-md w-full p-10 text-center">
             <div className="w-16 h-16 rounded-2xl bg-secondary/10 border border-secondary/20 flex items-center justify-center mx-auto mb-6">
               <span className="material-symbols-outlined text-secondary text-4xl">mark_email_unread</span>
             </div>
-            <h2 className="text-white text-2xl font-bold mb-2">Check your inbox</h2>
-            <p className="text-slate-400 text-sm mb-1">We sent a verification link to</p>
+            <h2 className="text-slate-900 dark:text-white text-2xl font-bold mb-2">Check your inbox</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-1">We sent a verification link to</p>
             <p className="text-secondary font-semibold text-sm mb-5">{registeredEmail}</p>
-            <p className="text-slate-500 text-xs mb-7 leading-relaxed">
+            <p className="text-slate-500 dark:text-slate-500 text-xs mb-7 leading-relaxed">
               Click the link in the email to activate your account.<br />
               Check your spam folder if you don't see it.
             </p>
@@ -131,7 +131,7 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-navy antialiased flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-navy antialiased flex flex-col">
       {(isSubmitting || googleLoading) && (
         <BidForgeLoader message={googleLoading ? 'Signing in with Google…' : 'Creating your account…'} />
       )}
@@ -146,8 +146,8 @@ export default function Register() {
             alt="Developer at work"
             className="absolute inset-0 w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-dark-navy via-dark-navy/65 to-dark-navy/15" />
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-dark-navy/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0A192F] via-[#0A192F]/65 to-[#0A192F]/15" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0A192F]/20" />
 
           <div className="relative z-10 flex flex-col justify-end p-10 xl:p-14 h-full">
             <div className="mb-8">
@@ -179,20 +179,20 @@ export default function Register() {
         </aside>
 
         {/* ── Right panel: form ── */}
-        <section className="flex-1 flex flex-col overflow-y-auto">
+        <section className="flex-1 flex flex-col overflow-y-auto bg-slate-50 dark:bg-dark-navy">
 
 <div className="flex-1 flex items-start justify-center px-6 py-6 md:py-8 md:px-10 lg:px-16">
           <div className="w-full max-w-[420px] py-2">
 
             {/* Heading */}
             <div className="mb-6">
-              <h2 className="text-white text-[1.75rem] font-bold tracking-tight">Create account</h2>
-              <p className="text-slate-400 text-sm mt-1.5">Start your professional journey on BidForge.</p>
+              <h2 className="text-slate-900 dark:text-white text-[1.75rem] font-bold tracking-tight">Create account</h2>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1.5">Start your professional journey on BidForge.</p>
             </div>
 
             {/* Role selector */}
             <div className="mb-5">
-              <p className="text-slate-400 text-xs uppercase tracking-widest mb-2 font-medium">I am joining as</p>
+              <p className="text-slate-500 dark:text-slate-400 text-xs uppercase tracking-widest mb-2 font-medium">I am joining as</p>
               <Controller
                 name="role"
                 control={control}
@@ -207,12 +207,12 @@ export default function Register() {
               <p className="field-error text-sm text-center mb-3">{googleError}</p>
             )}
 
-            <div className="flex items-center gap-3 bg-slate-800/30 border border-slate-700/40 rounded-xl px-4 py-2.5 mb-3">
+            <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/40 rounded-xl px-4 py-2.5 mb-3">
               <span className="material-symbols-outlined text-secondary text-sm">
                 {selectedRole === 'CLIENT' ? 'person_search' : 'work'}
               </span>
-              <p className="text-slate-400 text-xs flex-1">
-                Signing up as <span className="text-white font-semibold">{selectedRole === 'CLIENT' ? 'a Client' : 'a Freelancer'}</span>
+              <p className="text-slate-500 dark:text-slate-400 text-xs flex-1">
+                Signing up as <span className="text-slate-900 dark:text-white font-semibold">{selectedRole === 'CLIENT' ? 'a Client' : 'a Freelancer'}</span>
               </p>
             </div>
 
@@ -220,7 +220,7 @@ export default function Register() {
               type="button"
               onClick={() => googleOAuth()}
               disabled={googleLoading}
-              className="w-full flex items-center justify-center gap-3 h-11 rounded-xl border border-slate-600/60 bg-slate-800/50 hover:bg-slate-700/60 hover:border-slate-500/80 text-white text-sm font-medium transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mb-5"
+              className="w-full flex items-center justify-center gap-3 h-11 rounded-xl border border-slate-300 dark:border-slate-600/60 bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-400 dark:hover:border-slate-500/80 text-slate-800 dark:text-white text-sm font-medium transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mb-5"
             >
               <GoogleIcon />
               {googleLoading ? 'Connecting…' : 'Continue with Google'}
@@ -229,10 +229,10 @@ export default function Register() {
             {/* Divider */}
             <div className="relative mb-5">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-700/60" />
+                <div className="w-full border-t border-slate-200 dark:border-slate-700/60" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-dark-navy px-3 text-slate-500 text-xs uppercase tracking-widest">
+                <span className="bg-slate-50 dark:bg-dark-navy px-3 text-slate-500 text-xs uppercase tracking-widest">
                   or create account with email
                 </span>
               </div>
@@ -265,10 +265,10 @@ export default function Register() {
                 <input
                   id="terms"
                   type="checkbox"
-                  className="mt-0.5 w-4 h-4 bg-slate-900 border-slate-700 text-secondary rounded focus:ring-secondary/20 flex-shrink-0 cursor-pointer"
+                  className="mt-0.5 w-4 h-4 bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-secondary rounded focus:ring-secondary/20 flex-shrink-0 cursor-pointer"
                   {...register('terms')}
                 />
-                <label htmlFor="terms" className="text-slate-400 text-sm leading-relaxed cursor-pointer">
+                <label htmlFor="terms" className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed cursor-pointer">
                   I agree to the{' '}
                   <a href="#" className="text-secondary hover:underline">Terms of Service</a>
                   {' '}and{' '}
@@ -286,7 +286,7 @@ export default function Register() {
               </button>
             </form>
 
-            <p className="text-center text-slate-500 text-sm mt-6">
+            <p className="text-center text-slate-500 dark:text-slate-500 text-sm mt-6">
               Already have an account?{' '}
               <Link to="/login" className="text-secondary font-medium hover:underline">
                 Sign in

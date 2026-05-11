@@ -117,7 +117,7 @@ function PaymentForm({ milestone, clientSecret, onSuccess, onClose }: PaymentFor
         <button
           type="submit"
           disabled={processing || !stripe}
-          className="flex-1 py-2.5 bg-secondary text-white text-sm font-bold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+          className="flex-1 py-2.5 bg-secondary text-slate-900 dark:text-white text-sm font-bold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {processing ? (
             <>
@@ -169,12 +169,12 @@ export function PaymentModal({ milestone, onSuccess, onClose }: PaymentModalProp
           style={{ backgroundColor: '#0A192F' }}
         >
           <div>
-            <h2 className="text-base font-bold text-white">Fund Escrow</h2>
-            <p className="text-xs text-white/60 mt-0.5">Payment secured until milestone is approved</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Fund Escrow</h2>
+            <p className="text-xs text-slate-900 dark:text-slate-500 dark:text-white/60 mt-0.5">Payment secured until milestone is approved</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-white/50 hover:text-white transition-colors flex-shrink-0 mt-0.5"
+            className="p-1 text-slate-900 dark:text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white transition-colors flex-shrink-0 mt-0.5"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
@@ -191,7 +191,7 @@ export function PaymentModal({ milestone, onSuccess, onClose }: PaymentModalProp
             <p className="text-sm text-red-600 font-semibold">{loadError}</p>
             <button
               onClick={onClose}
-              className="px-5 py-2.5 bg-secondary text-white text-sm font-bold rounded-lg hover:brightness-110 transition-all"
+              className="px-5 py-2.5 bg-secondary text-slate-900 dark:text-white text-sm font-bold rounded-lg hover:brightness-110 transition-all"
             >
               Close
             </button>

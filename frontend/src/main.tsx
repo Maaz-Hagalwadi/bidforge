@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { ThemeProvider } from '@/context/ThemeContext';
 import App from './App';
 import './index.css';
 
@@ -9,8 +10,10 @@ fetch(`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'}/auth/logi
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
-      <App />
-    </GoogleOAuthProvider>
+    <ThemeProvider>
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
+        <App />
+      </GoogleOAuthProvider>
+    </ThemeProvider>
   </React.StrictMode>,
 );

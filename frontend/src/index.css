@@ -4,11 +4,14 @@
 
 @layer base {
   html {
-    background-color: #0A192F;
+    background-color: #f8fafc;
     font-size: 13px;
   }
-  body {
+  html.dark {
     background-color: #0A192F;
+  }
+  body {
+    background-color: inherit;
   }
   html,
   body,
@@ -28,8 +31,9 @@
   }
 
   .auth-input {
-    @apply w-full bg-slate-900/50 border border-slate-800 rounded-lg py-md pl-12 pr-md text-white placeholder-slate-600
-      focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all;
+    @apply w-full bg-white border border-slate-300 rounded-lg py-md pl-12 pr-md text-slate-900 placeholder-slate-400
+      focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all
+      dark:bg-slate-900/50 dark:border-slate-800 dark:text-white dark:placeholder-slate-600;
   }
 
   .tonal-card {
@@ -37,6 +41,11 @@
     border: 1px solid #E9ECEF;
     box-shadow: 0px 4px 12px rgba(10, 25, 47, 0.05);
     transition: all 200ms ease;
+  }
+
+  .dark .tonal-card {
+    background-color: #ffffff;
+    border-color: #E9ECEF;
   }
 
   .tonal-card:hover {

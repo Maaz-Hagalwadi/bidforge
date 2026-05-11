@@ -235,7 +235,7 @@ export default function Login() {
   const anyLoading = isSubmitting || otpEmailForm.formState.isSubmitting || otpCodeForm.formState.isSubmitting || googleLoading;
 
   return (
-    <div className="min-h-screen bg-dark-navy antialiased flex flex-col">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-navy antialiased flex flex-col">
       {anyLoading && (
         <BidForgeLoader message={
           googleLoading ? 'Signing in with Google…'
@@ -248,13 +248,13 @@ export default function Login() {
       {/* Role picker modal */}
       {showRolePicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-[#0d1c32] rounded-2xl border border-slate-700 p-8 max-w-sm w-full shadow-2xl">
+          <div className="bg-white dark:bg-[#0d1c32] rounded-2xl border border-slate-200 dark:border-slate-700 p-8 max-w-sm w-full shadow-2xl">
             <div className="text-center mb-6">
               <div className="w-14 h-14 rounded-2xl bg-secondary/10 border border-secondary/20 flex items-center justify-center mx-auto mb-4">
                 <span className="material-symbols-outlined text-secondary text-3xl">manage_accounts</span>
               </div>
-              <h3 className="text-white text-xl font-bold">One last step</h3>
-              <p className="text-slate-400 text-sm mt-1">How will you use BidForge?</p>
+              <h3 className="text-slate-900 dark:text-white text-xl font-bold">One last step</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">How will you use BidForge?</p>
             </div>
             <div className="grid grid-cols-2 gap-3 mb-4">
               {(['CLIENT', 'FREELANCER'] as const).map((r) => (
@@ -263,7 +263,7 @@ export default function Login() {
                   type="button"
                   disabled={googleLoading}
                   onClick={() => handleRoleSelect(r)}
-                  className="flex flex-col items-center gap-3 py-5 px-3 rounded-xl border-2 border-slate-700 bg-slate-900/50 text-slate-300 hover:border-secondary hover:text-white hover:bg-secondary/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex flex-col items-center gap-3 py-5 px-3 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 hover:border-secondary hover:text-slate-900 dark:hover:text-white hover:bg-secondary/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined text-4xl">
                     {r === 'CLIENT' ? 'person_search' : 'work'}
@@ -278,7 +278,7 @@ export default function Login() {
             <button
               type="button"
               onClick={() => { setShowRolePicker(false); setGooglePending(null); setGoogleError(null); }}
-              className="w-full text-slate-500 hover:text-slate-300 text-sm transition-colors py-1"
+              className="w-full text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-sm transition-colors py-1"
             >
               Cancel
             </button>
@@ -297,8 +297,8 @@ export default function Login() {
             alt="Professionals collaborating"
             className="absolute inset-0 w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-dark-navy via-dark-navy/70 to-dark-navy/20" />
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-dark-navy/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0A192F] via-[#0A192F]/70 to-[#0A192F]/20" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0A192F]/30" />
 
           <div className="relative z-10 flex flex-col justify-end p-10 xl:p-14 h-full">
             <div className="mb-8">
@@ -328,16 +328,16 @@ export default function Login() {
         </aside>
 
         {/* ── Right panel: form ── */}
-        <section className="flex-1 flex flex-col overflow-y-auto">
+        <section className="flex-1 flex flex-col overflow-y-auto bg-slate-50 dark:bg-dark-navy">
 
 <div className="flex-1 flex items-center justify-center px-6 py-8 md:py-10 md:px-10 lg:px-16">
           <div className="w-full max-w-[400px]">
 
             {/* Heading */}
             <div className="mb-7 text-center md:text-left">
-              <h2 className="hidden md:block text-white text-[1.75rem] font-bold tracking-tight">Sign in</h2>
-              <p className="md:hidden text-white text-2xl font-bold tracking-tight mb-1">Welcome back to BidForge.</p>
-              <p className="hidden md:block text-slate-400 text-sm mt-1.5">Welcome back to BidForge.</p>
+              <h2 className="hidden md:block text-slate-900 dark:text-white text-[1.75rem] font-bold tracking-tight">Sign in</h2>
+              <p className="md:hidden text-slate-900 dark:text-white text-2xl font-bold tracking-tight mb-1">Welcome back to BidForge.</p>
+              <p className="hidden md:block text-slate-500 dark:text-slate-400 text-sm mt-1.5">Welcome back to BidForge.</p>
             </div>
 
             {/* Success banners */}
@@ -362,7 +362,7 @@ export default function Login() {
               type="button"
               onClick={() => googleOAuth()}
               disabled={googleLoading}
-              className="w-full flex items-center justify-center gap-3 h-11 rounded-xl border border-slate-600/60 bg-slate-800/50 hover:bg-slate-700/60 hover:border-slate-500/80 text-white text-sm font-medium transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mb-5"
+              className="w-full flex items-center justify-center gap-3 h-11 rounded-xl border border-slate-300 dark:border-slate-600/60 bg-white dark:bg-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-700/60 hover:border-slate-400 dark:hover:border-slate-500/80 text-slate-800 dark:text-white text-sm font-medium transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mb-5"
             >
               <GoogleIcon />
               {googleLoading ? 'Connecting…' : 'Continue with Google'}
@@ -371,17 +371,17 @@ export default function Login() {
             {/* Divider */}
             <div className="relative mb-5">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-700/60" />
+                <div className="w-full border-t border-slate-200 dark:border-slate-700/60" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-dark-navy px-3 text-slate-500 text-xs uppercase tracking-widest">
+                <span className="bg-slate-50 dark:bg-dark-navy px-3 text-slate-500 text-xs uppercase tracking-widest">
                   or sign in with email
                 </span>
               </div>
             </div>
 
             {/* Tab toggle — pill style */}
-            <div className="flex bg-slate-800/50 rounded-xl p-1 mb-5 border border-slate-700/40">
+            <div className="flex bg-slate-200 dark:bg-slate-800/50 rounded-xl p-1 mb-5 border border-slate-300 dark:border-slate-700/40">
               {(['password', 'otp'] as Mode[]).map((m) => (
                 <button
                   key={m}
@@ -389,8 +389,8 @@ export default function Login() {
                   onClick={() => switchMode(m)}
                   className={`flex-1 py-2 text-sm rounded-lg font-medium transition-all duration-200 ${
                     mode === m
-                      ? 'bg-slate-700 text-white shadow-sm'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   {m === 'password' ? 'Password' : 'Email OTP'}
@@ -515,7 +515,7 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={() => { setOtpStep('email'); otpCodeForm.reset(); setOtpResent(false); setResendCooldown(0); if (cooldownRef.current) clearInterval(cooldownRef.current); }}
-                        className="text-slate-400 hover:text-white transition-colors"
+                        className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                       >
                         Change email
                       </button>
@@ -533,7 +533,7 @@ export default function Login() {
               </div>
             )}
 
-            <p className="text-center text-slate-500 text-sm mt-7">
+            <p className="text-center text-slate-500 dark:text-slate-500 text-sm mt-7">
               Don't have an account?{' '}
               <Link to="/register" className="text-secondary font-medium hover:underline">
                 Sign up free

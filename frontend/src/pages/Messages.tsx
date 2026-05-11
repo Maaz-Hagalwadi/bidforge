@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -10,7 +11,6 @@ import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import { chatApi, type ChatRoom, type ChatMessage } from '@/api/chat';
 
-const SIDEBAR_BG = '#0A192F';
 const WS_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080') + '/ws';
 
 function getInitials(name: string) {
@@ -64,6 +64,7 @@ async function downloadFile(url: string, filename: string) {
 
 export default function Messages() {
   const { user, logout, refreshUser } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const { pathname, state: locationState } = useLocation();
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -372,7 +373,7 @@ export default function Messages() {
   }
 
   const navLeft = (
-    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
       <span className="material-symbols-outlined text-[22px]">menu</span>
     </button>
   );
@@ -382,13 +383,13 @@ export default function Messages() {
       <NotificationBell />
       <div className="relative" ref={profileRef}>
         <button onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen} aria-label="Profile menu"
-          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-white/10 transition-colors">
+          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
           {user?.profileImageUrl ? (
-            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-white/20" alt={user.name} />
+            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-slate-300 dark:border-white/20" alt={user.name} />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-sm font-bold select-none">{initials}</div>
+            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none">{initials}</div>
           )}
-          <span className="material-symbols-outlined text-white/60 text-base leading-none">expand_more</span>
+          <span className="material-symbols-outlined text-slate-900 dark:text-white/60 text-base leading-none">expand_more</span>
         </button>
         {profileOpen && user && <ProfileDropdown user={user} onUpdated={refreshUser} onLogout={handleLogout} />}
       </div>
@@ -397,34 +398,34 @@ export default function Messages() {
 
   // ── Conversation list ───────────────────────────────────────────────────────
   const ConversationList = (
-    <div className={`${mobileView === 'chat' ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-[320px] lg:w-[360px] flex-shrink-0 border-r border-slate-200 bg-white`}>
-      <div className="p-4 border-b border-slate-100 flex-shrink-0">
+    <div className={`${mobileView === 'chat' ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-[320px] lg:w-[360px] flex-shrink-0 border-r border-slate-200 dark:border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0d1c32]`}>
+      <div className="p-4 border-b border-slate-100 dark:border-slate-200 dark:border-slate-700 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-slate-900">Messages</h2>
-          <div className={`flex items-center gap-1.5 text-xs font-semibold ${connected ? 'text-green-600' : 'text-slate-400'}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-slate-300'}`} />
+          <h2 className="text-sm font-bold text-slate-900 dark:text-white">Messages</h2>
+          <div className={`flex items-center gap-1.5 text-xs font-semibold ${connected ? 'text-green-600' : 'text-slate-500 dark:text-slate-500 dark:text-slate-400'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
             {connected ? 'Live' : 'Connecting…'}
           </div>
         </div>
         <div className="relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-[18px]">search</span>
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search conversations…"
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/10 focus:border-secondary transition-all" />
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/10 focus:border-secondary transition-all text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 dark:placeholder-slate-600" />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {loadingRooms ? (
-          <div className="flex items-center justify-center py-12 gap-2 text-slate-400 text-sm">
+          <div className="flex items-center justify-center py-12 gap-2 text-slate-500 dark:text-slate-500 dark:text-slate-400 text-sm">
             <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
             Loading…
           </div>
         ) : filteredRooms.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-12 text-center px-4">
-            <span className="material-symbols-outlined text-4xl text-slate-300">chat</span>
-            <p className="text-sm text-slate-500">No conversations yet</p>
-            <p className="text-xs text-slate-400">Conversations appear once a contract is created.</p>
+            <span className="material-symbols-outlined text-4xl text-slate-600 dark:text-slate-300 dark:text-slate-600">chat</span>
+            <p className="text-sm text-slate-600 dark:text-slate-600 dark:text-slate-300">No conversations yet</p>
+            <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400">Conversations appear once a contract is created.</p>
           </div>
         ) : filteredRooms.map(room => {
           const color = roomColor(room.roomId);
@@ -432,12 +433,12 @@ export default function Messages() {
           const isSelected = selectedRoom?.roomId === room.roomId;
           return (
             <button key={room.roomId} onClick={() => selectRoom(room)}
-              className={`w-full px-4 py-4 flex items-start gap-3 transition-colors text-left border-b border-slate-50 ${isSelected ? 'bg-secondary/5 border-r-4 border-r-secondary' : 'hover:bg-slate-50'}`}>
+              className={`w-full px-4 py-4 flex items-start gap-3 transition-colors text-left border-b border-slate-50 dark:border-slate-200 dark:border-slate-800 ${isSelected ? 'bg-secondary/5 border-r-4 border-r-secondary' : 'hover:bg-slate-50 dark:hover:bg-slate-100 dark:bg-slate-800'}`}>
               <div className="relative flex-shrink-0">
-                <div className={`w-11 h-11 rounded-full ${color} flex items-center justify-center text-white text-sm font-bold select-none`}>
+                <div className={`w-11 h-11 rounded-full ${color} flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none`}>
                   {getInitials(name)}
                 </div>
-                <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full ${onlineUsers.has(getOtherId(room)) ? 'bg-green-500' : 'bg-slate-300'}`} />
+                <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white dark:border-[#0d1c32] rounded-full ${onlineUsers.has(getOtherId(room)) ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
                 {(unreadCounts[room.roomId] ?? 0) > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-secondary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                     {unreadCounts[room.roomId] > 99 ? '99+' : unreadCounts[room.roomId]}
@@ -446,9 +447,9 @@ export default function Messages() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-0.5">
-                  <h4 className={`text-sm truncate ${(unreadCounts[room.roomId] ?? 0) > 0 ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>{name}</h4>
+                  <h4 className={`text-sm truncate ${(unreadCounts[room.roomId] ?? 0) > 0 ? 'font-bold text-slate-900 dark:text-white' : 'font-semibold text-slate-700 dark:text-slate-700 dark:text-slate-200'}`}>{name}</h4>
                 </div>
-                <p className={`text-xs truncate ${(unreadCounts[room.roomId] ?? 0) > 0 ? 'font-semibold text-slate-700' : 'text-slate-500'}`}>
+                <p className={`text-xs truncate ${(unreadCounts[room.roomId] ?? 0) > 0 ? 'font-semibold text-slate-700 dark:text-slate-700 dark:text-slate-200' : 'text-slate-600 dark:text-slate-600 dark:text-slate-300'}`}>
                   {room.jobTitle ?? `Contract #${room.contractId.slice(-6).toUpperCase()}`}
                 </p>
               </div>
@@ -461,26 +462,26 @@ export default function Messages() {
 
   // ── Chat window ─────────────────────────────────────────────────────────────
   const ChatWindow = selectedRoom ? (
-    <div className={`${mobileView === 'list' ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-slate-50/30 min-w-0 min-h-0`}>
+    <div className={`${mobileView === 'list' ? 'hidden md:flex' : 'flex'} flex-1 flex-col bg-slate-50/30 dark:bg-slate-50 dark:bg-slate-100 dark:bg-slate-900/30 min-w-0 min-h-0`}>
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 p-4 flex-shrink-0">
+      <div className="bg-white dark:bg-[#0d1c32] border-b border-slate-200 dark:border-slate-200 dark:border-slate-700 p-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => setMobileView('list')} className="md:hidden p-1.5 -ml-1 text-slate-500 hover:text-slate-800 transition-colors">
+            <button onClick={() => setMobileView('list')} className="md:hidden p-1.5 -ml-1 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-900 dark:hover:text-white transition-colors">
               <span className="material-symbols-outlined text-[22px]">arrow_back</span>
             </button>
-            <div className={`w-10 h-10 rounded-full ${roomColor(selectedRoom.roomId)} flex items-center justify-center text-white text-sm font-bold select-none flex-shrink-0`}>
+            <div className={`w-10 h-10 rounded-full ${roomColor(selectedRoom.roomId)} flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none flex-shrink-0`}>
               {getInitials(getOtherName(selectedRoom))}
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">{getOtherName(selectedRoom)}</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{getOtherName(selectedRoom)}</h3>
               <div className="flex items-center gap-1.5 text-xs font-medium">
                 {onlineUsers.has(getOtherId(selectedRoom)) ? (
                   <><span className="w-1.5 h-1.5 rounded-full bg-green-500" /><span className="text-green-600">Online</span></>
                 ) : lastSeenMap[getOtherId(selectedRoom)] ? (
-                  <span className="text-slate-400">{formatLastSeen(lastSeenMap[getOtherId(selectedRoom)])}</span>
+                  <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400">{formatLastSeen(lastSeenMap[getOtherId(selectedRoom)])}</span>
                 ) : (
-                  <span className="text-slate-400">Offline</span>
+                  <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400">Offline</span>
                 )}
               </div>
             </div>
@@ -496,14 +497,14 @@ export default function Messages() {
       {/* Messages */}
       <div ref={feedRef} className="flex-1 min-h-0 overflow-y-auto p-5 space-y-3">
         {loadingMessages ? (
-          <div className="flex items-center justify-center py-12 gap-2 text-slate-400 text-sm">
+          <div className="flex items-center justify-center py-12 gap-2 text-slate-500 dark:text-slate-500 dark:text-slate-400 text-sm">
             <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
             Loading messages…
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-12 text-center">
-            <span className="material-symbols-outlined text-4xl text-slate-300">chat_bubble</span>
-            <p className="text-sm text-slate-500">No messages yet. Say hello!</p>
+            <span className="material-symbols-outlined text-4xl text-slate-600 dark:text-slate-300 dark:text-slate-600">chat_bubble</span>
+            <p className="text-sm text-slate-600 dark:text-slate-600 dark:text-slate-300">No messages yet. Say hello!</p>
           </div>
         ) : messages.map((msg, i) => {
           const isMe = msg.senderId === user?.id;
@@ -521,18 +522,18 @@ export default function Messages() {
                   )}
                   {msg.fileType === 'file' && (
                     <button onClick={() => downloadFile(msg.fileUrl!, msg.fileName!)}
-                      className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-2.5 rounded-2xl rounded-tl-none shadow-sm text-secondary text-sm font-medium mb-1 hover:bg-slate-50 transition-colors">
+                      className="flex items-center gap-2 bg-white dark:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-200 dark:border-slate-700 px-3 py-2.5 rounded-2xl rounded-tl-none shadow-sm text-secondary text-sm font-medium mb-1 hover:bg-slate-50 dark:hover:bg-slate-200 dark:bg-slate-700 transition-colors">
                       <span className="material-symbols-outlined text-[20px] flex-shrink-0">attach_file</span>
                       <span className="truncate max-w-[160px]">{msg.fileName}</span>
-                      <span className="material-symbols-outlined text-[16px] flex-shrink-0 text-slate-400">download</span>
+                      <span className="material-symbols-outlined text-[16px] flex-shrink-0 text-slate-500 dark:text-slate-500 dark:text-slate-400">download</span>
                     </button>
                   )}
                   {msg.content && (
-                    <div className="bg-white border border-slate-200 px-4 py-2.5 rounded-2xl rounded-tl-none shadow-sm text-slate-700 text-sm leading-relaxed">
+                    <div className="bg-white dark:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-2xl rounded-tl-none shadow-sm text-slate-700 dark:text-slate-700 dark:text-slate-200 text-sm leading-relaxed">
                       {msg.content}
                     </div>
                   )}
-                  {!grouped && <span className="text-[10px] text-slate-400 mt-0.5 block px-1">{formatTime(msg.sentAt)}</span>}
+                  {!grouped && <span className="text-[10px] text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-0.5 block px-1">{formatTime(msg.sentAt)}</span>}
                 </div>
               </div>
             );
@@ -548,21 +549,21 @@ export default function Messages() {
                 )}
                 {msg.fileType === 'file' && (
                   <button onClick={() => downloadFile(msg.fileUrl!, msg.fileName!)}
-                    className="flex items-center gap-2 bg-secondary/90 px-3 py-2.5 rounded-2xl rounded-tr-none shadow-md text-white text-sm font-medium mb-1 hover:brightness-110 transition-all">
+                    className="flex items-center gap-2 bg-secondary/90 px-3 py-2.5 rounded-2xl rounded-tr-none shadow-md text-slate-900 dark:text-white text-sm font-medium mb-1 hover:brightness-110 transition-all">
                     <span className="material-symbols-outlined text-[20px] flex-shrink-0">attach_file</span>
                     <span className="truncate max-w-[160px]">{msg.fileName}</span>
-                    <span className="material-symbols-outlined text-[16px] flex-shrink-0 text-white/70">download</span>
+                    <span className="material-symbols-outlined text-[16px] flex-shrink-0 text-slate-900 dark:text-white/60">download</span>
                   </button>
                 )}
                 {msg.content && (
-                  <div className="bg-secondary px-4 py-2.5 rounded-2xl rounded-tr-none shadow-md text-white text-sm leading-relaxed">
+                  <div className="bg-secondary px-4 py-2.5 rounded-2xl rounded-tr-none shadow-md text-slate-900 dark:text-white text-sm leading-relaxed">
                     {msg.content}
                   </div>
                 )}
                 <div className="flex items-center gap-0.5 mt-0.5 px-1">
-                  {!grouped && <span className="text-[10px] text-slate-400">{formatTime(msg.sentAt)}</span>}
+                  {!grouped && <span className="text-[10px] text-slate-500 dark:text-slate-500 dark:text-slate-400">{formatTime(msg.sentAt)}</span>}
                   <span
-                    className={`material-symbols-outlined text-[15px] leading-none ${msg.isRead ? 'text-blue-500' : 'text-slate-400'}`}
+                    className={`material-symbols-outlined text-[15px] leading-none ${msg.isRead ? 'text-blue-500' : 'text-slate-500 dark:text-slate-500 dark:text-slate-400'}`}
                     style={{ fontVariationSettings: "'FILL' 1" }}
                   >
                     {msg.isRead ? 'done_all' : 'done'}
@@ -577,17 +578,17 @@ export default function Messages() {
       {/* Typing indicator */}
       {typingUser && (
         <div className="px-5 pb-1 flex items-center gap-2">
-          <div className="bg-white border border-slate-200 px-3 py-2 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          <div className="bg-white dark:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-200 dark:border-slate-700 px-3 py-2 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-1">
+            <span className="w-1.5 h-1.5 bg-slate-500 dark:bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-1.5 h-1.5 bg-slate-500 dark:bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-1.5 h-1.5 bg-slate-500 dark:bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
           </div>
-          <span className="text-[11px] text-slate-400">typing…</span>
+          <span className="text-[11px] text-slate-500 dark:text-slate-500 dark:text-slate-400">typing…</span>
         </div>
       )}
 
       {/* Input */}
-      <div className="p-4 bg-white border-t border-slate-200 flex-shrink-0">
+      <div className="p-4 bg-white dark:bg-[#0d1c32] border-t border-slate-200 dark:border-slate-200 dark:border-slate-700 flex-shrink-0">
         {!connected && (
           <p className="text-xs text-amber-600 text-center mb-2 flex items-center justify-center gap-1">
             <span className="material-symbols-outlined text-[14px]">wifi_off</span>
@@ -596,14 +597,14 @@ export default function Messages() {
         )}
         {/* Pending file preview */}
         {pendingFile && (
-          <div className="mb-2 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+          <div className="mb-2 flex items-center gap-2 bg-slate-50 dark:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
             {pendingFile.fileType === 'image' ? (
               <img src={pendingFile.fileUrl} alt={pendingFile.fileName} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
             ) : (
               <span className="material-symbols-outlined text-secondary text-[22px] flex-shrink-0">attach_file</span>
             )}
-            <span className="text-xs text-slate-600 truncate flex-1">{pendingFile.fileName}</span>
-            <button onClick={() => setPendingFile(null)} className="text-slate-400 hover:text-slate-700 flex-shrink-0">
+            <span className="text-xs text-slate-600 dark:text-slate-600 dark:text-slate-300 truncate flex-1">{pendingFile.fileName}</span>
+            <button onClick={() => setPendingFile(null)} className="text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-900 dark:hover:text-white flex-shrink-0">
               <span className="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
@@ -613,7 +614,7 @@ export default function Messages() {
           <input ref={fileInputRef} type="file" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
             className="hidden" onChange={handleFileChange} />
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-            className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-secondary hover:bg-secondary/5 rounded-xl transition-colors flex-shrink-0 disabled:opacity-40">
+            className="w-10 h-10 flex items-center justify-center text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-secondary hover:bg-secondary/5 rounded-xl transition-colors flex-shrink-0 disabled:opacity-40">
             {uploading
               ? <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
               : <span className="material-symbols-outlined text-[20px]">attach_file</span>
@@ -622,7 +623,7 @@ export default function Messages() {
           <div className="flex-1 relative">
             <textarea ref={textareaRef} value={draft} onChange={handleTextareaChange} onKeyDown={handleKeyDown}
               placeholder="Type a message…" rows={1}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary/10 focus:border-secondary transition-all resize-none overflow-hidden leading-relaxed"
+              className="w-full bg-slate-50 dark:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-secondary/10 focus:border-secondary transition-all resize-none overflow-hidden leading-relaxed text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 dark:placeholder-slate-600"
               style={{ maxHeight: '120px' }} />
           </div>
           <button onClick={handleSend} disabled={(!draft.trim() && !pendingFile) || !connected || uploading}
@@ -633,12 +634,12 @@ export default function Messages() {
       </div>
     </div>
   ) : (
-    <div className="hidden md:flex flex-1 flex-col items-center justify-center p-8 text-center bg-slate-50/30">
-      <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-        <span className="material-symbols-outlined text-slate-400 text-4xl">chat</span>
+    <div className="hidden md:flex flex-1 flex-col items-center justify-center p-8 text-center bg-slate-50/30 dark:bg-slate-50 dark:bg-slate-100 dark:bg-slate-900/30">
+      <div className="w-20 h-20 bg-slate-100 dark:bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+        <span className="material-symbols-outlined text-slate-500 dark:text-slate-500 dark:text-slate-400 text-4xl">chat</span>
       </div>
-      <h3 className="text-base font-bold text-slate-900 mb-2">Select a Conversation</h3>
-      <p className="text-sm text-slate-500 max-w-xs">Choose a chat from the list to start messaging.</p>
+      <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">Select a Conversation</h3>
+      <p className="text-sm text-slate-600 dark:text-slate-600 dark:text-slate-300 max-w-xs">Choose a chat from the list to start messaging.</p>
     </div>
   );
 
@@ -650,34 +651,34 @@ export default function Messages() {
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* App sidebar */}
         <aside
-          className={[user ? 'hidden lg:flex' : 'hidden', 'flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden flex-shrink-0', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
-          style={{ backgroundColor: SIDEBAR_BG }}
+          className={[user ? 'hidden lg:flex' : 'hidden', 'flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-slate-200 dark:border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden flex-shrink-0', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
+          style={{ backgroundColor: theme === 'dark' ? '#0A192F' : '#ffffff' }}
         >
-          <div className={`flex items-center h-14 border-b border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
-            {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 select-none">Menu</span>}
-            <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+          <div className={`flex items-center h-14 border-b border-slate-200 dark:border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
+            {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white/60 select-none">Menu</span>}
+            <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors">
               <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
             </button>
           </div>
           <nav className="flex-1 min-h-0 py-2 px-2 space-y-0.5 overflow-y-auto">
             {sidebarLinks.map(({ icon, label, active, path }) => (
               <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
-                className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white font-bold border-l-4 border-secondary' : path ? 'text-slate-500 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white' : 'text-slate-300 dark:text-white/30 cursor-default'].join(' ')}>
                 <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
                 {sidebarOpen && <span className="text-sm truncate">{label}</span>}
               </button>
             ))}
           </nav>
-          <div className="mt-auto p-3 space-y-2 border-t border-white/10 flex-shrink-0">
+          <div className="mt-auto p-3 space-y-2 border-t border-slate-200 dark:border-white/10 flex-shrink-0">
             {sidebarOpen && (
-              <div className="bg-white/5 border border-white/10 text-white rounded-xl p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">PRO PLAN</p>
-                <p className="text-xs font-semibold leading-relaxed mb-3 text-white/80">Unlimited active contracts and priority support.</p>
-                <button className="w-full py-2 bg-secondary rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
+              <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/60 mb-1">PRO PLAN</p>
+                <p className="text-xs font-semibold leading-relaxed mb-3 text-slate-900 dark:text-white/60">Unlimited active contracts and priority support.</p>
+                <button className="w-full py-2 bg-secondary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
               </div>
             )}
             <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
-              className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
+              className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-slate-900 dark:text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
               <span className="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>
               {sidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
             </button>
@@ -693,7 +694,7 @@ export default function Messages() {
       {lightboxUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
           onClick={() => setLightboxUrl(null)}>
-          <button className="absolute top-4 right-4 text-white/70 hover:text-white"
+          <button className="absolute top-4 right-4 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white"
             onClick={() => setLightboxUrl(null)}>
             <span className="material-symbols-outlined text-[32px]">close</span>
           </button>
@@ -701,7 +702,7 @@ export default function Messages() {
             className="max-w-[90vw] max-h-[90vh] rounded-xl shadow-2xl object-contain"
             onClick={e => e.stopPropagation()} />
           <button
-            className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors"
+            className="absolute bottom-4 right-4 flex items-center gap-2 px-4 py-2 bg-slate-100 dark:hover:bg-white/10 hover:bg-white/20 text-slate-900 dark:text-white text-sm font-medium rounded-lg transition-colors"
             onClick={e => { e.stopPropagation(); downloadFile(lightboxUrl, lightboxUrl.split('/').pop() ?? 'image'); }}>
             <span className="material-symbols-outlined text-[18px]">download</span>
             Download
