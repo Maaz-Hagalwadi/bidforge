@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 
 import { registerSchema, type RegisterFormValues } from '@/lib/schemas';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { FormField } from '@/components/ui/FormField';
 import { RoleSelector } from '@/components/ui/RoleSelector';
 import { BidForgeLoader } from '@/components/ui/BidForgeLoader';
@@ -28,6 +29,8 @@ const GoogleIcon = () => (
 export default function Register() {
   const navigate = useNavigate();
   const { register: registerUser, loginWithGoogle } = useAuth();
+  const { setTheme } = useTheme();
+  useEffect(() => { setTheme('dark'); }, []);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);

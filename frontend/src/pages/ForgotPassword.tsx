@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link } from 'react-router-dom';
@@ -8,8 +8,11 @@ import { forgotPasswordSchema, type ForgotPasswordFormValues } from '@/lib/schem
 import { authApi } from '@/api/auth';
 import { FormField } from '@/components/ui/FormField';
 import { Navbar } from '@/components/Navbar';
+import { useTheme } from '@/context/ThemeContext';
 
 export default function ForgotPassword() {
+  const { setTheme } = useTheme();
+  useEffect(() => { setTheme('dark'); }, []);
   const [sent, setSent] = useState(false);
 
   const {

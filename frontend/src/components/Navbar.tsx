@@ -7,9 +7,10 @@ interface NavbarProps {
   variant?: 'app' | 'auth';
   authRight?: React.ReactNode;
   navLeft?: React.ReactNode;
+  hideThemeToggle?: boolean;
 }
 
-export function Navbar({ variant = 'app', authRight, navLeft }: NavbarProps) {
+export function Navbar({ variant = 'app', authRight, navLeft, hideThemeToggle = false }: NavbarProps) {
   const { pathname } = useLocation();
   const { isAuthenticated, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -28,7 +29,7 @@ export function Navbar({ variant = 'app', authRight, navLeft }: NavbarProps) {
         {/* Left — hamburger (mobile) + logo */}
         <div className="flex items-center gap-2 flex-shrink-0 z-10">
           {navLeft && <div className="lg:hidden">{navLeft}</div>}
-          <Link to="/">
+          <Link to={isAuthenticated ? dashPath : "/"}>
             <BidForgeLogo variant={theme === 'dark' ? 'light' : 'dark'} />
           </Link>
         </div>
@@ -44,16 +45,18 @@ export function Navbar({ variant = 'app', authRight, navLeft }: NavbarProps) {
 
         {/* Right — actions */}
         <div className="flex items-center gap-2 z-10">
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white transition-all"
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            <span className="material-symbols-outlined text-xl">
-              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-            </span>
-          </button>
+          {/* Theme toggle — hidden on auth pages and where explicitly suppressed */}
+          {variant !== 'auth' && !hideThemeToggle && (
+            <button
+              onClick={toggleTheme}
+              className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white transition-all"
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <span className="material-symbols-outlined text-xl">
+                {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+              </span>
+            </button>
+          )}
 
           {authRight ?? (
             isAuthenticated ? (

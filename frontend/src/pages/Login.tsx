@@ -12,6 +12,7 @@ import {
   otpCodeSchema, type OtpCodeFormValues,
 } from '@/lib/schemas';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { FormField } from '@/components/ui/FormField';
 import { BidForgeLoader } from '@/components/ui/BidForgeLoader';
 import { Navbar } from '@/components/Navbar';
@@ -36,6 +37,9 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, loginWithOtp, loginWithGoogle } = useAuth();
+  const { setTheme } = useTheme();
+
+  useEffect(() => { setTheme('dark'); }, []);
 
   const justRegistered = (location.state as { registered?: boolean; passwordReset?: boolean } | null)?.registered === true;
   const passwordReset = (location.state as { registered?: boolean; passwordReset?: boolean } | null)?.passwordReset === true;
@@ -91,6 +95,7 @@ export default function Login() {
   const onSubmit = async (values: LoginFormValues) => {
     try {
       const u = await login(values);
+      setTheme('light');
       navigate(u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -145,6 +150,7 @@ export default function Login() {
     try {
       const { token } = await authApi.verifyOtp(otpEmail, values.otp);
       const u = await loginWithOtp(token);
+      setTheme('light');
       navigate(u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -176,6 +182,7 @@ export default function Login() {
     setGoogleError(null);
     try {
       const u = await loginWithGoogle(accessToken);
+      setTheme('light');
       navigate(u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -202,6 +209,7 @@ export default function Login() {
     setGoogleError(null);
     try {
       const u = await loginWithGoogle(googlePending!, role);
+      setTheme('light');
       navigate(u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {

@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
+import { useTheme } from '@/context/ThemeContext';
 
 // Professional Unsplash images
 const IMAGES = {
@@ -16,10 +18,13 @@ const STATS = [
 ];
 
 export default function Landing() {
+  const { setTheme } = useTheme();
+  useEffect(() => { setTheme('dark'); }, []);
+
   return (
     <div className="bg-surface text-on-surface">
       {/* ── Nav (navy, centered links) ── */}
-      <Navbar variant="app" />
+      <Navbar variant="app" hideThemeToggle />
 
       <main className="pb-16 md:pb-0">
         {/* ── Hero ── */}
