@@ -1,5 +1,6 @@
 package com.bidforge.app.notification;
 
+import com.bidforge.app.notification.preferences.NotificationPreferenceService;
 import com.bidforge.app.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -16,6 +17,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationPreferenceService notificationPreferenceService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void createNotification(
@@ -25,6 +27,8 @@ public class NotificationService {
             NotificationType type,
             UUID referenceId
     ) {
+        if (!notificationPreferenceService.isEnabled(user, type)) return;
+
         Notification notification = Notification.builder()
                 .user(user)
                 .title(title)

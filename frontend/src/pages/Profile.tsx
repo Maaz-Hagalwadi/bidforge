@@ -1,8 +1,14 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+import { NotificationBell } from '@/components/NotificationBell';
+import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
+import { MobileNavDrawer } from '@/components/MobileNavDrawer';
+import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/sidebar';
 import { userApi } from '@/api/user';
 import { reviewsApi } from '@/api/reviews';
 import type { UserProfile, PortfolioItem } from '@/types/user';
@@ -23,10 +29,151 @@ function parseSkills(skills?: string): string[] {
   return skills.split(',').map(s => s.trim()).filter(Boolean);
 }
 
+function getAuthInitials(name: string) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+interface EditProfileModalProps {
+  form: { name: string; title: string; bio: string; location: string; hourlyRate: string; skills: string; profileImageUrl: string; };
+  saving: boolean;
+  saveErr: string;
+  onChange: (field: string, value: string) => void;
+  onSave: () => void;
+  onClose: () => void;
+}
+
+function EditProfileModal({ form, saving, saveErr, onChange, onSave, onClose }: EditProfileModalProps) {
+  return createPortal(
+    <div onMouseDown={e => e.nativeEvent.stopImmediatePropagation()}>
+      <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none">
+        <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden pointer-events-auto max-h-[90vh] flex flex-col">
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+            <h2 className="text-base font-bold text-slate-900">Edit Profile</h2>
+            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="overflow-y-auto flex-1 px-6 py-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
+                <input value={form.name} onChange={e => onChange('name', e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
+                  placeholder="Your full name" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Professional Title</label>
+                <input value={form.title} onChange={e => onChange('title', e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
+                  placeholder="e.g. Full Stack Developer" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Location</label>
+                <input value={form.location} onChange={e => onChange('location', e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
+                  placeholder="e.g. New York, USA" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Hourly Rate (USD)</label>
+                <input type="number" min={0} value={form.hourlyRate} onChange={e => onChange('hourlyRate', e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
+                  placeholder="e.g. 50" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Profile Photo URL</label>
+                <input value={form.profileImageUrl} onChange={e => onChange('profileImageUrl', e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
+                  placeholder="https://example.com/photo.jpg" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Skills (comma-separated)</label>
+                <input value={form.skills} onChange={e => onChange('skills', e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
+                  placeholder="React, TypeScript, Node.js, PostgreSQL" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">About / Bio</label>
+                <textarea rows={4} value={form.bio} onChange={e => onChange('bio', e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors resize-none"
+                  placeholder="Tell clients about yourself…" />
+              </div>
+            </div>
+            {saveErr && <p className="mt-3 text-xs text-red-500">{saveErr}</p>}
+          </div>
+
+          {/* Footer */}
+          <div className="flex gap-3 px-6 py-4 border-t border-slate-100 flex-shrink-0">
+            <button onClick={onSave} disabled={saving}
+              className="flex-1 bg-secondary text-white text-sm font-semibold py-2.5 rounded-xl hover:brightness-110 disabled:opacity-60 transition-all">
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+            <button onClick={onClose}
+              className="flex-1 border border-slate-200 text-slate-700 text-sm font-semibold py-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user: currentUser, refreshUser } = useAuth();
+  const { pathname } = useLocation();
+  const { user: currentUser, logout, refreshUser } = useAuth();
+  const { theme } = useTheme();
+
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  const sidebarLinks = withActive(
+    currentUser?.role === 'FREELANCER' ? FREELANCER_SIDEBAR : CLIENT_SIDEBAR,
+    pathname
+  );
+
+  const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  const navRight = currentUser ? (
+    <div className="flex items-center gap-1">
+      <NotificationBell />
+      <div className="relative" ref={profileRef}>
+        <button onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen} aria-label="Profile menu"
+          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
+          {currentUser.profileImageUrl ? (
+            <img src={currentUser.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-slate-300 dark:border-white/20" alt={currentUser.name} />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none">{getAuthInitials(currentUser.name)}</div>
+          )}
+          <span className="material-symbols-outlined text-slate-900 dark:text-white/60 text-base leading-none">expand_more</span>
+        </button>
+        {profileOpen && <ProfileDropdown user={currentUser} onUpdated={refreshUser} onLogout={handleLogout} />}
+      </div>
+    </div>
+  ) : null;
+
+  const navLeft = currentUser ? (
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+      <span className="material-symbols-outlined text-[22px]">menu</span>
+    </button>
+  ) : null;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,12 +291,55 @@ export default function Profile() {
     setEditing(false);
   };
 
+  const handleFormChange = (field: string, value: string) =>
+    setForm(f => ({ ...f, [field]: value }));
+
+  const sharedNav = (
+    <>
+      <Navbar variant="app" authRight={navRight} navLeft={navLeft} />
+      {currentUser && <MobileNavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} links={sidebarLinks} onLogout={handleLogout} />}
+    </>
+  );
+
+  const sharedSidebar = currentUser ? (
+    <aside
+      className={['hidden lg:flex flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-slate-200 dark:border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden flex-shrink-0', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
+      style={{ backgroundColor: theme === 'dark' ? '#0A192F' : '#ffffff' }}
+    >
+      <div className={`flex items-center h-14 border-b border-slate-200 dark:border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
+        {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white/60 select-none">Menu</span>}
+        <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors">
+          <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
+        </button>
+      </div>
+      <nav className="flex-1 min-h-0 py-2 px-2 space-y-0.5 overflow-y-auto">
+        {sidebarLinks.map(({ icon, label, active, path }) => (
+          <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
+            className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white font-bold border-l-4 border-secondary' : path ? 'text-slate-500 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white' : 'text-slate-300 dark:text-white/30 cursor-default'].join(' ')}>
+            <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
+            {sidebarOpen && <span className="text-sm truncate">{label}</span>}
+          </button>
+        ))}
+      </nav>
+      <div className="mt-auto p-3 border-t border-slate-200 dark:border-white/10 flex-shrink-0">
+        <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
+          className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-slate-900 dark:text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
+          <span className="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>
+          {sidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
+        </button>
+      </div>
+    </aside>
+  ) : null;
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f0f4f8' }}>
-        <Navbar variant="app" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin" />
+        {sharedNav}
+        <div className="flex flex-1 min-h-0">
+          {sharedSidebar}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-10 h-10 border-4 border-secondary border-t-transparent rounded-full animate-spin" />
+          </div>
         </div>
       </div>
     );
@@ -158,11 +348,14 @@ export default function Profile() {
   if (error || !profile) {
     return (
       <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f0f4f8' }}>
-        <Navbar variant="app" />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300">person_off</span>
-            <p className="mt-3 text-slate-500 text-lg">{error || 'Profile not found.'}</p>
+        {sharedNav}
+        <div className="flex flex-1 min-h-0">
+          {sharedSidebar}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300">person_off</span>
+              <p className="mt-3 text-slate-500 text-lg">{error || 'Profile not found.'}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -177,7 +370,10 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f0f4f8' }}>
-      <Navbar variant="app" />
+      {sharedNav}
+      <div className="flex flex-1 min-h-0">
+        {sharedSidebar}
+        <main className="flex-1 overflow-y-auto">
 
       {/* Hero Banner */}
       <div
@@ -187,15 +383,6 @@ export default function Profile() {
         <div className="absolute inset-0 opacity-10"
           style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #ffffff 1px, transparent 1px), radial-gradient(circle at 80% 20%, #ffffff 1px, transparent 1px)', backgroundSize: '60px 60px' }}
         />
-        {isOwnProfile && !editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="absolute top-4 right-4 md:top-6 md:right-8 flex items-center gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-slate-900 dark:text-white text-sm font-semibold px-4 py-2 rounded-xl border border-white/20 transition-all"
-          >
-            <span className="material-symbols-outlined text-[18px]">edit</span>
-            Edit Profile
-          </button>
-        )}
       </div>
 
       {/* Main Content */}
@@ -224,12 +411,23 @@ export default function Profile() {
 
               {/* Info */}
               <div className="flex-1 min-w-0 pb-1">
-                <div className="flex flex-wrap items-center gap-3 mb-1">
-                  <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{profile.name}</h1>
-                  <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full"
-                    style={{ backgroundColor: '#e8f0fe', color: '#0059bb' }}>
-                    {profile.role.charAt(0) + profile.role.slice(1).toLowerCase()}
-                  </span>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{profile.name}</h1>
+                    <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full"
+                      style={{ backgroundColor: '#e8f0fe', color: '#0059bb' }}>
+                      {profile.role.charAt(0) + profile.role.slice(1).toLowerCase()}
+                    </span>
+                  </div>
+                  {isOwnProfile && !editing && (
+                    <button
+                      onClick={() => setEditing(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-secondary border border-secondary/30 rounded-xl hover:bg-secondary/5 transition-colors flex-shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                      Edit Profile
+                    </button>
+                  )}
                 </div>
 
                 {profile.title && (
@@ -283,75 +481,6 @@ export default function Profile() {
             </div>
           </div>
         </div>
-
-        {/* Edit form error */}
-        {saveErr && (
-          <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm">{saveErr}</div>
-        )}
-
-        {/* Edit Mode Form */}
-        {editing && isOwnProfile && (
-          <div className="bg-white rounded-2xl shadow border border-slate-100 p-6 md:p-8 mb-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-slate-900">Edit Profile</h2>
-              <div className="flex gap-3">
-                <button onClick={cancelEdit} className="px-4 py-2 text-sm font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
-                  Cancel
-                </button>
-                <button onClick={handleSave} disabled={saving}
-                  className="px-5 py-2 text-sm font-semibold text-slate-900 dark:text-white rounded-xl hover:brightness-110 disabled:opacity-60 transition-all"
-                  style={{ backgroundColor: '#0059bb' }}>
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
-                  placeholder="Your full name" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Professional Title</label>
-                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
-                  placeholder="e.g. Full Stack Developer" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Location</label>
-                <input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
-                  placeholder="e.g. New York, USA" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Hourly Rate (USD)</label>
-                <input type="number" min={0} value={form.hourlyRate} onChange={e => setForm(f => ({ ...f, hourlyRate: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
-                  placeholder="e.g. 50" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Profile Photo URL</label>
-                <input value={form.profileImageUrl} onChange={e => setForm(f => ({ ...f, profileImageUrl: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
-                  placeholder="https://example.com/photo.jpg" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Skills (comma-separated)</label>
-                <input value={form.skills} onChange={e => setForm(f => ({ ...f, skills: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
-                  placeholder="React, TypeScript, Node.js, PostgreSQL" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">About / Bio</label>
-                <textarea rows={4} value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors resize-none"
-                  placeholder="Tell clients about yourself, your experience, and what makes you stand out…" />
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Two-column layout */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -606,7 +735,20 @@ export default function Profile() {
         </div>
       </div>
 
-      <Footer />
+        <Footer />
+        </main>
+      </div>
+
+      {editing && isOwnProfile && (
+        <EditProfileModal
+          form={form}
+          saving={saving}
+          saveErr={saveErr}
+          onChange={handleFormChange}
+          onSave={handleSave}
+          onClose={cancelEdit}
+        />
+      )}
     </div>
   );
 }
