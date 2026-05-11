@@ -1,0 +1,23 @@
+CREATE TABLE notification_preference (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL UNIQUE REFERENCES users(id),
+    job_created BOOLEAN NOT NULL DEFAULT TRUE,
+    job_invited BOOLEAN NOT NULL DEFAULT TRUE,
+    bid_placed BOOLEAN NOT NULL DEFAULT TRUE,
+    bid_accepted BOOLEAN NOT NULL DEFAULT TRUE,
+    bid_rejected BOOLEAN NOT NULL DEFAULT TRUE,
+    contract_created BOOLEAN NOT NULL DEFAULT TRUE,
+    contract_submitted BOOLEAN NOT NULL DEFAULT TRUE,
+    contract_completed BOOLEAN NOT NULL DEFAULT TRUE,
+    revision_requested BOOLEAN NOT NULL DEFAULT TRUE,
+    milestone_created BOOLEAN NOT NULL DEFAULT TRUE,
+    milestone_funded BOOLEAN NOT NULL DEFAULT TRUE,
+    milestone_submitted BOOLEAN NOT NULL DEFAULT TRUE,
+    milestone_approved BOOLEAN NOT NULL DEFAULT TRUE,
+    milestone_rejected BOOLEAN NOT NULL DEFAULT TRUE,
+    milestone_refunded BOOLEAN NOT NULL DEFAULT TRUE,
+    payment_released BOOLEAN NOT NULL DEFAULT TRUE,
+    review_received BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);

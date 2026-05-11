@@ -45,6 +45,7 @@ import ArchivedJobs from '@/pages/ArchivedJobs';
 import Payments from '@/pages/Payments';
 import Reviews from '@/pages/Reviews';
 import Disputes from '@/pages/Disputes';
+import Settings from '@/pages/Settings';
 
 export default function App() {
   return (
@@ -100,6 +101,7 @@ export default function App() {
           <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
           <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
           <Route path="/disputes" element={<ProtectedRoute><Disputes /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/browse" element={<BrowseJobs />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/profile/:id" element={<Profile />} />
