@@ -398,34 +398,34 @@ export default function Messages() {
 
   // ── Conversation list ───────────────────────────────────────────────────────
   const ConversationList = (
-    <div className={`${mobileView === 'chat' ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-[320px] lg:w-[360px] flex-shrink-0 border-r border-slate-200 dark:border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0d1c32]`}>
-      <div className="p-4 border-b border-slate-100 dark:border-slate-200 dark:border-slate-700 flex-shrink-0">
+    <div className={`${mobileView === 'chat' ? 'hidden md:flex' : 'flex'} flex-col w-full md:w-[320px] lg:w-[360px] flex-shrink-0 border-r border-slate-200 bg-white`}>
+      <div className="p-4 border-b border-slate-100 flex-shrink-0">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white">Messages</h2>
-          <div className={`flex items-center gap-1.5 text-xs font-semibold ${connected ? 'text-green-600' : 'text-slate-500 dark:text-slate-500 dark:text-slate-400'}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+          <h2 className="text-sm font-bold text-slate-900">Messages</h2>
+          <div className={`flex items-center gap-1.5 text-xs font-semibold ${connected ? 'text-green-600' : 'text-slate-500'}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-green-500' : 'bg-slate-300'}`} />
             {connected ? 'Live' : 'Connecting…'}
           </div>
         </div>
         <div className="relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-[18px]">search</span>
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">search</span>
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search conversations…"
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/10 focus:border-secondary transition-all text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 dark:placeholder-slate-600" />
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/10 focus:border-secondary transition-all text-slate-900 placeholder-slate-400" />
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {loadingRooms ? (
-          <div className="flex items-center justify-center py-12 gap-2 text-slate-500 dark:text-slate-500 dark:text-slate-400 text-sm">
+          <div className="flex items-center justify-center py-12 gap-2 text-slate-500 text-sm">
             <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
             Loading…
           </div>
         ) : filteredRooms.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-12 text-center px-4">
-            <span className="material-symbols-outlined text-4xl text-slate-600 dark:text-slate-300 dark:text-slate-600">chat</span>
-            <p className="text-sm text-slate-600 dark:text-slate-600 dark:text-slate-300">No conversations yet</p>
-            <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400">Conversations appear once a contract is created.</p>
+            <span className="material-symbols-outlined text-4xl text-slate-600">chat</span>
+            <p className="text-sm text-slate-600">No conversations yet</p>
+            <p className="text-xs text-slate-500">Conversations appear once a contract is created.</p>
           </div>
         ) : filteredRooms.map(room => {
           const color = roomColor(room.roomId);
@@ -433,12 +433,12 @@ export default function Messages() {
           const isSelected = selectedRoom?.roomId === room.roomId;
           return (
             <button key={room.roomId} onClick={() => selectRoom(room)}
-              className={`w-full px-4 py-4 flex items-start gap-3 transition-colors text-left border-b border-slate-50 dark:border-slate-200 dark:border-slate-800 ${isSelected ? 'bg-secondary/5 border-r-4 border-r-secondary' : 'hover:bg-slate-50 dark:hover:bg-slate-100 dark:bg-slate-800'}`}>
+              className={`w-full px-4 py-4 flex items-start gap-3 transition-colors text-left border-b border-slate-50 ${isSelected ? 'bg-secondary/5 border-r-4 border-r-secondary' : 'hover:bg-slate-50'}`}>
               <div className="relative flex-shrink-0">
-                <div className={`w-11 h-11 rounded-full ${color} flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none`}>
+                <div className={`w-11 h-11 rounded-full ${color} flex items-center justify-center text-slate-900 text-sm font-bold select-none`}>
                   {getInitials(name)}
                 </div>
-                <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white dark:border-[#0d1c32] rounded-full ${onlineUsers.has(getOtherId(room)) ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full ${onlineUsers.has(getOtherId(room)) ? 'bg-green-500' : 'bg-slate-300'}`} />
                 {(unreadCounts[room.roomId] ?? 0) > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-secondary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                     {unreadCounts[room.roomId] > 99 ? '99+' : unreadCounts[room.roomId]}
@@ -447,9 +447,9 @@ export default function Messages() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-0.5">
-                  <h4 className={`text-sm truncate ${(unreadCounts[room.roomId] ?? 0) > 0 ? 'font-bold text-slate-900 dark:text-white' : 'font-semibold text-slate-700 dark:text-slate-700 dark:text-slate-200'}`}>{name}</h4>
+                  <h4 className={`text-sm truncate ${(unreadCounts[room.roomId] ?? 0) > 0 ? 'font-bold text-slate-900' : 'font-semibold text-slate-700'}`}>{name}</h4>
                 </div>
-                <p className={`text-xs truncate ${(unreadCounts[room.roomId] ?? 0) > 0 ? 'font-semibold text-slate-700 dark:text-slate-700 dark:text-slate-200' : 'text-slate-600 dark:text-slate-600 dark:text-slate-300'}`}>
+                <p className={`text-xs truncate ${(unreadCounts[room.roomId] ?? 0) > 0 ? 'font-semibold text-slate-700' : 'text-slate-600'}`}>
                   {room.jobTitle ?? `Contract #${room.contractId.slice(-6).toUpperCase()}`}
                 </p>
               </div>
