@@ -5,6 +5,7 @@ import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { contractsApi } from '@/api/contracts';
+import { disputesApi } from '@/api/disputes';
 import { milestonesApi } from '@/api/milestones';
 import { reviewsApi } from '@/api/reviews';
 import type { MilestoneResponse } from '@/types/milestone';
@@ -114,6 +115,11 @@ export default function Contracts() {
   const [hoveredStar,      setHoveredStar]      = useState(0);
   const [reviewComment,    setReviewComment]    = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
+
+  const [showDisputeModal,   setShowDisputeModal]   = useState(false);
+  const [disputeReason,      setDisputeReason]      = useState('');
+  const [submittingDispute,  setSubmittingDispute]  = useState(false);
+  const [contractDisputed,   setContractDisputed]   = useState<Set<string>>(new Set());
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -311,6 +317,30 @@ export default function Contracts() {
     } finally {
       setRequestingRevision(false);
     }
+  };
+
+  const handleOpenDispute = async (contract: ContractResponse) => {
+    if (disputeReason.trim().length < 20) {
+      setToast({ message: 'Please provide at least 20 characters explaining the dispute.', error: true });
+      return;
+    }
+    setSubmittingDispute(true);
+    try {
+      await disputesApi.openDispute(contract.id, { reason: disputeReason.trim() });
+      setContractDisputed(prev => new Set([...prev, contract.id]));
+      setShowDisputeModal(false);
+      setDisputeReason('');
+      setToast({ message: 'Dispute filed. Our team will review it shortly.' });
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      if (status === 409) {
+        setToast({ message: 'You already have an open dispute for this contract.', error: true });
+        setShowDisputeModal(false);
+      } else {
+        setToast({ message: msg ?? 'Failed to file dispute. Please try again.', error: true });
+      }
+    } finally { setSubmittingDispute(false); }
   };
 
   const selected = contractId ? contracts.find(c => c.id === contractId) : null;
@@ -1229,6 +1259,26 @@ export default function Contracts() {
                 )}
 
               </div>
+
+              {/* Open Dispute button */}
+              {(contract.status === 'ACTIVE' || contract.status === 'SUBMITTED') && !contractDisputed.has(contract.id) && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <button type="button" onClick={() => setShowDisputeModal(true)}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 border border-red-200 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-50 active:scale-[0.98] transition-all">
+                    <span className="material-symbols-outlined text-[16px]">gavel</span>
+                    Open Dispute
+                  </button>
+                </div>
+              )}
+              {contractDisputed.has(contract.id) && (
+                <div className="mt-4 pt-4 border-t border-slate-100">
+                  <div className="w-full flex items-center justify-center gap-2 py-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl text-sm font-semibold">
+                    <span className="material-symbols-outlined text-[16px]">warning</span>
+                    Dispute Filed
+                  </div>
+                </div>
+              )}
+
               <div className="mt-6 pt-5 border-t border-slate-100 flex items-start gap-3">
                 <span className="material-symbols-outlined text-secondary text-[20px] flex-shrink-0 mt-0.5">info</span>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
@@ -1327,6 +1377,42 @@ export default function Contracts() {
           <Footer />
         </main>
       </div>
+
+      {/* Dispute modal */}
+      {showDisputeModal && contractId && selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-[#0d1c32] rounded-2xl border border-slate-200 dark:border-slate-700 p-6 max-w-lg w-full shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center">
+                <span className="material-symbols-outlined text-red-500 text-xl">gavel</span>
+              </div>
+              <div>
+                <h3 className="text-slate-900 dark:text-white font-bold text-lg">Open Dispute</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{selected.jobTitle}</p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Describe the issue clearly. Our team will review and mediate within 48 hours.</p>
+            <textarea
+              value={disputeReason}
+              onChange={e => setDisputeReason(e.target.value)}
+              placeholder="Explain the dispute in detail (minimum 20 characters)…"
+              rows={5}
+              className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-xl text-sm bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-400/40 focus:border-red-400 resize-none transition-all"
+            />
+            <p className={`text-xs mt-1 ${disputeReason.length < 20 ? 'text-slate-400' : 'text-emerald-500'}`}>{disputeReason.length}/2000</p>
+            <div className="flex gap-3 mt-4">
+              <button type="button" onClick={() => { setShowDisputeModal(false); setDisputeReason(''); }}
+                className="flex-1 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                Cancel
+              </button>
+              <button type="button" onClick={() => handleOpenDispute(selected)} disabled={submittingDispute || disputeReason.trim().length < 20}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                {submittingDispute ? 'Filing…' : 'File Dispute'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Review modal */}
       {showReviewModal && contractId && (() => {

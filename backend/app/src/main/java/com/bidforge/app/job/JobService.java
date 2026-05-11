@@ -102,6 +102,8 @@ public class JobService {
             String deadline,
             String keyword,
             String postedAfter,
+            String experienceLevel,
+            String urgencyLevel,
             Pageable pageable
     ) {
         Specification<Job> spec;
@@ -143,6 +145,16 @@ public class JobService {
         }
         if (postedAfter != null && !postedAfter.isBlank()) {
             spec = spec.and(JobSpecification.postedAfter(java.time.LocalDateTime.parse(postedAfter)));
+        }
+        if (experienceLevel != null && !experienceLevel.isBlank()) {
+            spec = spec.and(JobSpecification.hasExperienceLevel(
+                com.bidforge.app.job.enums.ExperienceLevel.valueOf(experienceLevel)
+            ));
+        }
+        if (urgencyLevel != null && !urgencyLevel.isBlank()) {
+            spec = spec.and(JobSpecification.hasUrgencyLevel(
+                com.bidforge.app.job.enums.UrgencyLevel.valueOf(urgencyLevel)
+            ));
         }
 
         return jobRepository.findAll(spec, pageable).map(this::mapToResponse);

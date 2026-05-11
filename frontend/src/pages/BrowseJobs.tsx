@@ -117,8 +117,8 @@ const SORT_OPTIONS = [
   { label: 'Budget: High → Low', value: 'budgetMin,desc'  },
 ];
 
-type AppliedFilters = { keyword: string; category: string; skills: string; minBudget: string; maxBudget: string; postedAfter: string };
-const EMPTY: AppliedFilters = { keyword: '', category: '', skills: '', minBudget: '', maxBudget: '', postedAfter: '' };
+type AppliedFilters = { keyword: string; category: string; skills: string; minBudget: string; maxBudget: string; postedAfter: string; experienceLevel: string; urgencyLevel: string; deadline: string };
+const EMPTY: AppliedFilters = { keyword: '', category: '', skills: '', minBudget: '', maxBudget: '', postedAfter: '', experienceLevel: '', urgencyLevel: '', deadline: '' };
 
 export default function BrowseJobs() {
   const { user, logout, refreshUser } = useAuth();
@@ -140,6 +140,9 @@ export default function BrowseJobs() {
   const [budgetRange, setBudgetRange] = useState('');
   const [postedDate, setPostedDate] = useState('');
   const [skills, setSkills] = useState('');
+  const [experienceLevel, setExperienceLevel] = useState('');
+  const [urgencyLevel, setUrgencyLevel] = useState('');
+  const [deadline, setDeadline] = useState('');
 
   // Applied state — only updated on Search / Clear click
   const [applied, setApplied] = useState<AppliedFilters>(EMPTY);
@@ -176,6 +179,9 @@ export default function BrowseJobs() {
       maxBudget: applied.maxBudget ? Number(applied.maxBudget) : undefined,
       skills: applied.skills || undefined,
       postedAfter: applied.postedAfter || undefined,
+      experienceLevel: applied.experienceLevel || undefined,
+      urgencyLevel: applied.urgencyLevel || undefined,
+      deadline: applied.deadline ? applied.deadline + 'T23:59:59' : undefined,
     };
     jobsApi.getAll(params)
       .then(setResult)
@@ -207,12 +213,13 @@ export default function BrowseJobs() {
       if (!opt || !('days' in opt)) return '';
       return postedAfterISO(opt.days);
     })();
-    setApplied({ keyword, category, skills, minBudget: range.min, maxBudget: range.max, postedAfter: postedAfterVal });
+    setApplied({ keyword, category, skills, minBudget: range.min, maxBudget: range.max, postedAfter: postedAfterVal, experienceLevel, urgencyLevel, deadline });
     setPage(0);
   };
 
   const handleClear = () => {
     setKeyword(''); setCategory(''); setBudgetRange(''); setPostedDate(''); setSkills('');
+    setExperienceLevel(''); setUrgencyLevel(''); setDeadline('');
     setApplied(EMPTY);
     setPage(0);
   };
@@ -254,7 +261,7 @@ export default function BrowseJobs() {
   ) : null;
 
   // count active filters for badge
-  const activeFilterCount = [applied.keyword, applied.category, applied.minBudget || applied.maxBudget, applied.skills, applied.postedAfter].filter(Boolean).length;
+  const activeFilterCount = [applied.keyword, applied.category, applied.minBudget || applied.maxBudget, applied.skills, applied.postedAfter, applied.experienceLevel, applied.urgencyLevel, applied.deadline].filter(Boolean).length;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -456,6 +463,31 @@ export default function BrowseJobs() {
                         className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
                         {POSTED_DATE_OPTIONS.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
                       </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Experience Level</label>
+                      <select value={experienceLevel} onChange={e => setExperienceLevel(e.target.value)}
+                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                        <option value="">Any Level</option>
+                        <option value="ENTRY">Entry Level</option>
+                        <option value="INTERMEDIATE">Intermediate</option>
+                        <option value="EXPERT">Expert</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Urgency</label>
+                      <select value={urgencyLevel} onChange={e => setUrgencyLevel(e.target.value)}
+                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                        <option value="">Any Urgency</option>
+                        <option value="LOW">Low</option>
+                        <option value="NORMAL">Normal</option>
+                        <option value="HIGH">High / Urgent</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Deadline Before</label>
+                      <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)}
+                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
                     </div>
                   </div>
                   {/* Mobile: Clear + Search inside expanded panel */}
