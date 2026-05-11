@@ -14,10 +14,12 @@ public class ChatRoomResponse {
     private UUID contractId;
     private Long clientId;
     private String clientName;
+    private String clientProfileImageUrl;
     private boolean clientOnline;
     private LocalDateTime clientLastSeen;
     private Long freelancerId;
     private String freelancerName;
+    private String freelancerProfileImageUrl;
     private boolean freelancerOnline;
     private LocalDateTime freelancerLastSeen;
     private String jobTitle;
@@ -28,10 +30,12 @@ public class ChatRoomResponse {
                 .contractId(room.getContract().getId())
                 .clientId(room.getClient().getId())
                 .clientName(room.getClient().getName())
+                .clientProfileImageUrl(room.getClient().getProfileImageUrl())
                 .clientOnline(room.getClient().isOnline())
                 .clientLastSeen(room.getClient().getLastSeen())
                 .freelancerId(room.getFreelancer().getId())
                 .freelancerName(room.getFreelancer().getName())
+                .freelancerProfileImageUrl(room.getFreelancer().getProfileImageUrl())
                 .freelancerOnline(room.getFreelancer().isOnline())
                 .freelancerLastSeen(room.getFreelancer().getLastSeen())
                 .jobTitle(room.getContract().getJob().getTitle())

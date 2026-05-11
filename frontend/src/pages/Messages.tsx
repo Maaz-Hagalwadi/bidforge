@@ -372,6 +372,10 @@ export default function Messages() {
     return user?.id === room.clientId ? room.freelancerId : room.clientId;
   }
 
+  function getOtherPhoto(room: ChatRoom): string | undefined {
+    return user?.id === room.clientId ? room.freelancerProfileImageUrl : room.clientProfileImageUrl;
+  }
+
   const navLeft = (
     <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
       <span className="material-symbols-outlined text-[22px]">menu</span>
@@ -428,16 +432,21 @@ export default function Messages() {
             <p className="text-xs text-slate-500">Conversations appear once a contract is created.</p>
           </div>
         ) : filteredRooms.map(room => {
-          const color = roomColor(room.roomId);
           const name = getOtherName(room);
+          const photo = getOtherPhoto(room);
           const isSelected = selectedRoom?.roomId === room.roomId;
           return (
             <button key={room.roomId} onClick={() => selectRoom(room)}
               className={`w-full px-4 py-4 flex items-start gap-3 transition-colors text-left border-b border-slate-50 ${isSelected ? 'bg-secondary/5 border-r-4 border-r-secondary' : 'hover:bg-slate-50'}`}>
               <div className="relative flex-shrink-0">
-                <div className={`w-11 h-11 rounded-full ${color} flex items-center justify-center text-slate-900 text-sm font-bold select-none`}>
-                  {getInitials(name)}
-                </div>
+                {photo ? (
+                  <img src={photo} alt={name}
+                    className="w-11 h-11 rounded-full object-cover border border-slate-200" />
+                ) : (
+                  <div className={`w-11 h-11 rounded-full ${roomColor(room.roomId)} flex items-center justify-center text-slate-900 text-sm font-bold select-none`}>
+                    {getInitials(name)}
+                  </div>
+                )}
                 <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white rounded-full ${onlineUsers.has(getOtherId(room)) ? 'bg-green-500' : 'bg-slate-300'}`} />
                 {(unreadCounts[room.roomId] ?? 0) > 0 && (
                   <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-secondary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
@@ -470,9 +479,14 @@ export default function Messages() {
             <button onClick={() => setMobileView('list')} className="md:hidden p-1.5 -ml-1 text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-900 dark:hover:text-white transition-colors">
               <span className="material-symbols-outlined text-[22px]">arrow_back</span>
             </button>
-            <div className={`w-10 h-10 rounded-full ${roomColor(selectedRoom.roomId)} flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none flex-shrink-0`}>
-              {getInitials(getOtherName(selectedRoom))}
-            </div>
+            {getOtherPhoto(selectedRoom) ? (
+              <img src={getOtherPhoto(selectedRoom)} alt={getOtherName(selectedRoom)}
+                className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-600 flex-shrink-0" />
+            ) : (
+              <div className={`w-10 h-10 rounded-full ${roomColor(selectedRoom.roomId)} flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none flex-shrink-0`}>
+                {getInitials(getOtherName(selectedRoom))}
+              </div>
+            )}
             <div>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">{getOtherName(selectedRoom)}</h3>
               <div className="flex items-center gap-1.5 text-xs font-medium">
