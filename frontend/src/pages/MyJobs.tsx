@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext';
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -13,7 +14,6 @@ import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { JobInviteStatus, JobResponse } from '@/types/job';
 
-const SIDEBAR_BG = '#0A192F';
 
 const CATEGORIES = [
   'Software Development', 'UI/UX Design', 'Digital Marketing', 'Data Science',
@@ -168,7 +168,7 @@ function EditJobModal({ job, onClose, onSaved }: {
                 <option value="">Select a category</option>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
-              <span className="material-symbols-outlined absolute right-3 top-2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+              <span className="material-symbols-outlined absolute right-3 top-2 text-slate-500 dark:text-slate-400 pointer-events-none text-[18px]">expand_more</span>
             </div>
           </div>
 
@@ -201,7 +201,7 @@ function EditJobModal({ job, onClose, onSaved }: {
               <div className="flex items-center gap-2">
                 <input value={budgetMin} onChange={e => setBudgetMin(e.target.value)} type="number" min="1" placeholder="Min"
                   className="w-full px-2.5 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors" />
-                <span className="text-slate-400 flex-shrink-0 text-xs">–</span>
+                <span className="text-slate-500 dark:text-slate-400 flex-shrink-0 text-xs">–</span>
                 <input value={budgetMax} onChange={e => setBudgetMax(e.target.value)} type="number" min="1" placeholder="Max"
                   className="w-full px-2.5 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors" />
               </div>
@@ -220,7 +220,7 @@ function EditJobModal({ job, onClose, onSaved }: {
                   <option value="INTERMEDIATE">Intermediate</option>
                   <option value="EXPERT">Expert</option>
                 </select>
-                <span className="material-symbols-outlined absolute right-3 top-2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+                <span className="material-symbols-outlined absolute right-3 top-2 text-slate-500 dark:text-slate-400 pointer-events-none text-[18px]">expand_more</span>
               </div>
             </div>
             <div>
@@ -233,7 +233,7 @@ function EditJobModal({ job, onClose, onSaved }: {
                   <option value="NORMAL">Normal</option>
                   <option value="HIGH">High — Urgent Hiring</option>
                 </select>
-                <span className="material-symbols-outlined absolute right-3 top-2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+                <span className="material-symbols-outlined absolute right-3 top-2 text-slate-500 dark:text-slate-400 pointer-events-none text-[18px]">expand_more</span>
               </div>
             </div>
           </div>
@@ -367,7 +367,7 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
               <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Search Freelancer</label>
               {selected ? (
                 <div className="flex items-center gap-3 px-3 py-2.5 border border-secondary/40 bg-secondary/5 rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-xs font-bold flex-shrink-0">
                     {selected.profileImageUrl ? <img src={selected.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt={selected.name} /> : getInitialsFrom(selected.name)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -393,7 +393,7 @@ function InviteModal({ job, onClose }: { job: JobResponse; onClose: () => void }
                       ) : results.map(r => (
                         <button key={r.id} onClick={() => { setSelected(r); setResults([]); setQuery(''); }}
                           className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-50 transition-colors text-left">
-                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-xs font-bold flex-shrink-0">
                             {r.profileImageUrl ? <img src={r.profileImageUrl} className="w-8 h-8 rounded-full object-cover" alt={r.name} /> : getInitialsFrom(r.name)}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -480,7 +480,7 @@ function InviteesModal({ job, onClose }: { job: JobResponse; onClose: () => void
               <button key={key} onClick={() => setTab(key)}
                 className={['flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', tab === key ? 'bg-secondary text-white' : 'bg-slate-100 text-on-surface-variant hover:bg-slate-200'].join(' ')}>
                 {label}
-                <span className={['text-[10px] px-1.5 py-0.5 rounded-full font-bold', tab === key ? 'bg-white/20 text-white' : 'bg-white text-on-surface-variant'].join(' ')}>{counts[key]}</span>
+                <span className={['text-[10px] px-1.5 py-0.5 rounded-full font-bold', tab === key ? 'bg-white/20 text-slate-900 dark:text-white' : 'bg-white text-on-surface-variant'].join(' ')}>{counts[key]}</span>
               </button>
             ))}
           </div>
@@ -492,19 +492,19 @@ function InviteesModal({ job, onClose }: { job: JobResponse; onClose: () => void
             </div>
           ) : invitees.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-10 text-center">
-              <span className="material-symbols-outlined text-4xl text-slate-300">group</span>
+              <span className="material-symbols-outlined text-4xl text-slate-600 dark:text-slate-300">group</span>
               <p className="text-sm text-on-surface-variant">No freelancers invited yet.</p>
             </div>
           ) : visible.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-center">
-              <span className="material-symbols-outlined text-3xl text-slate-300">person_search</span>
+              <span className="material-symbols-outlined text-3xl text-slate-600 dark:text-slate-300">person_search</span>
               <p className="text-sm text-on-surface-variant">No invitees with this status.</p>
             </div>
           ) : visible.map(inv => {
             const badge = STATUS_BADGE[inv.status] ?? STATUS_BADGE.INVITED;
             return (
               <div key={inv.inviteId} className="flex items-center gap-3 px-4 py-3 rounded-xl border border-outline-variant bg-slate-50">
-                <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-xs font-bold flex-shrink-0">
                   {inv.freelancerName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -530,6 +530,7 @@ function InviteesModal({ job, onClose }: { job: JobResponse; onClose: () => void
 
 export default function MyJobs() {
   const { user, logout, refreshUser } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const sidebarLinks = withActive(CLIENT_SIDEBAR, pathname);
@@ -733,7 +734,7 @@ export default function MyJobs() {
   };
 
   const navLeft = (
-    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
+    <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
       <span className="material-symbols-outlined text-[22px]">menu</span>
     </button>
   );
@@ -743,13 +744,13 @@ export default function MyJobs() {
       <NotificationBell />
       <div className="relative" ref={profileRef}>
         <button onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen} aria-label="Profile menu"
-          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-white/10 transition-colors">
+          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
           {user?.profileImageUrl ? (
-            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-white/20" alt={user.name} />
+            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-slate-300 dark:border-white/20" alt={user.name} />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-sm font-bold select-none">{initials}</div>
+            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none">{initials}</div>
           )}
-          <span className="material-symbols-outlined text-white/60 text-base leading-none">expand_more</span>
+          <span className="material-symbols-outlined text-slate-900 dark:text-white/60 text-base leading-none">expand_more</span>
         </button>
         {profileOpen && user && <ProfileDropdown user={user} onUpdated={refreshUser} onLogout={handleLogout} />}
       </div>
@@ -764,34 +765,34 @@ export default function MyJobs() {
       <div className="flex flex-1 min-h-0">
         {/* Sidebar */}
         <aside
-          className={['hidden lg:flex flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
-          style={{ backgroundColor: SIDEBAR_BG }}
+          className={['hidden lg:flex flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-slate-200 dark:border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
+          style={{ backgroundColor: theme === 'dark' ? '#0A192F' : '#ffffff' }}
         >
-          <div className={`flex items-center h-14 border-b border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
-            {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 select-none">Menu</span>}
-            <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+          <div className={`flex items-center h-14 border-b border-slate-200 dark:border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
+            {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white/60 select-none">Menu</span>}
+            <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors">
               <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
             </button>
           </div>
           <nav className="flex-1 min-h-0 py-2 px-2 space-y-0.5 overflow-y-auto">
             {sidebarLinks.map(({ icon, label, active, path }) => (
               <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
-                className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white font-medium' : 'text-white/30 cursor-default font-medium'].join(' ')}>
+                className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white font-bold border-l-4 border-secondary' : path ? 'text-slate-500 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white font-medium' : 'text-slate-300 dark:text-white/30 cursor-default font-medium'].join(' ')}>
                 <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
                 {sidebarOpen && <span className="text-sm truncate">{label}</span>}
               </button>
             ))}
           </nav>
-          <div className="mt-auto p-3 space-y-2 border-t border-white/10 flex-shrink-0">
+          <div className="mt-auto p-3 space-y-2 border-t border-slate-200 dark:border-white/10 flex-shrink-0">
             {sidebarOpen && (
-              <div className="bg-white/5 border border-white/10 text-white rounded-xl p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">PRO PLAN</p>
-                <p className="text-xs font-semibold leading-relaxed mb-3 text-white/80">Unlimited active contracts and priority support.</p>
-                <button className="w-full py-2 bg-secondary rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
+              <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/60 mb-1">PRO PLAN</p>
+                <p className="text-xs font-semibold leading-relaxed mb-3 text-slate-900 dark:text-white/60">Unlimited active contracts and priority support.</p>
+                <button className="w-full py-2 bg-secondary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
               </div>
             )}
             <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
-              className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
+              className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-slate-900 dark:text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
               <span className="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>
               {sidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
             </button>
@@ -892,7 +893,7 @@ export default function MyJobs() {
               <PageLoader message="Loading your jobs…" />
             ) : filtered.length === 0 ? (
               <div className="tonal-card rounded-xl flex flex-col items-center gap-4 py-20 text-center">
-                <span className="material-symbols-outlined text-5xl text-slate-300">work_off</span>
+                <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300">work_off</span>
                 <p className="text-on-surface font-semibold">No jobs found</p>
                 <p className="text-sm text-on-surface-variant max-w-xs">
                   {activeJobs.length === 0
@@ -1014,7 +1015,7 @@ export default function MyJobs() {
                                   {skills.slice(0, 4).map(s => (
                                     <span key={s} className="px-2 py-0.5 bg-slate-100 rounded text-[11px] text-slate-500">{s}</span>
                                   ))}
-                                  {skills.length > 4 && <span className="text-[11px] text-slate-400">+{skills.length - 4}</span>}
+                                  {skills.length > 4 && <span className="text-[11px] text-slate-500 dark:text-slate-400">+{skills.length - 4}</span>}
                                 </div>
                               )}
                             </div>
@@ -1083,7 +1084,7 @@ export default function MyJobs() {
                               {skills.slice(0, 3).map(s => (
                                 <span key={s} className="px-1.5 py-0.5 bg-slate-50 border border-slate-200 rounded text-[11px] text-slate-500">{s}</span>
                               ))}
-                              {skills.length > 3 && <span className="text-[11px] text-slate-400">+{skills.length - 3}</span>}
+                              {skills.length > 3 && <span className="text-[11px] text-slate-500 dark:text-slate-400">+{skills.length - 3}</span>}
                             </div>
                           )}
                           <div className="flex-1" />
@@ -1166,7 +1167,7 @@ export default function MyJobs() {
                 Cancel
               </button>
               <button onClick={() => handleArchive(archiveConfirmJob)} disabled={archiveLoading}
-                className="flex-1 py-2.5 bg-red-500 text-white text-sm font-bold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-60">
+                className="flex-1 py-2.5 bg-red-500 text-slate-900 dark:text-white text-sm font-bold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-60">
                 {archiveLoading ? 'Archiving…' : 'Archive Job'}
               </button>
             </div>

@@ -4,7 +4,7 @@ interface BidForgeLoaderProps {
 
 export function BidForgeLoader({ message = 'Loading…' }: BidForgeLoaderProps) {
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-dark-navy">
+    <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-50 dark:bg-dark-navy">
       <div className="relative mb-6 flex items-center justify-center">
         <span className="absolute w-24 h-24 rounded-2xl border-[3px] border-secondary/20 border-t-secondary animate-spin" />
         <svg width="56" height="56" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -19,7 +19,7 @@ export function BidForgeLoader({ message = 'Loading…' }: BidForgeLoaderProps) 
           <polyline points="9,27 18,18 27,27" stroke="#7dd3fc" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
         </svg>
       </div>
-      <p className="text-white/60 text-label-md tracking-widest uppercase animate-pulse">{message}</p>
+      <p className="text-slate-500 dark:text-white/60 text-label-md tracking-widest uppercase animate-pulse">{message}</p>
     </div>
   );
 }

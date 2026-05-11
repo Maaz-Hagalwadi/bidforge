@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext';
 import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useForm } from 'react-hook-form';
@@ -14,7 +15,6 @@ import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { postJobSchema, type PostJobFormValues } from '@/lib/schemas';
 
 
-const SIDEBAR_BG = '#0A192F';
 
 const CATEGORIES = [
   'Software Development',
@@ -43,6 +43,7 @@ function getInitials(name: string) {
 
 export default function PostJob() {
   const { user, logout, refreshUser } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const sidebarLinks = withActive(CLIENT_SIDEBAR, pathname);
@@ -168,13 +169,13 @@ export default function PostJob() {
       <NotificationBell />
       <div className="relative" ref={profileRef}>
         <button onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen} aria-label="Profile menu"
-          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-white/10 transition-colors">
+          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
           {user?.profileImageUrl ? (
-            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-white/20" alt={user.name} />
+            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-slate-300 dark:border-white/20" alt={user.name} />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-sm font-bold select-none">{initials}</div>
+            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none">{initials}</div>
           )}
-          <span className="material-symbols-outlined text-white/60 text-base leading-none">expand_more</span>
+          <span className="material-symbols-outlined text-slate-900 dark:text-white/60 text-base leading-none">expand_more</span>
         </button>
         {profileOpen && user && <ProfileDropdown user={user} onUpdated={refreshUser} onLogout={handleLogout} />}
       </div>
@@ -188,34 +189,34 @@ export default function PostJob() {
       <div className="flex flex-1 min-h-0">
         {/* ── Sidebar ── */}
         <aside
-          className={['hidden lg:flex flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
-          style={{ backgroundColor: SIDEBAR_BG }}
+          className={['hidden lg:flex flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-slate-200 dark:border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
+          style={{ backgroundColor: theme === 'dark' ? '#0A192F' : '#ffffff' }}
         >
-          <div className={`flex items-center h-14 border-b border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
-            {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 select-none">Menu</span>}
-            <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+          <div className={`flex items-center h-14 border-b border-slate-200 dark:border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
+            {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white/60 select-none">Menu</span>}
+            <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors">
               <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
             </button>
           </div>
           <nav className="flex-1 min-h-0 py-2 px-2 space-y-0.5 overflow-y-auto">
             {sidebarLinks.map(({ icon, label, path }) => (
               <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
-                className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', path ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', path ? 'text-slate-500 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white' : 'text-slate-300 dark:text-white/30 cursor-default'].join(' ')}>
                 <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
                 {sidebarOpen && <span className="text-sm truncate">{label}</span>}
               </button>
             ))}
           </nav>
-          <div className="mt-auto p-3 space-y-2 border-t border-white/10 flex-shrink-0">
+          <div className="mt-auto p-3 space-y-2 border-t border-slate-200 dark:border-white/10 flex-shrink-0">
             {sidebarOpen && (
-              <div className="bg-white/5 border border-white/10 text-white rounded-xl p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">PRO PLAN</p>
-                <p className="text-xs font-semibold leading-relaxed mb-3 text-white/80">Unlimited active contracts and priority support.</p>
-                <button className="w-full py-2 bg-secondary rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
+              <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/60 mb-1">PRO PLAN</p>
+                <p className="text-xs font-semibold leading-relaxed mb-3 text-slate-900 dark:text-white/60">Unlimited active contracts and priority support.</p>
+                <button className="w-full py-2 bg-secondary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
               </div>
             )}
             <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
-              className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
+              className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-slate-900 dark:text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
               <span className="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>
               {sidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
             </button>
@@ -270,7 +271,7 @@ export default function PostJob() {
                       <input {...register('title')} type="text" placeholder="e.g. Senior React Developer for Fintech Dashboard"
                         className="w-full px-4 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all" />
                       {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title.message}</p>}
-                      <p className="text-xs text-slate-400 mt-1">Keep it clear and descriptive to attract the right talent.</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1">Keep it clear and descriptive to attract the right talent.</p>
                     </div>
 
                     <div>
@@ -281,7 +282,7 @@ export default function PostJob() {
                           <option value="">Select a category</option>
                           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">expand_more</span>
+                        <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-500 dark:text-slate-500 dark:text-slate-400 pointer-events-none">expand_more</span>
                       </div>
                       {errors.category && <p className="text-xs text-red-500 mt-1">{errors.category.message}</p>}
                     </div>
@@ -328,7 +329,7 @@ export default function PostJob() {
                         <div className="flex items-center gap-2">
                           <input {...register('budgetMin')} type="number" min="1" placeholder="Min"
                             className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all" />
-                          <span className="text-slate-400 flex-shrink-0">–</span>
+                          <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400 flex-shrink-0">–</span>
                           <input {...register('budgetMax')} type="number" min="1" placeholder="Max"
                             className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all" />
                         </div>
@@ -347,7 +348,7 @@ export default function PostJob() {
                             <option value="INTERMEDIATE">Intermediate</option>
                             <option value="EXPERT">Expert</option>
                           </select>
-                          <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">expand_more</span>
+                          <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-500 dark:text-slate-500 dark:text-slate-400 pointer-events-none">expand_more</span>
                         </div>
                         {errors.experienceLevel && <p className="text-xs text-red-500 mt-1">{errors.experienceLevel.message}</p>}
                       </div>
@@ -364,7 +365,7 @@ export default function PostJob() {
                             <option value="NORMAL">Normal</option>
                             <option value="HIGH">High — Urgent Hiring</option>
                           </select>
-                          <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">expand_more</span>
+                          <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-500 dark:text-slate-500 dark:text-slate-400 pointer-events-none">expand_more</span>
                         </div>
                         {errors.urgencyLevel && <p className="text-xs text-red-500 mt-1">{errors.urgencyLevel.message}</p>}
                       </div>
@@ -376,7 +377,7 @@ export default function PostJob() {
                         <input {...register('deadline')} type="date"
                           min={new Date().toISOString().split('T')[0]}
                           className="w-full px-4 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all" />
-                        <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-400 pointer-events-none">calendar_today</span>
+                        <span className="material-symbols-outlined absolute right-3 top-2.5 text-slate-500 dark:text-slate-500 dark:text-slate-400 pointer-events-none">calendar_today</span>
                       </div>
                       {errors.deadline && <p className="mt-1 text-xs text-red-500">{errors.deadline.message}</p>}
                     </div>
@@ -412,15 +413,15 @@ export default function PostJob() {
                           Add
                         </button>
                       </div>
-                      <p className="text-xs text-slate-400 mt-1">Press Enter or comma to add multiple skills.</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1">Press Enter or comma to add multiple skills.</p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-1.5">Attachment URL</label>
                       <div className="border-2 border-dashed border-outline-variant rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <span className="material-symbols-outlined text-[40px] text-slate-400 mb-2">cloud_upload</span>
+                        <span className="material-symbols-outlined text-[40px] text-slate-500 dark:text-slate-500 dark:text-slate-400 mb-2">cloud_upload</span>
                         <p className="text-sm text-slate-700 font-semibold mb-1">Paste a file URL below</p>
-                        <p className="text-xs text-slate-400 mb-3">PDF, DOC, JPG, or ZIP (paste hosted URL)</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mb-3">PDF, DOC, JPG, or ZIP (paste hosted URL)</p>
                         <input {...register('attachmentUrl')} type="url" placeholder="https://example.com/brief.pdf"
                           className="w-full max-w-sm px-4 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all text-center" />
                       </div>
@@ -448,7 +449,7 @@ export default function PostJob() {
               <div className="col-span-12 lg:col-span-3 space-y-6">
 
                 {/* Tips card */}
-                <div className="rounded-xl p-6 text-white space-y-4" style={{ backgroundColor: '#0A192F' }}>
+                <div className="rounded-xl p-6 text-slate-900 dark:text-white space-y-4" style={{ backgroundColor: '#0A192F' }}>
                   <h3 className="text-lg font-bold">Tips for a Great Post</h3>
                   <ul className="space-y-3">
                     {[
@@ -458,7 +459,7 @@ export default function PostJob() {
                     ].map(({ icon, text }) => (
                       <li key={icon} className="flex gap-3">
                         <span className="material-symbols-outlined text-secondary text-[20px] flex-shrink-0 mt-0.5">{icon}</span>
-                        <p className="text-sm text-white/80 leading-relaxed">{text}</p>
+                        <p className="text-sm text-slate-900 dark:text-white/60 leading-relaxed">{text}</p>
                       </li>
                     ))}
                   </ul>
@@ -498,7 +499,7 @@ export default function PostJob() {
                       <div className="space-y-2">
                         {invitees.map(f => (
                           <div key={f.id} className="flex items-center gap-2 px-3 py-2 bg-secondary/5 border border-secondary/20 rounded-lg">
-                            <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                            <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-[11px] font-bold flex-shrink-0">
                               {f.profileImageUrl
                                 ? <img src={f.profileImageUrl} className="w-7 h-7 rounded-full object-cover" alt={f.name} />
                                 : getInitials(f.name)}
@@ -538,7 +539,7 @@ export default function PostJob() {
                               .map(r => (
                                 <button key={r.id} type="button" onClick={() => addInvitee(r)}
                                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors text-left">
-                                  <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
+                                  <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-[11px] font-bold flex-shrink-0">
                                     {r.profileImageUrl
                                       ? <img src={r.profileImageUrl} className="w-7 h-7 rounded-full object-cover" alt={r.name} />
                                       : getInitials(r.name)}
@@ -605,12 +606,12 @@ export default function PostJob() {
       )}
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+      <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-slate-200 dark:border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
         {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-slate-200 dark:border-white/10' : ''}`}>
             {row.map(({ icon, short, path }) => (
               <button key={short} onClick={() => path && navigate(path)}
-                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', path ? 'text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white' : 'text-slate-300 dark:text-white/30 cursor-default'].join(' ')}>
                 <span className="material-symbols-outlined text-[20px]">{icon}</span>
                 <span className="text-[9px] font-semibold leading-none">{short}</span>
               </button>

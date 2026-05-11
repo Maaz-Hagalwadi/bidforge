@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext';
 import { useState, useRef, useEffect } from 'react';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useParams, useNavigate, useLocation, type NavigateFunction } from 'react-router-dom';
@@ -12,7 +13,6 @@ import { PageLoader } from '@/components/ui/PageLoader';
 import { Toast } from '@/components/Toast';
 import type { BidResponse, JobResponse } from '@/types/job';
 
-const SIDEBAR_BG = '#0A192F';
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   DRAFT:     { label: 'Draft',     cls: 'bg-slate-100 text-slate-600'    },
@@ -74,6 +74,7 @@ function timeAgo(d: string) {
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>();
+  const { theme } = useTheme();
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -117,20 +118,20 @@ export default function JobDetail() {
       <NotificationBell />
       <div className="relative" ref={profileRef}>
         <button onClick={() => setProfileOpen(o => !o)} aria-expanded={profileOpen} aria-label="Profile menu"
-          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-white/10 transition-colors">
+          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
           {user.profileImageUrl ? (
-            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-white/20" alt={user.name} />
+            <img src={user.profileImageUrl} className="w-8 h-8 rounded-full object-cover border-2 border-slate-300 dark:border-white/20" alt={user.name} />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-sm font-bold select-none">{initials}</div>
+            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none">{initials}</div>
           )}
-          <span className="material-symbols-outlined text-white/60 text-base leading-none">expand_more</span>
+          <span className="material-symbols-outlined text-slate-900 dark:text-white/60 text-base leading-none">expand_more</span>
         </button>
         {profileOpen && <ProfileDropdown user={user} onUpdated={refreshUser} onLogout={handleLogout} />}
       </div>
     </div>
   ) : (
     <button onClick={() => navigate('/login')}
-      className="px-4 py-1.5 border border-white/30 text-white text-sm font-semibold rounded-lg hover:bg-white/10 transition-colors">
+      className="px-4 py-1.5 border border-white/30 text-slate-900 dark:text-white text-sm font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
       Log In
     </button>
   );
@@ -141,12 +142,12 @@ export default function JobDetail() {
 
       <div className="flex flex-1 min-h-0">
         <aside
-          className={[user ? 'hidden lg:flex' : 'hidden', 'flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
-          style={{ backgroundColor: SIDEBAR_BG }}
+          className={[user ? 'hidden lg:flex' : 'hidden', 'flex-col sticky top-16 h-[calc(100vh-4rem)] border-r border-slate-200 dark:border-white/10 transition-[width] duration-300 ease-in-out overflow-hidden', sidebarOpen ? 'w-64' : 'w-16'].join(' ')}
+          style={{ backgroundColor: theme === 'dark' ? '#0A192F' : '#ffffff' }}
         >
-          <div className={`flex items-center h-14 border-b border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
-            {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 select-none">Menu</span>}
-            <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+          <div className={`flex items-center h-14 border-b border-slate-200 dark:border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
+            {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white/60 select-none">Menu</span>}
+            <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors">
               <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
             </button>
           </div>
@@ -155,24 +156,24 @@ export default function JobDetail() {
               const active = label === activeLabel;
               return (
                 <button key={label} onClick={() => path && navigate(path)} title={!sidebarOpen ? label : undefined}
-                  className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-white/10 text-white font-bold border-l-4 border-secondary' : path ? 'text-white/60 hover:bg-white/10 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                  className={['w-full flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150 font-medium', sidebarOpen ? 'px-3' : 'justify-center px-2', active ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white font-bold border-l-4 border-secondary' : path ? 'text-slate-500 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white' : 'text-slate-300 dark:text-white/30 cursor-default'].join(' ')}>
                   <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
                   {sidebarOpen && <span className="text-sm truncate">{label}</span>}
                 </button>
               );
             })}
           </nav>
-          <div className="mt-auto p-3 space-y-2 border-t border-white/10 flex-shrink-0">
+          <div className="mt-auto p-3 space-y-2 border-t border-slate-200 dark:border-white/10 flex-shrink-0">
             {sidebarOpen && (
-              <div className="bg-white/5 border border-white/10 text-white rounded-xl p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">PRO PLAN</p>
-                <p className="text-xs font-semibold leading-relaxed mb-3 text-white/80">Unlimited active contracts and priority support.</p>
-                <button className="w-full py-2 bg-secondary rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
+              <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/60 mb-1">PRO PLAN</p>
+                <p className="text-xs font-semibold leading-relaxed mb-3 text-slate-900 dark:text-white/60">Unlimited active contracts and priority support.</p>
+                <button className="w-full py-2 bg-secondary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
               </div>
             )}
             {user && (
-              <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
-                className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
+            <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
+                className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-slate-900 dark:text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
                 <span className="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>
                 {sidebarOpen && <span className="text-sm font-medium">Sign Out</span>}
               </button>
@@ -192,7 +193,7 @@ export default function JobDetail() {
               <PageLoader message="Loading job…" />
             ) : error ? (
               <div className="tonal-card rounded-xl flex flex-col items-center gap-4 py-20 text-center">
-                <span className="material-symbols-outlined text-5xl text-slate-300">error_outline</span>
+                <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300 dark:text-slate-600">error_outline</span>
                 <p className="text-on-surface font-semibold">{error}</p>
                 <button onClick={() => navigate('/browse')}
                   className="mt-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 transition-all">
@@ -209,14 +210,14 @@ export default function JobDetail() {
       </div>
 
       {user && (
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-slate-200 dark:border-white/10 flex flex-col" style={{ backgroundColor: '#0A192F' }}>
           {[sidebarLinks.slice(0, 4), sidebarLinks.slice(4)].map((row, ri) => (
-            <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+            <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-slate-200 dark:border-white/10' : ''}`}>
               {row.map(({ icon, short, label, path }) => {
                 const active = label === activeLabel;
                 return (
                   <button key={short} onClick={() => path && navigate(path)}
-                    className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-white/50 hover:text-white' : 'text-white/30 cursor-default'].join(' ')}>
+                    className={['flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors', active ? 'text-secondary' : path ? 'text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white' : 'text-slate-300 dark:text-white/30 cursor-default'].join(' ')}>
                     <span className="material-symbols-outlined text-[20px]">{icon}</span>
                     <span className="text-[9px] font-semibold leading-none">{short}</span>
                   </button>
@@ -370,7 +371,7 @@ function JobDetailContent({
         {/* My Bid status (if already bid) */}
         {canBid && myBid && (
           <div className={`bg-white rounded-xl p-6 border shadow-[0px_4px_12px_rgba(10,25,47,0.05)] flex items-start gap-4 ${myBid.status === 'ACCEPTED' ? 'border-green-200' : myBid.status === 'REJECTED' ? 'border-slate-200' : 'border-amber-200'}`}>
-            <span className={`material-symbols-outlined text-[28px] flex-shrink-0 mt-0.5 ${myBid.status === 'ACCEPTED' ? 'text-green-600' : myBid.status === 'REJECTED' ? 'text-slate-400' : 'text-amber-600'}`}>
+            <span className={`material-symbols-outlined text-[28px] flex-shrink-0 mt-0.5 ${myBid.status === 'ACCEPTED' ? 'text-green-600' : myBid.status === 'REJECTED' ? 'text-slate-500 dark:text-slate-500 dark:text-slate-400' : 'text-amber-600'}`}>
               {BID_STATUS_CFG[myBid.status]?.icon ?? 'gavel'}
             </span>
             <div className="flex-1 min-w-0">
@@ -575,7 +576,7 @@ function JobDetailContent({
         </div>
 
         {/* Upgrade to Pro */}
-        <div className="bg-primary-container text-white rounded-xl p-6 overflow-hidden relative group">
+        <div className="bg-white dark:bg-primary-container text-slate-900 dark:text-white rounded-xl p-6 overflow-hidden relative group">
           <div className="relative z-10">
             <h3 className="text-xl font-bold mb-2">Upgrade to Pro</h3>
             <p className="text-sm text-on-primary-container mb-4 leading-relaxed">

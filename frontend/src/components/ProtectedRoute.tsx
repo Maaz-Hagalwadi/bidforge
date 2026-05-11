@@ -7,7 +7,7 @@ interface Props {
 
 function Spinner() {
   return (
-    <div className="min-h-screen bg-dark-navy flex items-center justify-center">
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-navy flex items-center justify-center">
       <span className="material-symbols-outlined animate-spin text-secondary text-4xl">
         progress_activity
       </span>

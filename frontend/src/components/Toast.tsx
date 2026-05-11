@@ -25,7 +25,7 @@ export function Toast({ message, type, onClose }: ToastProps) {
       <p className={`text-sm font-semibold flex-1 ${type === 'success' ? 'text-green-800' : 'text-red-700'}`}>
         {message}
       </p>
-      <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0">
+      <button onClick={onClose} className="text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-700 dark:text-slate-200 transition-colors flex-shrink-0">
         <span className="material-symbols-outlined text-[16px]">close</span>
       </button>
     </div>

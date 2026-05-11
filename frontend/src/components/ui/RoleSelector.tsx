@@ -32,8 +32,8 @@ export function RoleSelector({ value, onChange }: RoleSelectorProps) {
             className={[
               'flex flex-col items-center gap-2 p-lg rounded-xl border-2 transition-all duration-200 cursor-pointer w-full',
               selected
-                ? 'border-secondary bg-secondary/10 text-white'
-                : 'border-slate-800 bg-slate-950/50 text-slate-400 hover:border-slate-700',
+                ? 'border-secondary bg-secondary/10 text-slate-900 dark:text-white'
+                : 'border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/50 text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-700',
             ].join(' ')}
           >
             <span className="material-symbols-outlined text-3xl">{icon}</span>

@@ -44,13 +44,13 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="bg-dark-navy antialiased flex flex-col min-h-screen">
+    <div className="bg-slate-50 dark:bg-dark-navy antialiased flex flex-col min-h-screen">
       <Navbar variant="auth" />
       <main className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-xl">
           <div>
-            <h2 className="text-white text-h2 mb-sm">Reset Password</h2>
-            <p className="text-on-primary-container text-body-md">
+            <h2 className="text-slate-900 dark:text-white text-h2 mb-sm">Reset Password</h2>
+            <p className="text-slate-600 dark:text-slate-400 text-body-md">
               Enter your new password below.
             </p>
           </div>

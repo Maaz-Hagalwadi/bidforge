@@ -1,3 +1,4 @@
+import { useTheme } from '@/context/ThemeContext';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useNavigate } from 'react-router-dom';
@@ -115,7 +116,7 @@ function ProfileDropdown({
             alt={user.name}
           />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-lg flex-shrink-0 select-none">
+          <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white font-bold text-lg flex-shrink-0 select-none">
             {initials}
           </div>
         )}
@@ -135,14 +136,14 @@ function ProfileDropdown({
             onClick={() => setMode('name')}
             className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left"
           >
-            <span className="material-symbols-outlined text-[20px] text-slate-400">edit</span>
+            <span className="material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400">edit</span>
             Edit Name
           </button>
           <button
             onClick={() => setMode('photo')}
             className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 rounded-lg transition-colors text-left"
           >
-            <span className="material-symbols-outlined text-[20px] text-slate-400">add_a_photo</span>
+            <span className="material-symbols-outlined text-[20px] text-slate-500 dark:text-slate-400">add_a_photo</span>
             Change Profile Photo
           </button>
         </div>
@@ -277,7 +278,7 @@ function ProjectRow({
             </div>
           </div>
         ) : extra === 'paid' ? (
-          <span className="text-label-sm font-bold text-slate-400">Paid Out</span>
+          <span className="text-label-sm font-bold text-slate-500 dark:text-slate-400">Paid Out</span>
         ) : (
           <div className="text-right">
             <p className="font-bold text-sm text-on-surface">{extra}</p>
@@ -316,10 +317,10 @@ function TalentCard({ name, specialty, rating, reviews }: {
 
 // ── Dashboard ─────────────────────────────────────────────────
 
-const SIDEBAR_BG = '#0A192F';
 
 export default function Dashboard() {
   const { user, logout, refreshUser } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -356,20 +357,20 @@ export default function Dashboard() {
           onClick={() => setProfileOpen(o => !o)}
           aria-expanded={profileOpen}
           aria-label="Profile menu"
-          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+          className="flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
         >
           {user?.profileImageUrl ? (
             <img
               src={user.profileImageUrl}
-              className="w-8 h-8 rounded-full object-cover border-2 border-white/20"
+              className="w-8 h-8 rounded-full object-cover border-2 border-slate-300 dark:border-white/20"
               alt={user.name}
             />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-white text-sm font-bold select-none">
+            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-slate-900 dark:text-white text-sm font-bold select-none">
               {initials}
             </div>
           )}
-          <span className="material-symbols-outlined text-white/60 text-base leading-none">
+          <span className="material-symbols-outlined text-slate-900 dark:text-white/60 text-base leading-none">
             expand_more
           </span>
         </button>
@@ -395,27 +396,27 @@ export default function Dashboard() {
           className={[
             'hidden lg:flex flex-col',
             'sticky top-16 h-[calc(100vh-4rem)]',
-            'border-r border-white/10',
+            'border-r border-slate-200 dark:border-white/10',
             'transition-[width] duration-300 ease-in-out overflow-hidden',
             sidebarOpen ? 'w-64' : 'w-16',
           ].join(' ')}
-          style={{ backgroundColor: SIDEBAR_BG }}
+          style={{ backgroundColor: theme === 'dark' ? '#0A192F' : '#ffffff' }}
         >
           {/* Sidebar toggle header */}
           <div
-            className={`flex items-center h-14 border-b border-white/10 px-3 flex-shrink-0 ${
+            className={`flex items-center h-14 border-b border-slate-200 dark:border-white/10 px-3 flex-shrink-0 ${
               sidebarOpen ? 'justify-between' : 'justify-center'
             }`}
           >
             {sidebarOpen && (
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/40 select-none">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white/60 select-none">
                 Menu
               </span>
             )}
             <button
               onClick={() => setSidebarOpen(o => !o)}
               title={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-              className="p-1.5 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"
             >
               <span className="material-symbols-outlined text-xl">
                 {sidebarOpen ? 'menu_open' : 'menu'}
@@ -434,8 +435,8 @@ export default function Dashboard() {
                   'flex items-center gap-3 rounded-lg py-2.5 transition-all duration-150',
                   sidebarOpen ? 'px-3' : 'justify-center px-2',
                   active
-                    ? 'bg-white/10 text-white font-bold border-l-4 border-secondary'
-                    : 'text-white/60 hover:bg-white/10 hover:text-white font-medium',
+                    ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white font-bold border-l-4 border-secondary'
+                    : 'text-slate-500 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white font-medium',
                 ].join(' ')}
               >
                 <span className="material-symbols-outlined text-[20px] flex-shrink-0">{icon}</span>
@@ -445,18 +446,12 @@ export default function Dashboard() {
           </nav>
 
           {/* Bottom: PRO card + logout */}
-          <div className="mt-auto p-3 space-y-2 border-t border-white/10 flex-shrink-0">
+          <div className="mt-auto p-3 space-y-2 border-t border-slate-200 dark:border-white/10 flex-shrink-0">
             {sidebarOpen && (
-              <div className="bg-white/5 border border-white/10 text-white rounded-xl p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/50 mb-1">
-                  PRO PLAN
-                </p>
-                <p className="text-xs font-semibold leading-relaxed mb-3 text-white/80">
-                  Unlimited active contracts and priority support.
-                </p>
-                <button className="w-full py-2 bg-secondary rounded-lg text-xs font-bold hover:brightness-110 transition-all">
-                  Upgrade Now
-                </button>
+              <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/60 mb-1">PRO PLAN</p>
+                <p className="text-xs font-semibold leading-relaxed mb-3 text-slate-900 dark:text-white/60">Unlimited active contracts and priority support.</p>
+                <button className="w-full py-2 bg-secondary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
               </div>
             )}
             <button
@@ -464,7 +459,7 @@ export default function Dashboard() {
               title={!sidebarOpen ? 'Sign Out' : undefined}
               className={[
                 'w-full flex items-center gap-3 rounded-lg py-2.5',
-                'text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors',
+                'text-slate-500 dark:text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors',
                 sidebarOpen ? 'px-3' : 'justify-center px-2',
               ].join(' ')}
             >
@@ -549,17 +544,17 @@ export default function Dashboard() {
 
       {/* ── Mobile bottom nav (lg+: sidebar takes over) ── */}
       <nav
-        className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-white/10 flex flex-col"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-50 border-t border-slate-200 dark:border-white/10 flex flex-col"
         style={{ backgroundColor: '#0A192F' }}
       >
         {[SIDEBAR_LINKS.slice(0, 4), SIDEBAR_LINKS.slice(4)].map((row, ri) => (
-          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-white/10' : ''}`}>
+          <div key={ri} className={`flex items-stretch ${ri === 0 ? 'border-b border-slate-200 dark:border-white/10' : ''}`}>
             {row.map(({ icon, short, active }) => (
               <button
                 key={short}
                 className={[
                   'flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors',
-                  active ? 'text-secondary' : 'text-white/50 hover:text-white',
+                  active ? 'text-secondary' : 'text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white',
                 ].join(' ')}
               >
                 <span className="material-symbols-outlined text-[20px]">{icon}</span>

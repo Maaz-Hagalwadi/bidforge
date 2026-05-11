@@ -48,9 +48,8 @@ function ToastItem({ toast, onDismiss }: { toast: NotificationToast; onDismiss: 
 
   return (
     <div
-      className="w-80 rounded-xl shadow-2xl overflow-hidden border border-slate-200 transition-all duration-300"
+      className="w-80 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0d1c32] transition-all duration-300"
       style={{
-        backgroundColor: '#fff',
         transform: exiting ? 'translateX(120%)' : 'translateX(0)',
         opacity: exiting ? 0 : 1,
         borderLeft: `4px solid ${cfg.color}`,
@@ -66,18 +65,18 @@ function ToastItem({ toast, onDismiss }: { toast: NotificationToast; onDismiss: 
           </span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-slate-800 leading-tight">{toast.notification.title}</p>
-          <p className="text-xs text-slate-500 mt-0.5 leading-snug line-clamp-2">{toast.notification.message}</p>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-800 dark:text-slate-100 leading-tight">{toast.notification.title}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-600 dark:text-slate-300 mt-0.5 leading-snug line-clamp-2">{toast.notification.message}</p>
         </div>
         <button
           onClick={() => { setExiting(true); setTimeout(onDismiss, 250); }}
-          className="flex-shrink-0 text-slate-300 hover:text-slate-500 transition-colors mt-0.5"
+          className="flex-shrink-0 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-600 dark:text-slate-300 transition-colors mt-0.5"
         >
           <span className="material-symbols-outlined text-[16px]">close</span>
         </button>
       </div>
       {/* Progress bar */}
-      <div className="h-0.5 bg-slate-100">
+      <div className="h-0.5 bg-slate-100 dark:bg-slate-200 dark:bg-slate-700">
         <div
           className="h-full transition-none"
           style={{ width: `${progress}%`, backgroundColor: cfg.color, opacity: 0.5 }}

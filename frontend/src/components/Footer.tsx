@@ -1,8 +1,16 @@
 import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
+import { useTheme } from '@/context/ThemeContext';
 
 export function Footer() {
+  const { theme } = useTheme();
   return (
-    <footer className="hidden md:block border-t border-outline-variant mt-auto">
+    <footer
+      className="hidden md:block mt-auto"
+      style={{
+        backgroundColor: theme === 'dark' ? '#0A192F' : '#ffffff',
+        borderTop: theme === 'dark' ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e2e8f0',
+      }}
+    >
       <div className="w-full max-w-8xl mx-auto px-4 md:px-8 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -11,9 +19,9 @@ export function Footer() {
           </div>
           <div className="flex flex-wrap items-center gap-6">
             {['Privacy Policy', 'Terms of Service', 'Help Center'].map(l => (
-              <a key={l} href="#" className="text-sm text-slate-400 hover:text-secondary transition-colors">{l}</a>
+              <a key={l} href="#" className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 hover:text-secondary transition-colors">{l}</a>
             ))}
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400">
               &copy; {new Date().getFullYear()} BidForge Inc.
             </span>
           </div>
