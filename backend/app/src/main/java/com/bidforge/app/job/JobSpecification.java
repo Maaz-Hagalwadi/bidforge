@@ -78,4 +78,12 @@ public class JobSpecification {
         return (root, query, cb) ->
                 cb.greaterThanOrEqualTo(root.get("createdAt"), date);
     }
+
+    public static Specification<Job> hasExperienceLevel(com.bidforge.app.job.enums.ExperienceLevel level) {
+        return (root, query, cb) -> cb.equal(root.get("experienceLevel"), level);
+    }
+
+    public static Specification<Job> hasUrgencyLevel(com.bidforge.app.job.enums.UrgencyLevel level) {
+        return (root, query, cb) -> cb.equal(root.get("urgencyLevel"), level);
+    }
 }
