@@ -5,10 +5,12 @@ export interface ChatRoom {
   contractId: string;
   clientId: number;
   clientName: string;
+  clientProfileImageUrl?: string;
   clientOnline: boolean;
   clientLastSeen?: string;
   freelancerId: number;
   freelancerName: string;
+  freelancerProfileImageUrl?: string;
   freelancerOnline: boolean;
   freelancerLastSeen?: string;
   jobTitle?: string;

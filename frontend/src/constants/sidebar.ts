@@ -6,15 +6,16 @@ export interface SidebarLink {
 }
 
 export const CLIENT_SIDEBAR: readonly SidebarLink[] = [
-  { icon: 'dashboard',    label: 'Dashboard',     short: 'Home',     path: '/client/dashboard'     },
-  { icon: 'work',         label: 'My Projects',   short: 'Projects', path: '/client/jobs'          },
-  { icon: 'inventory_2',  label: 'Archived Jobs', short: 'Archive',  path: '/client/archived-jobs' },
-  { icon: 'mail',         label: 'Invites',       short: 'Invites',  path: '/client/invites'       },
-  { icon: 'gavel',        label: 'Bids',          short: 'Bids',     path: '/client/bids'          },
-  { icon: 'chat',         label: 'Messages',      short: 'Messages', path: '/messages'             },
-  { icon: 'receipt_long', label: 'Contracts',     short: 'Contracts',path: '/contracts'            },
-  { icon: 'balance',      label: 'Disputes',      short: 'Disputes', path: '/disputes'             },
-  { icon: 'payments',     label: 'Payments',      short: 'Payments', path: '/payments'             },
+  { icon: 'dashboard',    label: 'Dashboard',         short: 'Home',        path: '/client/dashboard'     },
+  { icon: 'work',         label: 'My Projects',       short: 'Projects',    path: '/client/jobs'          },
+  { icon: 'inventory_2',  label: 'Archived Jobs',     short: 'Archive',     path: '/client/archived-jobs' },
+  { icon: 'mail',         label: 'Invites',           short: 'Invites',     path: '/client/invites'       },
+  { icon: 'gavel',        label: 'Bids',              short: 'Bids',        path: '/client/bids'          },
+  { icon: 'person_search',label: 'Find Freelancers',  short: 'Freelancers', path: '/client/freelancers'   },
+  { icon: 'chat',         label: 'Messages',          short: 'Messages',    path: '/messages'             },
+  { icon: 'receipt_long', label: 'Contracts',         short: 'Contracts',   path: '/contracts'            },
+  { icon: 'balance',      label: 'Disputes',          short: 'Disputes',    path: '/disputes'             },
+  { icon: 'payments',     label: 'Payments',          short: 'Payments',    path: '/payments'             },
 ];
 
 export const FREELANCER_SIDEBAR: readonly SidebarLink[] = [

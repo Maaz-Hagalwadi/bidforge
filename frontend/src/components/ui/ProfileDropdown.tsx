@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { userApi } from '@/api/user';
@@ -16,13 +16,31 @@ function UpdateProfileModal({ user, onClose, onUpdated }: {
   const [name, setName] = useState(user.name);
   const [photo, setPhoto] = useState(user.profileImageUrl ?? '');
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setErr('');
+    try {
+      const updated = await userApi.uploadProfileImage(file);
+      setPhoto(updated.profileImageUrl ?? '');
+      await onUpdated();
+    } catch {
+      setErr('Photo upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true); setErr('');
     try {
-      await userApi.updateMe({ name: name.trim(), profileImageUrl: photo.trim() || undefined });
+      await userApi.updateMe({ name: name.trim() });
       await onUpdated();
       onClose();
     } catch {
@@ -31,13 +49,8 @@ function UpdateProfileModal({ user, onClose, onUpdated }: {
   };
 
   return createPortal(
-    /* onMouseDown stops the native event reaching document listeners in parent pages,
-       which would otherwise close ProfileDropdown (and destroy this modal) on every click. */
     <div onMouseDown={e => e.nativeEvent.stopImmediatePropagation()}>
-      {/* Backdrop */}
       <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm" onClick={onClose} />
-
-      {/* Modal card — z-[201] sits above backdrop */}
       <div className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none">
         <div className="w-full max-w-md bg-white dark:bg-[#0d1c32] rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden pointer-events-auto">
 
@@ -50,21 +63,43 @@ function UpdateProfileModal({ user, onClose, onUpdated }: {
           </div>
 
           {/* Body */}
-          <div className="px-6 py-5 space-y-4">
+          <div className="px-6 py-5 space-y-5">
+
+            {/* Avatar upload */}
             <div className="flex items-center gap-4">
-              {photo ? (
-                <img src={photo} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-600 flex-shrink-0" alt="Preview" onError={e => (e.currentTarget.style.display = 'none')} />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-xl flex-shrink-0 select-none">
-                  {getInitials(name || user.name)}
-                </div>
-              )}
+              <div className="relative group flex-shrink-0 cursor-pointer" onClick={() => !uploading && fileRef.current?.click()}>
+                {photo ? (
+                  <img src={photo} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200 dark:border-slate-600" alt="Avatar" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-xl select-none">
+                    {getInitials(name || user.name)}
+                  </div>
+                )}
+                {uploading ? (
+                  <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="material-symbols-outlined text-white text-[20px]">camera_alt</span>
+                  </div>
+                )}
+              </div>
               <div className="min-w-0">
                 <p className="font-semibold text-slate-900 dark:text-white truncate">{name || user.name}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                <button
+                  onClick={() => !uploading && fileRef.current?.click()}
+                  disabled={uploading}
+                  className="mt-1 text-xs font-semibold text-secondary hover:underline disabled:opacity-50 transition-opacity"
+                >
+                  {uploading ? 'Uploading…' : 'Change Photo'}
+                </button>
               </div>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
             </div>
 
+            {/* Name */}
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Full Name</label>
               <input
@@ -76,23 +111,13 @@ function UpdateProfileModal({ user, onClose, onUpdated }: {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Profile Photo URL</label>
-              <input
-                value={photo}
-                onChange={e => setPhoto(e.target.value)}
-                className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                placeholder="https://example.com/photo.jpg"
-              />
-            </div>
-
             {err && <p className="text-xs text-red-500">{err}</p>}
           </div>
 
           {/* Footer */}
           <div className="flex gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-700">
             <button
-              disabled={saving || !name.trim()}
+              disabled={saving || uploading || !name.trim()}
               onClick={handleSave}
               className="flex-1 bg-secondary text-white text-sm font-semibold py-2.5 rounded-xl hover:brightness-110 disabled:opacity-60 transition-all"
             >

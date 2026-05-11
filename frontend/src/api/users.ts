@@ -1,14 +1,9 @@
 import api from './axiosInstance';
+import type { UserProfile } from '@/types/user';
 
-export interface FreelancerSearchResult {
-  id: number;
-  name: string;
-  email: string;
-  profileImageUrl?: string;
-  rating?: number;
-}
+export type FreelancerSearchResult = UserProfile;
 
 export const usersApi = {
   searchFreelancers: (q: string) =>
-    api.get<FreelancerSearchResult[]>('/users/search', { params: { q } }).then(r => r.data),
+    api.get<UserProfile[]>('/users/search', { params: { q } }).then(r => r.data),
 };

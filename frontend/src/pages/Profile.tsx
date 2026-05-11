@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Navbar } from '@/components/Navbar';
@@ -38,11 +38,31 @@ interface EditProfileModalProps {
   saving: boolean;
   saveErr: string;
   onChange: (field: string, value: string) => void;
+  onPhotoUploaded: (url: string) => void;
   onSave: () => void;
   onClose: () => void;
 }
 
-function EditProfileModal({ form, saving, saveErr, onChange, onSave, onClose }: EditProfileModalProps) {
+function EditProfileModal({ form, saving, saveErr, onChange, onPhotoUploaded, onSave, onClose }: EditProfileModalProps) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setUploadErr('');
+    try {
+      const updated = await userApi.uploadProfileImage(file);
+      onPhotoUploaded(updated.profileImageUrl ?? '');
+    } catch {
+      setUploadErr('Photo upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }, [onPhotoUploaded]);
+
   return createPortal(
     <div onMouseDown={e => e.nativeEvent.stopImmediatePropagation()}>
       <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm" onClick={onClose} />
@@ -59,6 +79,40 @@ function EditProfileModal({ form, saving, saveErr, onChange, onSave, onClose }: 
 
           {/* Body */}
           <div className="overflow-y-auto flex-1 px-6 py-5">
+
+            {/* Photo upload */}
+            <div className="flex items-center gap-4 mb-5 pb-5 border-b border-slate-100">
+              <div className="relative group flex-shrink-0 cursor-pointer" onClick={() => !uploading && fileRef.current?.click()}>
+                {form.profileImageUrl ? (
+                  <img src={form.profileImageUrl} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" alt="Avatar" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-xl select-none">
+                    {(form.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                  </div>
+                )}
+                {uploading ? (
+                  <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="material-symbols-outlined text-white text-[20px]">camera_alt</span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-800 mb-0.5">Profile Photo</p>
+                <p className="text-xs text-slate-500 mb-1.5">JPG, PNG or WebP · max 10 MB</p>
+                <button onClick={() => !uploading && fileRef.current?.click()} disabled={uploading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition-colors">
+                  <span className="material-symbols-outlined text-[15px]">upload</span>
+                  {uploading ? 'Uploading…' : 'Upload Photo'}
+                </button>
+                {uploadErr && <p className="text-xs text-red-500 mt-1">{uploadErr}</p>}
+              </div>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
@@ -85,12 +139,6 @@ function EditProfileModal({ form, saving, saveErr, onChange, onSave, onClose }: 
                   placeholder="e.g. 50" />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Profile Photo URL</label>
-                <input value={form.profileImageUrl} onChange={e => onChange('profileImageUrl', e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
-                  placeholder="https://example.com/photo.jpg" />
-              </div>
-              <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Skills (comma-separated)</label>
                 <input value={form.skills} onChange={e => onChange('skills', e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-secondary transition-colors"
@@ -108,7 +156,7 @@ function EditProfileModal({ form, saving, saveErr, onChange, onSave, onClose }: 
 
           {/* Footer */}
           <div className="flex gap-3 px-6 py-4 border-t border-slate-100 flex-shrink-0">
-            <button onClick={onSave} disabled={saving}
+            <button onClick={onSave} disabled={saving || uploading}
               className="flex-1 bg-secondary text-white text-sm font-semibold py-2.5 rounded-xl hover:brightness-110 disabled:opacity-60 transition-all">
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
@@ -333,7 +381,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f0f4f8' }}>
+      <div className="min-h-screen flex flex-col bg-surface">
         {sharedNav}
         <div className="flex flex-1 min-h-0">
           {sharedSidebar}
@@ -347,14 +395,14 @@ export default function Profile() {
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f0f4f8' }}>
+      <div className="min-h-screen flex flex-col bg-surface">
         {sharedNav}
         <div className="flex flex-1 min-h-0">
           {sharedSidebar}
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300">person_off</span>
-              <p className="mt-3 text-slate-500 text-lg">{error || 'Profile not found.'}</p>
+              <span className="material-symbols-outlined text-5xl text-on-surface-variant">person_off</span>
+              <p className="mt-3 text-on-surface-variant text-lg">{error || 'Profile not found.'}</p>
             </div>
           </div>
         </div>
@@ -369,373 +417,327 @@ export default function Profile() {
   const displayPhoto = editing ? form.profileImageUrl : (profile.profileImageUrl ?? '');
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f0f4f8' }}>
+    <div className="min-h-screen flex flex-col bg-surface">
       {sharedNav}
       <div className="flex flex-1 min-h-0">
         {sharedSidebar}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto min-w-0 flex flex-col">
 
-      {/* Hero Banner */}
-      <div
-        className="w-full h-52 md:h-64 relative"
-        style={{ background: 'linear-gradient(135deg, #0A192F 0%, #0d1c32 50%, #0059bb 100%)' }}
-      >
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, #ffffff 1px, transparent 1px), radial-gradient(circle at 80% 20%, #ffffff 1px, transparent 1px)', backgroundSize: '60px 60px' }}
-        />
-      </div>
+          {/* Hero Banner */}
+          <div className="relative h-40 md:h-48 flex-shrink-0 overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #0A192F 0%, #0d2444 45%, #0059bb 100%)' }}>
+            <div className="absolute inset-0"
+              style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
+            <div className="absolute bottom-0 left-0 right-0 h-16"
+              style={{ background: 'linear-gradient(to bottom, transparent, rgba(10,25,47,0.18))' }} />
+          </div>
 
-      {/* Main Content */}
-      <div className="w-full max-w-8xl mx-auto px-4 md:px-8 pb-16">
+          {/* Profile identity — overlaps hero */}
+          <div className="max-w-[1280px] w-full mx-auto px-4 md:px-8">
+            <div className="-mt-14 md:-mt-16 relative z-10 mb-0 pb-5 border-b border-outline-variant">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-4">
 
-        {/* Profile Card — overlaps hero */}
-        <div className="relative -mt-20 mb-6">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 md:p-8">
-            <div className="flex flex-col md:flex-row md:items-end gap-5">
-
-              {/* Avatar */}
-              <div className="flex-shrink-0">
+                {/* Avatar */}
                 {displayPhoto ? (
-                  <img
-                    src={displayPhoto}
-                    alt={displayName}
-                    className="w-28 h-28 md:w-32 md:h-32 rounded-2xl object-cover border-4 border-white shadow-lg"
-                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                  />
+                  <img src={displayPhoto} alt={displayName}
+                    className="w-28 h-28 md:w-32 md:h-32 rounded-full object-cover border-4 border-white dark:border-[#0A192F] shadow-xl flex-shrink-0"
+                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                 ) : (
-                  <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl bg-secondary flex items-center justify-center text-slate-900 dark:text-white font-bold text-4xl border-4 border-white shadow-lg select-none">
+                  <div className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-4xl border-4 border-white dark:border-[#0A192F] shadow-xl flex-shrink-0 select-none">
                     {getInitials(profile.name)}
                   </div>
                 )}
-              </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0 pb-1">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{profile.name}</h1>
-                    <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full"
-                      style={{ backgroundColor: '#e8f0fe', color: '#0059bb' }}>
-                      {profile.role.charAt(0) + profile.role.slice(1).toLowerCase()}
-                    </span>
-                  </div>
-                  {isOwnProfile && !editing && (
-                    <button
-                      onClick={() => setEditing(true)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-secondary border border-secondary/30 rounded-xl hover:bg-secondary/5 transition-colors flex-shrink-0"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">edit</span>
-                      Edit Profile
-                    </button>
-                  )}
-                </div>
-
-                {profile.title && (
-                  <p className="text-base md:text-lg text-slate-600 font-medium mb-2">{profile.title}</p>
-                )}
-
-                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-                  {reviews.length > 0 && (() => {
-                    const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
-                    return (
-                      <span className="flex items-center gap-1 text-amber-600 font-semibold">
-                        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                        {avg.toFixed(1)}
-                        <span className="text-slate-500 dark:text-slate-500 dark:text-slate-400 font-normal">({reviews.length} review{reviews.length !== 1 ? 's' : ''})</span>
+                {/* Name / title / stats + action buttons */}
+                <div className="flex-1 min-w-0 sm:pb-1 flex flex-col sm:flex-row sm:items-end gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                      <h1 className="text-2xl md:text-3xl font-bold text-on-surface">{profile.name}</h1>
+                      <span className="px-2.5 py-0.5 bg-secondary/10 text-secondary text-xs font-semibold rounded-full">
+                        {profile.role.charAt(0) + profile.role.slice(1).toLowerCase()}
                       </span>
-                    );
-                  })()}
-                  {profile.location && (
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">location_on</span>
-                      {profile.location}
-                    </span>
-                  )}
-                  {profile.hourlyRate != null && (
-                    <span className="flex items-center gap-1 font-semibold text-slate-700">
-                      <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">payments</span>
-                      ${profile.hourlyRate}/hr
-                    </span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">calendar_month</span>
-                    Member since {formatMemberSince(profile.createdAt)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Action buttons (other's profile) */}
-              {!isOwnProfile && (
-                <div className="flex gap-3 flex-shrink-0">
-                  <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors">
-                    <span className="material-symbols-outlined text-[18px]">chat_bubble</span>
-                    Message
-                  </button>
-                  <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-slate-900 dark:text-white text-sm font-semibold transition-all hover:brightness-110"
-                    style={{ backgroundColor: '#0059bb' }}>
-                    <span className="material-symbols-outlined text-[18px]">handshake</span>
-                    Hire
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-
-          {/* Left column */}
-          <div className="md:col-span-4 flex flex-col gap-6">
-
-            {/* About card */}
-            <div className="bg-white rounded-2xl shadow border border-slate-100 p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px] text-secondary">person</span>
-                About
-              </h2>
-              {displayBio ? (
-                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{displayBio}</p>
-              ) : (
-                <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">No bio provided yet.</p>
-              )}
-              <div className="mt-4 pt-4 border-t border-slate-100 space-y-2.5">
-                {displayLocation && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">location_on</span>
-                    {displayLocation}
-                  </div>
-                )}
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">calendar_month</span>
-                  Joined {formatMemberSince(profile.createdAt)}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-500 dark:text-slate-400">mail</span>
-                  {profile.email}
-                </div>
-              </div>
-            </div>
-
-            {/* Skills card */}
-            <div className="bg-white rounded-2xl shadow border border-slate-100 p-6">
-              <h2 className="text-base font-bold text-slate-900 mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px] text-secondary">psychology</span>
-                Skills & Expertise
-              </h2>
-              {skills.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {skills.map(skill => (
-                    <span key={skill}
-                      className="px-3 py-1 text-xs font-semibold rounded-full border"
-                      style={{ backgroundColor: '#e8f0fe', color: '#0059bb', borderColor: '#c5d9fb' }}>
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-slate-500 dark:text-slate-500 dark:text-slate-400 italic">No skills listed yet.</p>
-              )}
-            </div>
-          </div>
-
-          {/* Right column */}
-          <div className="md:col-span-8 flex flex-col gap-6">
-
-            {/* Portfolio */}
-            <div className="bg-white rounded-2xl shadow border border-slate-100 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[20px] text-secondary">grid_view</span>
-                  Portfolio
-                </h2>
-                {isOwnProfile && !showPortfolioForm && (
-                  <button
-                    onClick={() => setShowPortfolioForm(true)}
-                    className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">add</span>
-                    Add Item
-                  </button>
-                )}
-              </div>
-
-              {/* Add portfolio form */}
-              {showPortfolioForm && isOwnProfile && (
-                <div className="mb-5 p-4 border border-slate-200 rounded-xl bg-slate-50">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                    <div className="sm:col-span-2">
-                      <input
-                        value={portfolioForm.title}
-                        onChange={e => setPortfolioForm(f => ({ ...f, title: e.target.value }))}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary"
-                        placeholder="Project title *"
-                      />
                     </div>
-                    <div className="sm:col-span-2">
-                      <textarea
-                        rows={2}
-                        value={portfolioForm.description}
-                        onChange={e => setPortfolioForm(f => ({ ...f, description: e.target.value }))}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary resize-none"
-                        placeholder="Description"
-                      />
-                    </div>
-                    <input
-                      value={portfolioForm.imageUrl}
-                      onChange={e => setPortfolioForm(f => ({ ...f, imageUrl: e.target.value }))}
-                      className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary"
-                      placeholder="Image URL"
-                    />
-                    <input
-                      value={portfolioForm.projectUrl}
-                      onChange={e => setPortfolioForm(f => ({ ...f, projectUrl: e.target.value }))}
-                      className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary"
-                      placeholder="Project URL"
-                    />
-                    <div className="sm:col-span-2">
-                      <input
-                        value={portfolioForm.technologies}
-                        onChange={e => setPortfolioForm(f => ({ ...f, technologies: e.target.value }))}
-                        className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-secondary"
-                        placeholder="Technologies (e.g. React, Node.js)"
-                      />
-                    </div>
-                  </div>
-                  {portfolioErr && <p className="text-xs text-red-500 mb-2">{portfolioErr}</p>}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleAddPortfolio}
-                      disabled={portfolioSaving || !portfolioForm.title.trim()}
-                      className="px-4 py-1.5 text-xs font-semibold text-slate-900 dark:text-white rounded-xl disabled:opacity-60 hover:brightness-110 transition-all"
-                      style={{ backgroundColor: '#0059bb' }}
-                    >
-                      {portfolioSaving ? 'Saving…' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => { setShowPortfolioForm(false); setPortfolioErr(''); }}
-                      className="px-4 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {portfolio.length === 0 && !showPortfolioForm ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300 dark:text-slate-600 mb-3">folder_open</span>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-500 dark:text-slate-400">No portfolio items yet</p>
-                  {isOwnProfile && <p className="text-xs text-slate-600 dark:text-slate-600 dark:text-slate-300 mt-1">Add your first project above</p>}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {portfolio.map(item => (
-                    <div key={item.id} className="border border-slate-100 rounded-xl overflow-hidden group relative">
-                      {item.imageUrl && (
-                        <img
-                          src={item.imageUrl}
-                          alt={item.title}
-                          className="w-full h-36 object-cover"
-                          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                        />
+                    {profile.title && (
+                      <p className="text-base text-on-surface-variant font-medium mb-2">{profile.title}</p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-on-surface-variant">
+                      {reviews.length > 0 && (() => {
+                        const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+                        return (
+                          <span className="flex items-center gap-1 text-amber-500 font-semibold">
+                            <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                            {avg.toFixed(1)}
+                            <span className="text-on-surface-variant font-normal ml-0.5">({reviews.length} review{reviews.length !== 1 ? 's' : ''})</span>
+                          </span>
+                        );
+                      })()}
+                      {profile.hourlyRate != null && (
+                        <span className="flex items-center gap-1 font-semibold text-secondary">
+                          <span className="material-symbols-outlined text-[15px]">payments</span>
+                          ${profile.hourlyRate}/hr
+                        </span>
                       )}
-                      <div className="p-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-semibold text-slate-800 leading-tight">{item.title}</p>
-                          {isOwnProfile && (
-                            <button
-                              onClick={() => handleDeletePortfolio(item.id)}
-                              className="flex-shrink-0 text-slate-500 dark:text-slate-400 dark:text-slate-500 hover:text-red-400 transition-colors"
-                              title="Delete"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
+                      {profile.location && (
+                        <span className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[15px]">location_on</span>
+                          {profile.location}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[15px]">calendar_month</span>
+                        Member since {formatMemberSince(profile.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex gap-2 flex-shrink-0">
+                    {isOwnProfile ? (
+                      !editing && (
+                        <button onClick={() => setEditing(true)}
+                          className="flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-secondary border border-secondary/30 rounded-xl hover:bg-secondary/5 transition-colors">
+                          <span className="material-symbols-outlined text-[16px]">edit</span>
+                          Edit Profile
+                        </button>
+                      )
+                    ) : (
+                      <>
+                        <button className="flex items-center gap-1.5 px-4 py-2 border border-outline-variant text-on-surface text-sm font-semibold rounded-xl hover:bg-surface-container transition-colors">
+                          <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
+                          Message
+                        </button>
+                        <button className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-sm font-semibold rounded-xl hover:brightness-110 transition-all">
+                          <span className="material-symbols-outlined text-[16px]">handshake</span>
+                          Hire
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Two-column content */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 py-6 pb-10">
+
+              {/* Left column */}
+              <div className="md:col-span-4 flex flex-col gap-5">
+
+                {/* About */}
+                <div className="tonal-card rounded-xl border border-outline-variant p-5">
+                  <h2 className="text-xs font-bold text-on-surface uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px] text-secondary">person</span>
+                    About
+                  </h2>
+                  {displayBio ? (
+                    <p className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-line">{displayBio}</p>
+                  ) : (
+                    <p className="text-sm text-on-surface-variant italic">No bio provided yet.</p>
+                  )}
+                  <div className="mt-4 pt-4 border-t border-outline-variant space-y-2.5">
+                    {displayLocation && (
+                      <div className="flex items-center gap-2 text-sm text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[16px]">location_on</span>
+                        {displayLocation}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-sm text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                      Joined {formatMemberSince(profile.createdAt)}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[16px]">mail</span>
+                      {profile.email}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Skills */}
+                <div className="tonal-card rounded-xl border border-outline-variant p-5">
+                  <h2 className="text-xs font-bold text-on-surface uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px] text-secondary">psychology</span>
+                    Skills & Expertise
+                  </h2>
+                  {skills.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {skills.map(skill => (
+                        <span key={skill} className="px-3 py-1 text-xs font-semibold rounded-full bg-secondary/10 text-secondary">
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-on-surface-variant italic">No skills listed yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Right column */}
+              <div className="md:col-span-8 flex flex-col gap-5">
+
+                {/* Portfolio */}
+                <div className="tonal-card rounded-xl border border-outline-variant p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-bold text-on-surface uppercase tracking-widest flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[18px] text-secondary">grid_view</span>
+                      Portfolio
+                    </h2>
+                    {isOwnProfile && !showPortfolioForm && (
+                      <button onClick={() => setShowPortfolioForm(true)}
+                        className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors">
+                        <span className="material-symbols-outlined text-[15px]">add</span>
+                        Add Item
+                      </button>
+                    )}
+                  </div>
+
+                  {showPortfolioForm && isOwnProfile && (
+                    <div className="mb-5 p-4 border border-outline-variant rounded-xl bg-surface-container">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div className="sm:col-span-2">
+                          <input value={portfolioForm.title}
+                            onChange={e => setPortfolioForm(f => ({ ...f, title: e.target.value }))}
+                            className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
+                            placeholder="Project title *" />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <textarea rows={2} value={portfolioForm.description}
+                            onChange={e => setPortfolioForm(f => ({ ...f, description: e.target.value }))}
+                            className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary resize-none"
+                            placeholder="Description" />
+                        </div>
+                        <input value={portfolioForm.imageUrl}
+                          onChange={e => setPortfolioForm(f => ({ ...f, imageUrl: e.target.value }))}
+                          className="border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
+                          placeholder="Image URL" />
+                        <input value={portfolioForm.projectUrl}
+                          onChange={e => setPortfolioForm(f => ({ ...f, projectUrl: e.target.value }))}
+                          className="border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
+                          placeholder="Project URL" />
+                        <div className="sm:col-span-2">
+                          <input value={portfolioForm.technologies}
+                            onChange={e => setPortfolioForm(f => ({ ...f, technologies: e.target.value }))}
+                            className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
+                            placeholder="Technologies (e.g. React, Node.js)" />
+                        </div>
+                      </div>
+                      {portfolioErr && <p className="text-xs text-red-500 mb-2">{portfolioErr}</p>}
+                      <div className="flex gap-2">
+                        <button onClick={handleAddPortfolio} disabled={portfolioSaving || !portfolioForm.title.trim()}
+                          className="px-4 py-1.5 text-xs font-semibold text-white bg-secondary rounded-xl disabled:opacity-60 hover:brightness-110 transition-all">
+                          {portfolioSaving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => { setShowPortfolioForm(false); setPortfolioErr(''); }}
+                          className="px-4 py-1.5 text-xs font-semibold text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors">
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {portfolio.length === 0 && !showPortfolioForm ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-3">folder_open</span>
+                      <p className="text-sm font-semibold text-on-surface-variant">No portfolio items yet</p>
+                      {isOwnProfile && <p className="text-xs text-on-surface-variant/70 mt-1">Add your first project above</p>}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {portfolio.map(item => (
+                        <div key={item.id} className="border border-outline-variant rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-surface">
+                          {item.imageUrl && (
+                            <img src={item.imageUrl} alt={item.title}
+                              className="w-full h-36 object-cover"
+                              onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                           )}
+                          <div className="p-3.5">
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <p className="text-sm font-semibold text-on-surface leading-tight">{item.title}</p>
+                              {isOwnProfile && (
+                                <button onClick={() => handleDeletePortfolio(item.id)}
+                                  className="flex-shrink-0 text-on-surface-variant/50 hover:text-red-400 transition-colors" title="Delete">
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              )}
+                            </div>
+                            {item.description && <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-2">{item.description}</p>}
+                            {item.technologies && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {item.technologies.split(',').map(t => t.trim()).filter(Boolean).map(t => (
+                                  <span key={t} className="px-2 py-0.5 text-[11px] font-medium bg-secondary/8 text-secondary rounded-full bg-secondary/10">{t}</span>
+                                ))}
+                              </div>
+                            )}
+                            {item.projectUrl && (
+                              <a href={item.projectUrl} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs font-semibold text-secondary mt-2 hover:underline">
+                                <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                                View Project
+                              </a>
+                            )}
+                          </div>
                         </div>
-                        {item.description && (
-                          <p className="text-xs text-slate-500 mt-1 line-clamp-2">{item.description}</p>
-                        )}
-                        {item.technologies && (
-                          <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-1.5">{item.technologies}</p>
-                        )}
-                        {item.projectUrl && (
-                          <a
-                            href={item.projectUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-semibold mt-2"
-                            style={{ color: '#0059bb' }}
-                          >
-                            <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                            View Project
-                          </a>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Reviews */}
-            <div className="bg-white rounded-2xl shadow border border-slate-100 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[20px] text-secondary">reviews</span>
-                  Reviews
-                </h2>
-                {reviews.length > 0 && (
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1 text-amber-500 font-bold text-sm">
-                      <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)}
-                    </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
+                {/* Reviews */}
+                <div className="tonal-card rounded-xl border border-outline-variant p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xs font-bold text-on-surface uppercase tracking-widest flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[18px] text-secondary">reviews</span>
+                      Reviews
+                    </h2>
+                    {reviews.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1 text-amber-500 font-bold text-sm">
+                          <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                          {(reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)}
+                        </span>
+                        <span className="text-xs text-on-surface-variant">{reviews.length} review{reviews.length !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {reviews.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <span className="material-symbols-outlined text-5xl text-slate-600 dark:text-slate-300 dark:text-slate-600 mb-3">rate_review</span>
-                  <p className="text-sm font-semibold text-slate-500 dark:text-slate-500 dark:text-slate-400">No reviews yet</p>
-                  <p className="text-xs text-slate-600 dark:text-slate-600 dark:text-slate-300 mt-1">Reviews appear after completed contracts</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {reviews.map(r => (
-                    <div key={r.id} className="border border-slate-100 rounded-xl p-4">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-800">{r.reviewerName}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400">{r.jobTitle}</p>
-                        </div>
-                        <div className="flex items-center gap-0.5 flex-shrink-0">
-                          {[1, 2, 3, 4, 5].map(s => (
-                            <span key={s} className="material-symbols-outlined text-[16px] leading-none"
-                              style={{ fontVariationSettings: "'FILL' 1", color: s <= r.rating ? '#f59e0b' : '#e2e8f0' }}>
-                              star
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      {r.comment && (
-                        <p className="text-sm text-slate-600 leading-relaxed">{r.comment}</p>
-                      )}
-                      <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mt-2">
-                        {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
+                  {reviews.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <span className="material-symbols-outlined text-5xl text-on-surface-variant/30 mb-3">rate_review</span>
+                      <p className="text-sm font-semibold text-on-surface-variant">No reviews yet</p>
+                      <p className="text-xs text-on-surface-variant/70 mt-1">Reviews appear after completed contracts</p>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="space-y-3">
+                      {reviews.map(r => (
+                        <div key={r.id} className="border border-outline-variant rounded-xl p-4 bg-surface">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div>
+                              <p className="text-sm font-semibold text-on-surface">{r.reviewerName}</p>
+                              <p className="text-xs text-on-surface-variant">{r.jobTitle}</p>
+                            </div>
+                            <div className="flex items-center gap-0.5 flex-shrink-0">
+                              {[1, 2, 3, 4, 5].map(s => (
+                                <span key={s} className="material-symbols-outlined text-[15px] leading-none"
+                                  style={{ fontVariationSettings: "'FILL' 1", color: s <= r.rating ? '#f59e0b' : '#e2e8f0' }}>
+                                  star
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          {r.comment && <p className="text-sm text-on-surface-variant leading-relaxed">{r.comment}</p>}
+                          <p className="text-xs text-on-surface-variant/60 mt-2">
+                            {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-        <Footer />
+          <Footer />
         </main>
       </div>
 
@@ -745,6 +747,7 @@ export default function Profile() {
           saving={saving}
           saveErr={saveErr}
           onChange={handleFormChange}
+          onPhotoUploaded={url => handleFormChange('profileImageUrl', url)}
           onSave={handleSave}
           onClose={cancelEdit}
         />

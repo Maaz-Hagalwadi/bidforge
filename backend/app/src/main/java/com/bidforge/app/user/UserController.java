@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -48,6 +49,11 @@ public class UserController {
     @PostMapping("/me/portfolio")
     public PortfolioResponse addPortfolioItem(@Valid @RequestBody PortfolioRequest request) {
         return userService.addPortfolioItem(request);
+    }
+
+    @PostMapping("/profile-image")
+    public UserResponse uploadProfileImage(@RequestParam("file") MultipartFile file) {
+        return userService.uploadProfileImage(file);
     }
 
     @DeleteMapping("/me/portfolio/{itemId}")

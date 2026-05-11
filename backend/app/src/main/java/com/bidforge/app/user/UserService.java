@@ -1,18 +1,18 @@
 package com.bidforge.app.user;
 
 import com.bidforge.app.common.exception.UserNotFoundException;
+import com.bidforge.app.storage.FileUploadService;
 import com.bidforge.app.user.dto.request.PortfolioRequest;
 import com.bidforge.app.user.dto.request.UpdateUserRequest;
 import com.bidforge.app.user.dto.response.PortfolioResponse;
 import com.bidforge.app.user.dto.response.UserResponse;
-import com.stripe.model.Account;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -21,6 +21,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PortfolioRepository portfolioRepository;
+    private final FileUploadService fileUploadService;
 
     public UserResponse getCurrentUser() {
         User user = getAuthenticatedUser();
@@ -49,10 +50,17 @@ public class UserService {
     }
 
     public List<UserResponse> searchFreelancers(String q) {
-        return userRepository.searchByRoleAndQuery(Role.FREELANCER, q, PageRequest.of(0, 10))
+        return userRepository.searchByRoleAndQuery(Role.FREELANCER, q == null ? "" : q, PageRequest.of(0, 50))
                 .stream()
                 .map(this::mapToResponse)
                 .toList();
+    }
+
+    public UserResponse uploadProfileImage(MultipartFile file) {
+        User user = getAuthenticatedUser();
+        String imageUrl = fileUploadService.uploadProfileImage(file);
+        user.setProfileImageUrl(imageUrl);
+        return mapToResponse(userRepository.save(user));
     }
 
     private User getAuthenticatedUser() {
