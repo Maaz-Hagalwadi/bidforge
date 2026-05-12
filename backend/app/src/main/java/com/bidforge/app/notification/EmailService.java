@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -146,6 +147,56 @@ public class EmailService {
                 "The escrow payment has been refunded.",
                 "Milestone: " + milestoneTitle,
                 null
+        ));
+    }
+
+    @Async
+    public void sendDisputeOpenedAdminEmail(String to, String openerName, String jobTitle, UUID disputeId) {
+        send(to, "New Dispute Opened: " + jobTitle, notification(
+                "Dispute Alert", "A new dispute has been opened.",
+                openerName + " opened a dispute on contract for job: " + jobTitle,
+                "Dispute ID: " + disputeId,
+                "Log in to the admin panel to review and resolve."
+        ));
+    }
+
+    @Async
+    public void sendUserBannedEmail(String to, String userName) {
+        send(to, "Your BidForge Account Has Been Suspended", notification(
+                "Account Suspended", "Hi " + userName + ",",
+                "Your account has been suspended by an administrator.",
+                null,
+                "If you believe this is a mistake, please contact support."
+        ));
+    }
+
+    @Async
+    public void sendUserUnbannedEmail(String to, String userName) {
+        send(to, "Your BidForge Account Has Been Reinstated", notification(
+                "Account Reinstated", "Hi " + userName + ",",
+                "Your account suspension has been lifted. You can now log in.",
+                null,
+                "Welcome back to BidForge!"
+        ));
+    }
+
+    @Async
+    public void sendDisputeResolvedEmail(String to, String name, String jobTitle, String resolutionNote) {
+        send(to, "Dispute Resolved: " + jobTitle, notification(
+                "Dispute Resolved", "Hi " + name + ",",
+                "The dispute for your contract has been resolved by an admin.",
+                "Job: " + jobTitle,
+                resolutionNote != null ? "Resolution: " + resolutionNote : null
+        ));
+    }
+
+    @Async
+    public void sendNewUserRegisteredAdminEmail(String to, String newUserName, String newUserEmail, String role) {
+        send(to, "New User Registered: " + newUserName, notification(
+                "New Registration", "A new user has registered on BidForge.",
+                newUserName + " (" + newUserEmail + ") signed up as " + role + ".",
+                null,
+                "Log in to the admin panel to view user details."
         ));
     }
 

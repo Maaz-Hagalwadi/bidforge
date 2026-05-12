@@ -123,11 +123,18 @@ export default function AdminJobs() {
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => navigate(`/jobs/${j.id}`)}
+                            onClick={() => navigate(`/jobs/${j.id}`, { state: { from: 'admin-jobs' } })}
                             className="p-1.5 text-secondary hover:bg-secondary/10 rounded transition-colors"
                             title="View job"
                           >
                             <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                          </button>
+                          <button
+                            onClick={() => navigate(`/profile/${j.clientId}?from=admin-jobs`)}
+                            className="p-1.5 text-slate-500 hover:text-secondary hover:bg-secondary/10 rounded transition-colors"
+                            title="View client profile"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">account_circle</span>
                           </button>
                         </div>
                       </td>
