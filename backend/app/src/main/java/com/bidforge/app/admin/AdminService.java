@@ -1,5 +1,8 @@
 package com.bidforge.app.admin;
 
+import com.bidforge.app.notification.EmailService;
+import com.bidforge.app.notification.NotificationService;
+import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.admin.dto.AdminDisputeResponse;
 import com.bidforge.app.admin.dto.AdminPaymentResponse;
 import com.bidforge.app.admin.dto.AdminStatsResponse;
@@ -40,6 +43,8 @@ public class AdminService {
     private final ContractRepository contractRepository;
     private final PaymentRepository paymentRepository;
     private final DisputeRepository disputeRepository;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public AdminStatsResponse getStats() {
         return AdminStatsResponse.builder()
@@ -74,6 +79,10 @@ public class AdminService {
         if (user.getRole() == Role.ADMIN) throw new RuntimeException("Cannot ban an admin");
         user.setBanned(true);
         userRepository.save(user);
+        emailService.sendUserBannedEmail(user.getEmail(), user.getName());
+        notifyAdmins("User Banned",
+                user.getName() + " (" + user.getEmail() + ") has been banned.",
+                NotificationType.USER_BANNED, null);
     }
 
     @Transactional
@@ -82,6 +91,7 @@ public class AdminService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setBanned(false);
         userRepository.save(user);
+        emailService.sendUserUnbannedEmail(user.getEmail(), user.getName());
     }
 
     @Transactional
@@ -122,7 +132,24 @@ public class AdminService {
         dispute.setStatus(DisputeStatus.RESOLVED);
         dispute.setResolutionNote(note);
         dispute.setResolvedAt(LocalDateTime.now());
-        return mapDispute(disputeRepository.save(dispute));
+        AdminDisputeResponse response = mapDispute(disputeRepository.save(dispute));
+        String jobTitle = dispute.getContract().getJob().getTitle();
+        User client = dispute.getContract().getClient();
+        User freelancer = dispute.getContract().getFreelancer();
+        emailService.sendDisputeResolvedEmail(client.getEmail(), client.getName(), jobTitle, note);
+        emailService.sendDisputeResolvedEmail(freelancer.getEmail(), freelancer.getName(), jobTitle, note);
+        notificationService.createNotification(client, "Dispute Resolved",
+                "The dispute for \"" + jobTitle + "\" has been resolved.",
+                NotificationType.DISPUTE_OPENED, disputeId);
+        notificationService.createNotification(freelancer, "Dispute Resolved",
+                "The dispute for \"" + jobTitle + "\" has been resolved.",
+                NotificationType.DISPUTE_OPENED, disputeId);
+        return response;
+    }
+
+    private void notifyAdmins(String title, String message, NotificationType type, UUID referenceId) {
+        userRepository.findByRole(Role.ADMIN)
+                .forEach(admin -> notificationService.createNotification(admin, title, message, type, referenceId));
     }
 
     private AdminDisputeResponse mapDispute(Dispute d) {

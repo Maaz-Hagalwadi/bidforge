@@ -39,6 +39,9 @@ public class NotificationPreferenceService {
         pref.setMilestoneRefunded(dto.isMilestoneRefunded());
         pref.setPaymentReleased(dto.isPaymentReleased());
         pref.setReviewReceived(dto.isReviewReceived());
+        pref.setDisputeOpened(dto.isDisputeOpened());
+        pref.setUserBanned(dto.isUserBanned());
+        pref.setNewUserRegistered(dto.isNewUserRegistered());
         return toDto(repository.save(pref));
     }
 
@@ -62,6 +65,9 @@ public class NotificationPreferenceService {
                     case MILESTONE_REFUNDED -> p.isMilestoneRefunded();
                     case PAYMENT_RELEASED   -> p.isPaymentReleased();
                     case REVIEW_RECEIVED    -> p.isReviewReceived();
+                    case DISPUTE_OPENED     -> p.isDisputeOpened();
+                    case USER_BANNED        -> p.isUserBanned();
+                    case NEW_USER_REGISTERED-> p.isNewUserRegistered();
                 })
                 .orElse(true); // fail-open: no row = all enabled
     }
@@ -85,6 +91,9 @@ public class NotificationPreferenceService {
                 .milestoneRefunded(p.isMilestoneRefunded())
                 .paymentReleased(p.isPaymentReleased())
                 .reviewReceived(p.isReviewReceived())
+                .disputeOpened(p.isDisputeOpened())
+                .userBanned(p.isUserBanned())
+                .newUserRegistered(p.isNewUserRegistered())
                 .build();
     }
 }

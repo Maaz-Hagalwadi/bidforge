@@ -4,7 +4,12 @@ import com.bidforge.app.contract.Contract;
 import com.bidforge.app.contract.ContractRepository;
 import com.bidforge.app.dispute.dto.DisputeResponse;
 import com.bidforge.app.dispute.dto.OpenDisputeRequest;
+import com.bidforge.app.notification.EmailService;
+import com.bidforge.app.notification.NotificationService;
+import com.bidforge.app.notification.NotificationType;
+import com.bidforge.app.user.Role;
 import com.bidforge.app.user.User;
+import com.bidforge.app.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,6 +24,9 @@ public class DisputeService {
 
     private final DisputeRepository disputeRepository;
     private final ContractRepository contractRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public DisputeResponse openDispute(UUID contractId, OpenDisputeRequest request, User caller) {
         Contract contract = contractRepository.findById(contractId)
@@ -41,7 +49,16 @@ public class DisputeService {
             .status(DisputeStatus.OPEN)
             .build();
 
-        return mapToResponse(disputeRepository.save(dispute));
+        DisputeResponse response = mapToResponse(disputeRepository.save(dispute));
+        String jobTitle = contract.getJob().getTitle();
+        userRepository.findByRole(Role.ADMIN).forEach(admin -> {
+            notificationService.createNotification(admin,
+                    "New Dispute Opened",
+                    caller.getName() + " opened a dispute on \"" + jobTitle + "\".",
+                    NotificationType.DISPUTE_OPENED, response.getId());
+            emailService.sendDisputeOpenedAdminEmail(admin.getEmail(), caller.getName(), jobTitle, response.getId());
+        });
+        return response;
     }
 
     public List<DisputeResponse> getMyDisputes(User caller) {

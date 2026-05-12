@@ -18,4 +18,8 @@ public enum NotificationType {
     MILESTONE_REFUNDED,
     PAYMENT_RELEASED,
     REVIEW_RECEIVED,
+    // Admin notifications
+    DISPUTE_OPENED,
+    USER_BANNED,
+    NEW_USER_REGISTERED,
 }

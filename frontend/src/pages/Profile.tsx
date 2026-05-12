@@ -176,7 +176,9 @@ export default function Profile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
-  const fromAdmin = new URLSearchParams(search).get('from') === 'admin';
+  const fromParam = new URLSearchParams(search).get('from');
+  const fromAdmin = fromParam?.startsWith('admin') ?? false;
+  const adminActivePath = fromParam === 'admin-jobs' ? '/admin/jobs' : '/admin/users';
   const { user: currentUser, logout, refreshUser } = useAuth();
   const { theme } = useTheme();
   const isAdmin = currentUser?.role === 'ADMIN';
@@ -190,7 +192,7 @@ export default function Profile() {
     isAdmin ? ADMIN_SIDEBAR
     : currentUser?.role === 'FREELANCER' ? FREELANCER_SIDEBAR
     : CLIENT_SIDEBAR,
-    isAdmin ? '/admin/users' : pathname
+    isAdmin ? adminActivePath : pathname
   );
 
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };

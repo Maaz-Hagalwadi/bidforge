@@ -24,4 +24,7 @@ public class NotificationPreferenceDto {
     @Builder.Default private boolean milestoneRefunded = true;
     @Builder.Default private boolean paymentReleased = true;
     @Builder.Default private boolean reviewReceived = true;
+    @Builder.Default private boolean disputeOpened = true;
+    @Builder.Default private boolean userBanned = true;
+    @Builder.Default private boolean newUserRegistered = true;
 }

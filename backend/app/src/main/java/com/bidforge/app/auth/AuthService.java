@@ -1,6 +1,8 @@
 package com.bidforge.app.auth;
 
 import com.bidforge.app.notification.EmailService;
+import com.bidforge.app.notification.NotificationService;
+import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.auth.dto.request.ForgotPasswordRequest;
 import com.bidforge.app.auth.dto.request.LoginRequest;
 import com.bidforge.app.auth.dto.request.RefreshTokenRequest;
@@ -32,6 +34,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final EmailService emailService;
+    private final NotificationService notificationService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Value("${app.base-url:http://localhost:3000}")
@@ -66,6 +69,13 @@ public class AuthService {
         User saved = userRepository.save(user);
         String verifyUrl = baseUrl + "/verify-email?token=" + verificationToken;
         emailService.sendVerificationEmail(saved.getEmail(), saved.getName(), verifyUrl);
+        userRepository.findByRole(Role.ADMIN).forEach(admin -> {
+            notificationService.createNotification(admin,
+                    "New User Registered",
+                    saved.getName() + " (" + saved.getEmail() + ") signed up as " + saved.getRole() + ".",
+                    NotificationType.NEW_USER_REGISTERED, null);
+            emailService.sendNewUserRegisteredAdminEmail(admin.getEmail(), saved.getName(), saved.getEmail(), saved.getRole().name());
+        });
 
         return UserResponse.builder()
                 .id(saved.getId())
