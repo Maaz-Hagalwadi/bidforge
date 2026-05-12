@@ -1,5 +1,5 @@
 import { useTheme } from '@/context/ThemeContext';
-import { useState, useRef, useEffect, useCallback, KeyboardEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, KeyboardEvent, ChangeEvent } from 'react';
 import { NotificationBell } from '@/components/NotificationBell';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -70,11 +70,17 @@ export default function PostJob() {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<PostJobFormValues>({
     resolver: zodResolver(postJobSchema),
     defaultValues: { visibility: 'PUBLIC' },
   });
+
+  const [attachmentUploading, setAttachmentUploading] = useState(false);
+  const [attachmentFileName, setAttachmentFileName] = useState('');
+  const [attachmentError, setAttachmentError] = useState('');
+  const attachmentFileRef = useRef<HTMLInputElement>(null);
 
   const visibility = watch('visibility');
 
@@ -131,6 +137,23 @@ export default function PostJob() {
 
   const onSkillKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSkill(); }
+  };
+
+  const handleAttachmentChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAttachmentUploading(true);
+    setAttachmentError('');
+    try {
+      const { fileUrl, fileName } = await jobsApi.uploadAttachment(file);
+      setValue('attachmentUrl', fileUrl);
+      setAttachmentFileName(fileName);
+    } catch {
+      setAttachmentError('Upload failed. Please try again.');
+    } finally {
+      setAttachmentUploading(false);
+      e.target.value = '';
+    }
   };
 
   const onSubmit = async (values: PostJobFormValues) => {
@@ -417,14 +440,41 @@ export default function PostJob() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Attachment URL</label>
-                      <div className="border-2 border-dashed border-outline-variant rounded-xl p-6 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors">
-                        <span className="material-symbols-outlined text-[40px] text-slate-500 dark:text-slate-500 dark:text-slate-400 mb-2">cloud_upload</span>
-                        <p className="text-sm text-slate-700 font-semibold mb-1">Paste a file URL below</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-500 dark:text-slate-400 mb-3">PDF, DOC, JPG, or ZIP (paste hosted URL)</p>
-                        <input {...register('attachmentUrl')} type="url" placeholder="https://example.com/brief.pdf"
-                          className="w-full max-w-sm px-4 py-2 border border-outline-variant rounded-lg text-sm bg-white focus:outline-none focus:border-secondary focus:ring-4 focus:ring-secondary/10 transition-all text-center" />
+                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Attachment <span className="text-slate-400 font-normal">(optional)</span></label>
+                      <div
+                        onClick={() => !attachmentUploading && attachmentFileRef.current?.click()}
+                        className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center transition-colors cursor-pointer select-none ${attachmentFileName ? 'border-secondary/40 bg-secondary/5' : 'border-outline-variant bg-slate-50 hover:bg-slate-100'} ${attachmentUploading ? 'opacity-60 cursor-wait' : ''}`}
+                      >
+                        {attachmentUploading ? (
+                          <>
+                            <span className="material-symbols-outlined text-[40px] text-secondary animate-spin mb-2">progress_activity</span>
+                            <p className="text-sm text-slate-700 font-semibold">Uploading…</p>
+                          </>
+                        ) : attachmentFileName ? (
+                          <>
+                            <span className="material-symbols-outlined text-[40px] text-secondary mb-2">check_circle</span>
+                            <p className="text-sm text-secondary font-semibold truncate max-w-full px-2">{attachmentFileName}</p>
+                            <button
+                              type="button"
+                              onClick={e => { e.stopPropagation(); setValue('attachmentUrl', ''); setAttachmentFileName(''); }}
+                              className="mt-2 text-xs text-slate-500 hover:text-red-500 transition-colors"
+                            >
+                              Remove
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-[40px] text-slate-400 mb-2">cloud_upload</span>
+                            <p className="text-sm text-slate-700 font-semibold mb-1">Click to upload a file</p>
+                            <p className="text-xs text-slate-500">PDF, DOC, JPG, PNG or ZIP — max 10 MB</p>
+                          </>
+                        )}
                       </div>
+                      {attachmentError && <p className="text-xs text-red-500 mt-1">{attachmentError}</p>}
+                      <input ref={attachmentFileRef} type="file" className="hidden"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip"
+                        onChange={handleAttachmentChange} />
+                      <input type="hidden" {...register('attachmentUrl')} />
                     </div>
                   </section>
 
@@ -449,7 +499,7 @@ export default function PostJob() {
               <div className="col-span-12 lg:col-span-3 space-y-6">
 
                 {/* Tips card */}
-                <div className="rounded-xl p-6 text-slate-900 dark:text-white space-y-4" style={{ backgroundColor: '#0A192F' }}>
+                <div className="rounded-xl p-6 text-white space-y-4" style={{ backgroundColor: '#0A192F' }}>
                   <h3 className="text-lg font-bold">Tips for a Great Post</h3>
                   <ul className="space-y-3">
                     {[
@@ -459,7 +509,7 @@ export default function PostJob() {
                     ].map(({ icon, text }) => (
                       <li key={icon} className="flex gap-3">
                         <span className="material-symbols-outlined text-secondary text-[20px] flex-shrink-0 mt-0.5">{icon}</span>
-                        <p className="text-sm text-slate-900 dark:text-white/60 leading-relaxed">{text}</p>
+                        <p className="text-sm text-white leading-relaxed">{text}</p>
                       </li>
                     ))}
                   </ul>

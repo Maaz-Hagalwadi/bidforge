@@ -64,4 +64,12 @@ export const jobsApi = {
 
   deleteJob: (id: string) =>
     api.delete(`/jobs/${id}`).then(r => r.data),
+
+  uploadAttachment: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post<{ fileUrl: string; fileName: string }>(
+      '/files/job-attachment', form, { headers: { 'Content-Type': 'multipart/form-data' } }
+    ).then(r => r.data);
+  },
 };

@@ -114,7 +114,14 @@ export default function Disputes() {
               </button>
             ))}
           </nav>
-          <div className="mt-auto p-3 border-t border-slate-200 dark:border-white/10 flex-shrink-0">
+          <div className="mt-auto p-3 space-y-2 border-t border-slate-200 dark:border-white/10 flex-shrink-0">
+            {sidebarOpen && (
+              <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-900 dark:text-white/60 mb-1">PRO PLAN</p>
+                <p className="text-xs font-semibold leading-relaxed mb-3 text-slate-900 dark:text-white/60">Unlimited active contracts and priority support.</p>
+                <button className="w-full py-2 bg-secondary text-white rounded-lg text-xs font-bold hover:brightness-110 transition-all">Upgrade Now</button>
+              </div>
+            )}
             <button onClick={handleLogout} title={!sidebarOpen ? 'Sign Out' : undefined}
               className={['w-full flex items-center gap-3 rounded-lg py-2.5 text-slate-900 dark:text-white/60 hover:bg-red-500/20 hover:text-red-400 transition-colors', sidebarOpen ? 'px-3' : 'justify-center px-2'].join(' ')}>
               <span className="material-symbols-outlined text-[20px] flex-shrink-0">logout</span>

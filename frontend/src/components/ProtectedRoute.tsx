@@ -26,6 +26,7 @@ export function ClientRoute({ children }: Props) {
   const { isAuthenticated, isLoading, user } = useAuth();
   if (isLoading) return <Spinner />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />;
   if (user?.role !== 'CLIENT') return <Navigate to="/freelancer/dashboard" replace />;
   return <>{children}</>;
 }
@@ -35,6 +36,16 @@ export function FreelancerRoute({ children }: Props) {
   const { isAuthenticated, isLoading, user } = useAuth();
   if (isLoading) return <Spinner />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />;
   if (user?.role !== 'FREELANCER') return <Navigate to="/client/dashboard" replace />;
+  return <>{children}</>;
+}
+
+/** Only allows ADMIN role. */
+export function AdminRoute({ children }: Props) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+  if (isLoading) return <Spinner />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== 'ADMIN') return <Navigate to="/" replace />;
   return <>{children}</>;
 }

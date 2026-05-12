@@ -29,6 +29,14 @@ export const FREELANCER_SIDEBAR: readonly SidebarLink[] = [
   { icon: 'payments',     label: 'Payments',    short: 'Payments',  path: '/payments'             },
 ];
 
+export const ADMIN_SIDEBAR: readonly SidebarLink[] = [
+  { icon: 'dashboard',        label: 'Dashboard',       short: 'Dash',     path: '/admin/dashboard' },
+  { icon: 'group',            label: 'User Management', short: 'Users',    path: '/admin/users'     },
+  { icon: 'fact_check',       label: 'Job Moderation',  short: 'Jobs',     path: '/admin/jobs'      },
+  { icon: 'gavel',            label: 'Disputes',         short: 'Disputes', path: '/admin/disputes'  },
+  { icon: 'payments',         label: 'Revenue',          short: 'Revenue',  path: '/admin/revenue'   },
+];
+
 export function withActive(links: readonly SidebarLink[], pathname: string): (SidebarLink & { active: boolean })[] {
   return links.map(l => ({ ...l, active: !!l.path && pathname === l.path }));
 }
