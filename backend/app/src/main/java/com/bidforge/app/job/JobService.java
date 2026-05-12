@@ -317,6 +317,16 @@ public class JobService {
         return jobRepository.findAll().stream().map(this::mapToResponse).toList();
     }
 
+    public org.springframework.data.domain.Page<JobResponse> getJobsAdminPaged(int page, int size, JobStatus status) {
+        org.springframework.data.domain.PageRequest pageable =
+                org.springframework.data.domain.PageRequest.of(page, size,
+                        org.springframework.data.domain.Sort.by("createdAt").descending());
+        if (status != null) {
+            return jobRepository.findByStatusOrderByCreatedAtDesc(status, pageable).map(this::mapToResponse);
+        }
+        return jobRepository.findAllByOrderByCreatedAtDesc(pageable).map(this::mapToResponse);
+    }
+
     private JobResponse mapToResponse(Job job) {
         return JobResponse.builder()
                 .id(job.getId())

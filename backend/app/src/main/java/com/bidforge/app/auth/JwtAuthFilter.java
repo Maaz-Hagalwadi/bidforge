@@ -54,7 +54,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             User user = userRepository.findByEmail(email)
                     .orElse(null);
 
-            if (user != null) {
+            if (user != null && !user.isBanned()) {
 
                 List<GrantedAuthority> authorities = List.of(
                         new SimpleGrantedAuthority("ROLE_" + user.getRole().name())

@@ -1,5 +1,7 @@
 package com.bidforge.app.files;
 
+import com.bidforge.app.storage.FileUploadService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,7 +20,10 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/files")
+@RequiredArgsConstructor
 public class FileController {
+
+    private final FileUploadService fileUploadService;
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
             ".jpg", ".jpeg", ".png", ".gif", ".webp",
@@ -64,5 +69,13 @@ public class FileController {
         } catch (IOException e) {
             throw new IllegalStateException("Failed to store file: " + e.getMessage());
         }
+    }
+
+    @PreAuthorize("hasRole('CLIENT')")
+    @PostMapping(value = "/job-attachment", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, String> uploadJobAttachment(@RequestParam("file") MultipartFile file) {
+        String url = fileUploadService.uploadJobAttachment(file);
+        String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "attachment";
+        return Map.of("fileUrl", url, "fileName", originalName);
     }
 }

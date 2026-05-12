@@ -20,7 +20,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
     return this.props.children;
   }
 }
-import { ProtectedRoute, ClientRoute, FreelancerRoute } from '@/components/ProtectedRoute';
+import { ProtectedRoute, ClientRoute, FreelancerRoute, AdminRoute } from '@/components/ProtectedRoute';
 import Landing from '@/pages/Landing';
 import Register from '@/pages/Register';
 import Login from '@/pages/Login';
@@ -47,6 +47,11 @@ import Reviews from '@/pages/Reviews';
 import Disputes from '@/pages/Disputes';
 import Settings from '@/pages/Settings';
 import FindFreelancers from '@/pages/FindFreelancers';
+import AdminDashboard from '@/pages/admin/AdminDashboard';
+import AdminUsers from '@/pages/admin/AdminUsers';
+import AdminJobs from '@/pages/admin/AdminJobs';
+import AdminDisputes from '@/pages/admin/AdminDisputes';
+import AdminRevenue from '@/pages/admin/AdminRevenue';
 
 export default function App() {
   return (
@@ -115,6 +120,13 @@ export default function App() {
             path="/freelancer/bids"
             element={<FreelancerRoute><FreelancerBids /></FreelancerRoute>}
           />
+
+          {/* Admin routes */}
+          <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+          <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+          <Route path="/admin/jobs" element={<AdminRoute><AdminJobs /></AdminRoute>} />
+          <Route path="/admin/disputes" element={<AdminRoute><AdminDisputes /></AdminRoute>} />
+          <Route path="/admin/revenue" element={<AdminRoute><AdminRevenue /></AdminRoute>} />
 
           {/* Legacy redirect */}
           <Route path="/dashboard" element={<Navigate to="/client/dashboard" replace />} />

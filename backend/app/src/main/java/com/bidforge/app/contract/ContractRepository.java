@@ -1,6 +1,8 @@
 package com.bidforge.app.contract;
 
 import com.bidforge.app.job.Job;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -16,4 +18,8 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
     boolean existsByJob(Job job);
 
     Optional<Contract> findByJob(Job job);
+
+    long countByStatus(ContractStatus status);
+
+    Page<Contract> findAllByOrderByCreatedAtDesc(Pageable pageable);
 }

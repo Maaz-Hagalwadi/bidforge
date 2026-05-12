@@ -60,6 +60,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/users/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/users/search").hasRole("CLIENT")
                         .requestMatchers(HttpMethod.GET, "/users/*", "/users/*/reviews").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/client/**").hasRole("CLIENT")
                         .requestMatchers("/freelancer/**").hasRole("FREELANCER")
                         .anyRequest().authenticated()

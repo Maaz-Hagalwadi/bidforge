@@ -96,7 +96,7 @@ export default function Login() {
     try {
       const u = await login(values);
       setTheme('light');
-      navigate(u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
+      navigate(u.role === 'ADMIN' ? '/admin/dashboard' : u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const apiErr = err.response?.data as ApiError;
@@ -151,7 +151,7 @@ export default function Login() {
       const { token } = await authApi.verifyOtp(otpEmail, values.otp);
       const u = await loginWithOtp(token);
       setTheme('light');
-      navigate(u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
+      navigate(u.role === 'ADMIN' ? '/admin/dashboard' : u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const apiErr = err.response?.data as ApiError;
@@ -183,7 +183,7 @@ export default function Login() {
     try {
       const u = await loginWithGoogle(accessToken);
       setTheme('light');
-      navigate(u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
+      navigate(u.role === 'ADMIN' ? '/admin/dashboard' : u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const apiErr = err.response?.data as ApiError;
@@ -210,7 +210,7 @@ export default function Login() {
     try {
       const u = await loginWithGoogle(googlePending!, role);
       setTheme('light');
-      navigate(u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
+      navigate(u.role === 'ADMIN' ? '/admin/dashboard' : u.role === 'CLIENT' ? '/client/dashboard' : '/freelancer/dashboard', { replace: true });
     } catch (err) {
       if (axios.isAxiosError(err)) {
         const apiErr = err.response?.data as ApiError;

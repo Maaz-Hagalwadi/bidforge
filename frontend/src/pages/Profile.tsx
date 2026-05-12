@@ -8,7 +8,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { NotificationBell } from '@/components/NotificationBell';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
-import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/sidebar';
+import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, ADMIN_SIDEBAR, withActive } from '@/constants/sidebar';
 import { userApi } from '@/api/user';
 import { reviewsApi } from '@/api/reviews';
 import type { UserProfile, PortfolioItem } from '@/types/user';
@@ -175,9 +175,11 @@ function EditProfileModal({ form, saving, saveErr, onChange, onPhotoUploaded, on
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const fromAdmin = new URLSearchParams(search).get('from') === 'admin';
   const { user: currentUser, logout, refreshUser } = useAuth();
   const { theme } = useTheme();
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -185,8 +187,10 @@ export default function Profile() {
   const profileRef = useRef<HTMLDivElement>(null);
 
   const sidebarLinks = withActive(
-    currentUser?.role === 'FREELANCER' ? FREELANCER_SIDEBAR : CLIENT_SIDEBAR,
-    pathname
+    isAdmin ? ADMIN_SIDEBAR
+    : currentUser?.role === 'FREELANCER' ? FREELANCER_SIDEBAR
+    : CLIENT_SIDEBAR,
+    isAdmin ? '/admin/users' : pathname
   );
 
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
@@ -355,7 +359,7 @@ export default function Profile() {
       style={{ backgroundColor: theme === 'dark' ? '#0A192F' : '#ffffff' }}
     >
       <div className={`flex items-center h-14 border-b border-slate-200 dark:border-white/10 px-3 flex-shrink-0 ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
-        {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white/60 select-none">Menu</span>}
+        {sidebarOpen && <span className="text-[10px] font-bold uppercase tracking-widest text-slate-900 dark:text-white/60 select-none">{isAdmin ? 'Admin Panel' : 'Menu'}</span>}
         <button onClick={() => setSidebarOpen(o => !o)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors">
           <span className="material-symbols-outlined text-xl">{sidebarOpen ? 'menu_open' : 'menu'}</span>
         </button>
@@ -422,6 +426,22 @@ export default function Profile() {
       <div className="flex flex-1 min-h-0">
         {sharedSidebar}
         <main className="flex-1 overflow-y-auto min-w-0 flex flex-col">
+
+          {/* Admin viewing banner */}
+          {isAdmin && (
+            <div className="flex items-center gap-3 px-6 py-2.5 bg-secondary/10 border-b border-secondary/20">
+              <span className="material-symbols-outlined text-secondary text-[18px]">admin_panel_settings</span>
+              <span className="text-sm font-semibold text-secondary">Admin View</span>
+              <span className="text-sm text-on-surface-variant">— viewing as admin</span>
+              {fromAdmin && (
+                <button onClick={() => window.close()}
+                  className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-secondary hover:underline">
+                  <span className="material-symbols-outlined text-[14px]">arrow_back</span>
+                  Close Tab
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Hero Banner */}
           <div className="relative h-40 md:h-48 flex-shrink-0 overflow-hidden"

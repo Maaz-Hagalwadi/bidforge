@@ -1,4 +1,4 @@
-export type Role = 'CLIENT' | 'FREELANCER';
+export type Role = 'CLIENT' | 'FREELANCER' | 'ADMIN';
 
 export interface RegisterPayload {
   name: string;

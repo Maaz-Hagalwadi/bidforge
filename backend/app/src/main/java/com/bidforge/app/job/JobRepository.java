@@ -38,4 +38,10 @@ public interface JobRepository extends JpaRepository<Job, UUID>, JpaSpecificatio
 
     @Query("SELECT ji.job.id FROM JobInvite ji WHERE ji.freelancer.id = :freelancerId")
     List<UUID> findJobIdsByFreelancerId(Long freelancerId);
+
+    long countByStatus(JobStatus status);
+
+    Page<Job> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+    Page<Job> findByStatusOrderByCreatedAtDesc(JobStatus status, Pageable pageable);
 }

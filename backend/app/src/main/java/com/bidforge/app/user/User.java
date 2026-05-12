@@ -63,6 +63,9 @@ public class User {
     @Column(nullable = false)
     private boolean emailVerified = false;
 
+    @Column(nullable = false)
+    private boolean banned = false;
+
     private String emailVerificationToken;
 
     @Column(nullable = false)
