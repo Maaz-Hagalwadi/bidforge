@@ -13,6 +13,7 @@ import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { postJobSchema, type PostJobFormValues } from '@/lib/schemas';
+import { aiApi } from '@/api/ai';
 
 
 
@@ -33,6 +34,25 @@ const STEPS = [
   { id: 'files-skills',  icon: 'attachment',  label: 'Files & Skills' },
 ];
 
+const AI_BUDGET_OPTIONS = [
+  { label: 'Under $500',   min: 100,   max: 500   },
+  { label: '$500 – $2k',   min: 500,   max: 2000  },
+  { label: '$2k – $10k',   min: 2000,  max: 10000 },
+  { label: '$10k+',        min: 10000, max: 50000 },
+];
+
+const AI_SKILL_SUGGESTIONS: Record<string, string[]> = {
+  'Software Development': ['React', 'Node.js', 'Python', 'TypeScript', 'Java', 'Vue.js', 'AWS', 'Docker'],
+  'UI/UX Design':         ['Figma', 'Adobe XD', 'Prototyping', 'User Research', 'Wireframing', 'Sketch'],
+  'Digital Marketing':    ['SEO', 'Google Ads', 'Facebook Ads', 'Content Strategy', 'Email Marketing'],
+  'Data Science':         ['Python', 'Machine Learning', 'TensorFlow', 'SQL', 'Data Analysis', 'R'],
+  'Writing & Content':    ['Blog Writing', 'Copywriting', 'SEO Writing', 'Technical Writing', 'Proofreading'],
+  'Video & Animation':    ['Adobe Premiere', 'After Effects', 'Motion Graphics', '3D Animation'],
+  'Finance & Accounting': ['QuickBooks', 'Financial Modeling', 'Tax Planning', 'Bookkeeping'],
+  'Legal':                ['Contract Drafting', 'IP Law', 'Corporate Law', 'Legal Research'],
+};
+const AI_DEFAULT_SKILLS = ['JavaScript', 'Python', 'React', 'Design', 'Writing', 'Analytics'];
+
 // ── Helpers ────────────────────────────────────────────────────
 
 function getInitials(name: string) {
@@ -45,7 +65,7 @@ export default function PostJob() {
   const { user, logout, refreshUser } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const sidebarLinks = withActive(CLIENT_SIDEBAR, pathname);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -64,6 +84,18 @@ export default function PostJob() {
 
   const profileRef = useRef<HTMLDivElement>(null);
   const draftRef = useRef(false);
+
+  // Pre-fill form from chatbot URL params
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (params.get('title')) setValue('title', params.get('title')!);
+    if (params.get('description')) setValue('description', params.get('description')!);
+    if (params.get('category')) setValue('category', params.get('category')!);
+    if (params.get('budgetMin')) setValue('budgetMin', params.get('budgetMin') as unknown as number);
+    if (params.get('budgetMax')) setValue('budgetMax', params.get('budgetMax') as unknown as number);
+    if (params.get('skills')) setSkills(params.get('skills')!.split(',').map(s => s.trim()).filter(Boolean));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const inviteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
@@ -76,6 +108,72 @@ export default function PostJob() {
     resolver: zodResolver(postJobSchema),
     defaultValues: { visibility: 'PUBLIC' },
   });
+
+  const [aiTitle, setAiTitle] = useState('');
+  const [aiBudget, setAiBudget] = useState('');
+  const [aiBudgetMin, setAiBudgetMin] = useState(0);
+  const [aiBudgetMax, setAiBudgetMax] = useState(0);
+  const [aiSkills, setAiSkills] = useState<string[]>([]);
+  const [aiCustomSkill, setAiCustomSkill] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiStep, setAiStep] = useState<1 | 2 | 3>(1);
+
+  const openAiPanel = () => {
+    if (!aiPanelOpen) {
+      const formTitle = watch('title');
+      if (formTitle) setAiTitle(formTitle);
+      setAiStep(1);
+    }
+    setAiPanelOpen(o => !o);
+  };
+
+  const clearAi = () => {
+    setAiStep(1);
+    setAiTitle('');
+    setAiBudget('');
+    setAiBudgetMin(0);
+    setAiBudgetMax(0);
+    setAiSkills([]);
+    setAiCustomSkill('');
+  };
+
+  const toggleAiSkill = (skill: string) =>
+    setAiSkills(prev => prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]);
+
+  const addAiCustomSkill = () => {
+    const s = aiCustomSkill.trim();
+    if (s && !aiSkills.includes(s)) setAiSkills(prev => [...prev, s]);
+    setAiCustomSkill('');
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!aiTitle.trim()) return;
+    setAiGenerating(true);
+    setSubmitError('');
+    try {
+      const noteParts: string[] = [];
+      if (aiBudget) noteParts.push(`Budget: ${aiBudget}`);
+      if (aiSkills.length > 0) noteParts.push(`Skills needed: ${aiSkills.join(', ')}`);
+      const result = await aiApi.generateDescription({
+        title: aiTitle,
+        notes: noteParts.join('. '),
+        category: watch('category'),
+      });
+      setValue('title', aiTitle);
+      setValue('description', result.description);
+      if (aiBudgetMin > 0) setValue('budgetMin', aiBudgetMin as unknown as number);
+      if (aiBudgetMax > 0) setValue('budgetMax', aiBudgetMax as unknown as number);
+      const merged = [...new Set([...aiSkills, ...result.skills])];
+      if (merged.length > 0) setSkills(merged);
+      setAiPanelOpen(false);
+      clearAi();
+    } catch {
+      setSubmitError('AI generation failed. Please try again.');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   const [attachmentUploading, setAttachmentUploading] = useState(false);
   const [attachmentFileName, setAttachmentFileName] = useState('');
@@ -311,7 +409,145 @@ export default function PostJob() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">Description <span className="text-red-500">*</span></label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-sm font-semibold text-slate-700">Description <span className="text-red-500">*</span></label>
+                        <button type="button" onClick={openAiPanel}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:text-secondary/80 transition-colors">
+                          <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+                          {aiPanelOpen ? 'Hide AI' : 'Generate with AI'}
+                        </button>
+                      </div>
+
+                      {aiPanelOpen && (
+                        <div className="mb-3 p-4 bg-secondary/5 border border-secondary/20 rounded-xl space-y-3">
+                          {/* Header + step dots */}
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs text-secondary font-semibold flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+                              AI Job Assistant
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                              {([1, 2, 3] as const).map(n => (
+                                <span key={n} className={`w-2 h-2 rounded-full transition-colors ${aiStep >= n ? 'bg-secondary' : 'bg-secondary/25'}`} />
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Step 1: title */}
+                          {aiStep === 1 && (
+                            <>
+                              <p className="text-xs font-semibold text-slate-700">What's the job title?</p>
+                              <input
+                                type="text"
+                                value={aiTitle}
+                                onChange={e => setAiTitle(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter' && aiTitle.trim()) setAiStep(2); }}
+                                placeholder="e.g. Build a React e-commerce website"
+                                autoFocus
+                                className="w-full px-3 py-2 border border-secondary/30 rounded-lg text-sm focus:outline-none focus:border-secondary bg-white"
+                              />
+                              <div className="flex items-center justify-between">
+                                <button type="button" onClick={() => { setAiPanelOpen(false); clearAi(); }}
+                                  className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors">
+                                  <span className="material-symbols-outlined text-[14px]">close</span>Cancel
+                                </button>
+                                <button type="button" onClick={() => setAiStep(2)} disabled={!aiTitle.trim()}
+                                  className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-40 transition-all">
+                                  Next <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Step 2: budget */}
+                          {aiStep === 2 && (
+                            <>
+                              <p className="text-xs font-semibold text-slate-700">What's your budget? <span className="font-normal text-slate-400">(optional)</span></p>
+                              <div className="flex flex-wrap gap-2">
+                                {AI_BUDGET_OPTIONS.map(opt => (
+                                  <button key={opt.label} type="button"
+                                    onClick={() => { setAiBudget(opt.label); setAiBudgetMin(opt.min); setAiBudgetMax(opt.max); }}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                                      aiBudget === opt.label
+                                        ? 'bg-secondary text-white border-secondary'
+                                        : 'border-secondary/30 text-slate-600 hover:border-secondary hover:text-secondary bg-white'
+                                    }`}>
+                                    {opt.label}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <button type="button" onClick={() => setAiStep(1)}
+                                    className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors">
+                                    <span className="material-symbols-outlined text-[14px]">arrow_back</span>Back
+                                  </button>
+                                  <button type="button" onClick={clearAi}
+                                    className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors">
+                                    <span className="material-symbols-outlined text-[14px]">refresh</span>Clear
+                                  </button>
+                                </div>
+                                <button type="button" onClick={() => setAiStep(3)}
+                                  className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-white text-xs font-bold rounded-lg hover:brightness-110 transition-all">
+                                  Next <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Step 3: skills → generate */}
+                          {aiStep === 3 && (
+                            <>
+                              <p className="text-xs font-semibold text-slate-700">What skills are needed? <span className="font-normal text-slate-400">(optional)</span></p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {(AI_SKILL_SUGGESTIONS[watch('category')] ?? AI_DEFAULT_SKILLS).map(skill => (
+                                  <button key={skill} type="button" onClick={() => toggleAiSkill(skill)}
+                                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${
+                                      aiSkills.includes(skill)
+                                        ? 'bg-secondary text-white border-secondary'
+                                        : 'border-slate-300 text-slate-600 hover:border-secondary hover:text-secondary bg-white'
+                                    }`}>
+                                    {skill}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex gap-2">
+                                <input
+                                  value={aiCustomSkill}
+                                  onChange={e => setAiCustomSkill(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addAiCustomSkill(); } }}
+                                  placeholder="Add custom skill…"
+                                  className="flex-1 px-2.5 py-1.5 border border-secondary/30 rounded-lg text-xs focus:outline-none focus:border-secondary bg-white"
+                                />
+                                <button type="button" onClick={addAiCustomSkill} disabled={!aiCustomSkill.trim()}
+                                  className="px-3 py-1.5 bg-secondary/10 text-secondary text-xs font-semibold rounded-lg hover:bg-secondary/20 disabled:opacity-40 transition-colors">
+                                  Add
+                                </button>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <button type="button" onClick={() => setAiStep(2)}
+                                    className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors">
+                                    <span className="material-symbols-outlined text-[14px]">arrow_back</span>Back
+                                  </button>
+                                  <button type="button" onClick={clearAi}
+                                    className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 transition-colors">
+                                    <span className="material-symbols-outlined text-[14px]">refresh</span>Clear
+                                  </button>
+                                </div>
+                                <button type="button" onClick={handleGenerateDescription} disabled={aiGenerating}
+                                  className="flex items-center gap-2 px-4 py-2 bg-secondary text-white text-xs font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+                                  {aiGenerating
+                                    ? <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Generating…</>
+                                    : <><span className="material-symbols-outlined text-[16px]">auto_awesome</span>Generate</>
+                                  }
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+
                       <div className="border border-outline-variant rounded-lg overflow-hidden focus-within:border-secondary focus-within:ring-4 focus-within:ring-secondary/10 transition-all">
                         <div className="flex gap-1 p-2 bg-slate-50 border-b border-outline-variant">
                           {['format_bold','format_italic','format_list_bulleted','link'].map(ic => (

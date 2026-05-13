@@ -12,6 +12,7 @@ import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { Toast } from '@/components/Toast';
 import type { BidResponse, JobResponse } from '@/types/job';
+import { aiApi } from '@/api/ai';
 
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
@@ -250,6 +251,23 @@ function JobDetailContent({
   const [myBid, setMyBid] = useState<BidResponse | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [serverError, setServerError] = useState('');
+  const [aiDrafting, setAiDrafting] = useState(false);
+
+  const handleDraftProposal = async () => {
+    setAiDrafting(true);
+    try {
+      const result = await aiApi.generateProposal({
+        jobTitle: job.title,
+        jobDescription: job.description ?? '',
+        requiredSkills: job.requiredSkills ?? '',
+      });
+      setProposal(result.proposal);
+    } catch {
+      // silently ignore — user can still write manually
+    } finally {
+      setAiDrafting(false);
+    }
+  };
 
   const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
   const skills = parseSkills(job.requiredSkills);
@@ -441,7 +459,16 @@ function JobDetailContent({
 
               {/* Cover Letter */}
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-on-surface">Cover Letter</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-semibold text-on-surface">Cover Letter</label>
+                  <button type="button" onClick={handleDraftProposal} disabled={aiDrafting}
+                    className="flex items-center gap-1 text-xs font-semibold text-secondary hover:text-secondary/80 disabled:opacity-60 transition-colors">
+                    {aiDrafting
+                      ? <><span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>Drafting…</>
+                      : <><span className="material-symbols-outlined text-[14px]">auto_awesome</span>Draft with AI</>
+                    }
+                  </button>
+                </div>
                 <textarea
                   value={proposal}
                   onChange={e => setProposal(e.target.value)}

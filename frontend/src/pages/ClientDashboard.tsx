@@ -11,6 +11,7 @@ import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { ClientDashboardData, RecentProject } from '@/types/dashboard';
+import { AiChatBot } from '@/components/AiChatBot';
 
 
 
@@ -334,6 +335,7 @@ export default function ClientDashboard() {
         </main>
       </div>
 
+      <AiChatBot />
     </div>
   );
 }

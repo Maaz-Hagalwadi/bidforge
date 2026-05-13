@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented: auth (password + OTP email), user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, milestones with escrow-style payments, dashboards, real-time notifications (WebSocket + REST), real-time chat (WebSocket + REST), reviews, file uploads, and Stripe payment integration (partially wired).
+**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented: auth (password + OTP email), user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, milestones with escrow-style payments, dashboards, real-time notifications (WebSocket + REST), real-time chat (WebSocket + REST), reviews, disputes, file uploads (local + S3), admin panel, and Stripe payment integration (partially wired).
 
 ---
 
@@ -21,7 +21,7 @@ All Maven commands run from `backend/app/`:
 ```
 
 **Prerequisites**: PostgreSQL on `localhost:5433`, database `bidforge`, user `admin`, password `admin`.  
-Override with env vars: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `RESEND_API_KEY` (email via Resend), `EMAIL_TEST_MODE` (set `true` to avoid real sends), `APP_BASE_URL` (frontend origin, default `http://localhost:5173`), `APP_SERVER_URL` (backend origin, default `http://localhost:8080`), `APP_UPLOAD_DIR` (file storage path, default `uploads`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`.
+Override with env vars: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `RESEND_API_KEY` (email via Resend), `EMAIL_TEST_MODE` (set `true` to avoid real sends), `APP_BASE_URL` (frontend origin, default `http://localhost:5173`), `APP_SERVER_URL` (backend origin, default `http://localhost:8080`), `APP_UPLOAD_DIR` (file storage path, default `uploads`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, `GOOGLE_CLIENT_ID`, `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `aws.s3.region`, `aws.s3.bucket` (S3 file storage; falls back to local disk when not configured).
 
 `spring.jpa.hibernate.ddl-auto=none` — schema is managed by Flyway migrations in `src/main/resources/db/migration/` (V1–V11). Tests use H2 in-memory with `create-drop`.
 
@@ -78,6 +78,17 @@ review/        ReviewController, ReviewService, Review (entity), ReviewRepositor
                dto/  CreateReviewRequest, ReviewResponse
 files/         FileController — uploads to `{APP_UPLOAD_DIR}/chat/`; allowed types:
                images + pdf/doc/docx/xls/xlsx/txt/zip; max 20 MB; returns `fileUrl`, `fileName`, `fileType`
+storage/       FileUploadService (local-disk + S3 dual backend), S3Config
+admin/         AdminController, AdminService — platform-wide stats, user ban/unban/delete,
+               job moderation, dispute management, payment summary
+               dto/  (under admin/dto/)
+dispute/       Dispute (entity), DisputeController, DisputeService, DisputeRepository,
+               DisputeStatus (enum)
+               dto/  (under dispute/dto/)
+notification/
+  preferences/ NotificationPreference (entity), NotificationPreferenceController,
+               NotificationPreferenceService, NotificationPreferenceRepository,
+               NotificationPreferenceDto
 websocket/     WebSocketConfig (STOMP/SockJS on /ws, brokers /topic /queue /user),
                WebSocketAuthInterceptor (JWT auth on CONNECT frame)
 config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler,
@@ -132,6 +143,8 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/users/me` | Yes | Current user profile |
 | PATCH | `/users/me` | Yes | Update `name` or `profileImageUrl` |
 | GET | `/users/search?q=` | CLIENT | Search freelancers by name/email (max 10 results) |
+| GET | `/users/me/notification-preferences` | Yes | Get caller's notification preferences |
+| PATCH | `/users/me/notification-preferences` | Yes | Update notification preferences |
 | GET | `/client/dashboard` | CLIENT | Aggregated client stats |
 | GET | `/freelancer/dashboard` | FREELANCER | Aggregated freelancer stats |
 | POST | `/jobs` | CLIENT | Create job; `draft: true` → `DRAFT` status, else `OPEN` |
@@ -184,6 +197,20 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/users/{userId}/reviews` | Yes | All reviews received by a user |
 | GET | `/users/{userId}/reviews/given` | Yes | All reviews given by a user |
 | POST | `/files/upload` | Yes | Upload file (multipart); returns `{ fileUrl, fileName, fileType }` |
+| POST | `/contracts/{contractId}/dispute` | Yes | Open a dispute on a contract |
+| GET | `/disputes/my` | Yes | All disputes for the caller |
+| PATCH | `/disputes/{disputeId}/resolve` | Yes | Resolve a dispute |
+| GET | `/admin/stats` | ADMIN | Platform-wide stats |
+| GET | `/admin/users` | ADMIN | All users (paginated/filterable) |
+| PATCH | `/admin/users/{id}/ban` | ADMIN | Ban a user |
+| PATCH | `/admin/users/{id}/unban` | ADMIN | Unban a user |
+| DELETE | `/admin/users/{id}` | ADMIN | Delete a user |
+| GET | `/admin/jobs` | ADMIN | All jobs (moderation view) |
+| GET | `/admin/disputes` | ADMIN | All disputes |
+| PATCH | `/admin/disputes/{id}/under-review` | ADMIN | Mark dispute under review |
+| PATCH | `/admin/disputes/{id}/resolve` | ADMIN | Admin resolve a dispute |
+| GET | `/admin/payments` | ADMIN | All payments |
+| GET | `/admin/payments/summary` | ADMIN | Payment summary stats |
 | GET | `/health` | No | Health check |
 
 ### Exception → HTTP mapping
@@ -273,10 +300,18 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 | `/payments` | `Payments` | `ProtectedRoute` |
 | `/messages` | `Messages` | `ProtectedRoute` |
 | `/reviews` | `Reviews` | `ProtectedRoute` |
+| `/disputes` | `Disputes` | `ProtectedRoute` |
+| `/settings` | `Settings` | `ProtectedRoute` |
+| `/client/freelancers` | `FindFreelancers` | `ClientRoute` |
 | `/profile/:id` | `Profile` | — (public) |
+| `/admin/dashboard` | `AdminDashboard` | `AdminRoute` |
+| `/admin/users` | `AdminUsers` | `AdminRoute` |
+| `/admin/jobs` | `AdminJobs` | `AdminRoute` |
+| `/admin/disputes` | `AdminDisputes` | `AdminRoute` |
+| `/admin/revenue` | `AdminRevenue` | `AdminRoute` |
 | `/dashboard` | redirect → `/client/dashboard` | — |
 
-`ClientRoute` / `FreelancerRoute` (in `src/components/ProtectedRoute.tsx`) extend `ProtectedRoute` and additionally check `user.role`; redirect to the correct dashboard if wrong role.
+`ClientRoute` / `FreelancerRoute` / `AdminRoute` (in `src/components/ProtectedRoute.tsx`) extend `ProtectedRoute` and additionally check `user.role`; redirect to the correct dashboard if wrong role. Admin pages live under `src/pages/admin/` (AdminDashboard, AdminUsers, AdminJobs, AdminDisputes, AdminRevenue, AdminLayout).
 
 ### Key architecture patterns
 
@@ -288,6 +323,8 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 
 **Notification context** (`src/context/NotificationContext.tsx`): Manages WebSocket connection (STOMP over SockJS), unread count, and notification list. Provides `useNotifications()` hook. Connects after login using the access token; subscribes to `/user/queue/notifications` and `/user/queue/notification-count`. `NotificationProvider` wraps the entire app (inside `AuthProvider`). `NotificationToastContainer` renders real-time toast popups for incoming WS notifications.
 
+**Theme context** (`src/context/ThemeContext.tsx`): `theme` (`'dark'|'light'`), `toggleTheme()`, `setTheme()`. Persisted in `localStorage`; applies `dark` class to `document.documentElement`. Consumed via `useTheme()`.
+
 **API layer** (`src/api/`):
 - `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, inviteFreelancer (single), inviteFreelancers (bulk), getInvites, acceptInvite, declineInvite, getJobInvites, getAllClientInvites, getInvitedJobs, createBid, getJobBids, acceptBid, declineBid, getMyBids, updateJob, archiveJob, **repostJob**, **deleteJob**
 - `contracts.ts` — `contractsApi`: `getClientContracts()`, `getFreelancerContracts()`, `submitWork(contractId, payload)`, `completeContract(contractId)`, `requestRevision(contractId, note)`
@@ -296,9 +333,14 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `users.ts` — `usersApi`: `searchFreelancers()`
 - `dashboard.ts` — `dashboardApi`: `getClientDashboard()`, `getFreelancerDashboard()`
 - `notifications.ts` — `notificationsApi`: `getAll()`, `getUnreadCount()`, `markAsRead(id)`, `markAllAsRead()`
+- `notificationPreferences.ts` — notification preference read/update
+- `disputes.ts` — dispute open/list/resolve
+- `chat.ts` — chat room and message REST calls (supplements WebSocket)
+- `reviews.ts` — review submit/fetch
+- `admin.ts` — all admin endpoints (stats, users, jobs, disputes, payments)
 - `auth.ts` — auth calls (login, register, refresh, logout)
 
-**Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR` and `FREELANCER_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. The Contracts entry links to `/contracts`; Payments is still a placeholder with no `path`. `withActive()` marks the active route.
+**Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR`, `FREELANCER_SIDEBAR`, and `ADMIN_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. Both client and freelancer sidebars include Disputes and Payments entries with real paths. `withActive()` marks the active route.
 
 **Pagination pattern**: `BrowseJobs` uses server-side pagination (`SpringPage<JobResponse>` from `GET /jobs`). `MyJobs` and `FreelancerInvites` fetch all records once and paginate client-side (10 per page). `SpringPage<T>` is defined in `src/types/job.ts`.
 

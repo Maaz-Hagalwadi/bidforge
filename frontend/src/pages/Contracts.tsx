@@ -6,6 +6,7 @@ import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/side
 import { useAuth } from '@/context/AuthContext';
 import { contractsApi } from '@/api/contracts';
 import { disputesApi } from '@/api/disputes';
+import { aiApi } from '@/api/ai';
 import { milestonesApi } from '@/api/milestones';
 import { reviewsApi } from '@/api/reviews';
 import type { MilestoneResponse } from '@/types/milestone';
@@ -120,6 +121,7 @@ export default function Contracts() {
   const [disputeReason,      setDisputeReason]      = useState('');
   const [submittingDispute,  setSubmittingDispute]  = useState(false);
   const [contractDisputed,   setContractDisputed]   = useState<Set<string>>(new Set());
+  const [aiSuggestingMilestones, setAiSuggestingMilestones] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -755,11 +757,43 @@ export default function Contracts() {
                   )}
                 </div>
                 {isClient && contract.status !== 'COMPLETED' && contract.status !== 'CANCELLED' && !showMilestoneForm && (
-                  <button onClick={() => setShowMilestoneForm(true)}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-secondary hover:bg-secondary/5 px-3 py-1.5 rounded-lg transition-colors border border-secondary/20">
-                    <span className="material-symbols-outlined text-[16px]">add</span>
-                    Add Milestones
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={async () => {
+                      setAiSuggestingMilestones(true);
+                      try {
+                        const result = await aiApi.suggestMilestones({
+                          jobTitle: contract.jobTitle,
+                          jobDescription: '',
+                          totalAmount: contract.amount,
+                          deliveryDays: contract.deliveryDays ?? 30,
+                        });
+                        const today = new Date();
+                        const mapped = result.milestones.map(m => ({
+                          title: m.title,
+                          description: m.description,
+                          amount: String(m.amount),
+                          dueDate: new Date(today.getTime() + m.dueDays * 86400000).toISOString().split('T')[0],
+                        }));
+                        setMilestoneFormItems(mapped);
+                        setShowMilestoneForm(true);
+                      } catch {
+                        setToast({ message: 'AI suggestion failed. Try again.', error: true });
+                      } finally {
+                        setAiSuggestingMilestones(false);
+                      }
+                    }} disabled={aiSuggestingMilestones}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:bg-secondary/5 px-3 py-1.5 rounded-lg transition-colors border border-secondary/20 disabled:opacity-60">
+                      {aiSuggestingMilestones
+                        ? <><span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>Generating…</>
+                        : <><span className="material-symbols-outlined text-[14px]">auto_awesome</span>Suggest with AI</>
+                      }
+                    </button>
+                    <button onClick={() => setShowMilestoneForm(true)}
+                      className="flex items-center gap-1.5 text-sm font-semibold text-secondary hover:bg-secondary/5 px-3 py-1.5 rounded-lg transition-colors border border-secondary/20">
+                      <span className="material-symbols-outlined text-[16px]">add</span>
+                      Add Milestones
+                    </button>
+                  </div>
                 )}
               </div>
 
