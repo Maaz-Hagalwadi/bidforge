@@ -1,5 +1,6 @@
 package com.bidforge.app.admin;
 
+import com.bidforge.app.admin.dto.TimeSeriesPoint;
 import com.bidforge.app.notification.EmailService;
 import com.bidforge.app.notification.NotificationService;
 import com.bidforge.app.notification.NotificationType;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -45,6 +47,7 @@ public class AdminService {
     private final DisputeRepository disputeRepository;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final com.bidforge.app.bid.BidRepository bidRepository;
 
     public AdminStatsResponse getStats() {
         return AdminStatsResponse.builder()
@@ -176,6 +179,33 @@ public class AdminService {
 
     public double getEscrowedAmount() {
         return paymentRepository.sumEscrowedAmount();
+    }
+
+    public List<TimeSeriesPoint> getRevenueByMonth(int months) {
+        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusMonths(months);
+        return paymentRepository.revenueByMonth(since).stream()
+                .map(r -> new TimeSeriesPoint((String) r[0], ((Number) r[1]).doubleValue()))
+                .toList();
+    }
+
+    public List<TimeSeriesPoint> getUsersJoinedByWeek(int weeks) {
+        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusWeeks(weeks);
+        return userRepository.usersJoinedByWeek(since).stream()
+                .map(r -> new TimeSeriesPoint((String) r[0], ((Number) r[1]).doubleValue()))
+                .toList();
+    }
+
+    public List<TimeSeriesPoint> getBidsPerCategory() {
+        return bidRepository.bidsPerCategory().stream()
+                .map(r -> new TimeSeriesPoint((String) r[0], ((Number) r[1]).doubleValue()))
+                .toList();
+    }
+
+    public List<TimeSeriesPoint> getDisputeResolutionTime(int months) {
+        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusMonths(months);
+        return disputeRepository.avgResolutionHoursByMonth(since).stream()
+                .map(r -> new TimeSeriesPoint((String) r[0], ((Number) r[1]).doubleValue()))
+                .toList();
     }
 
     private AdminPaymentResponse mapPayment(Payment p) {

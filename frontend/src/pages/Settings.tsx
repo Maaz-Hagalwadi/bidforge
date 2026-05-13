@@ -94,6 +94,12 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; error?: boolean } | null>(null);
 
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: '', title: '', bio: '', location: '', hourlyRate: '', skills: '', profileImageUrl: '' });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileUploading, setProfileUploading] = useState(false);
+  const profilePhotoRef = useRef<HTMLInputElement>(null);
+
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<ProfileSuggestions | null>(null);
   const [applyingField, setApplyingField] = useState<string | null>(null);
@@ -128,6 +134,20 @@ export default function Settings() {
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
+
+  useEffect(() => {
+    if (user && !editingProfile) {
+      setProfileForm({
+        name: user.name ?? '',
+        title: user.title ?? '',
+        bio: user.bio ?? '',
+        location: user.location ?? '',
+        hourlyRate: user.hourlyRate != null ? String(user.hourlyRate) : '',
+        skills: user.skills ?? '',
+        profileImageUrl: user.profileImageUrl ?? '',
+      });
+    }
+  }, [user, editingProfile]);
 
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
   const initials = user ? getInitials(user.name) : '?';
@@ -208,21 +228,152 @@ export default function Settings() {
               <p className="text-sm text-on-surface-variant mt-0.5">Manage your account and notification preferences.</p>
             </div>
 
-            {/* Account Card */}
+            {/* Profile Card */}
             <div className="tonal-card rounded-xl border border-outline-variant p-6">
-              <h2 className="text-base font-bold text-on-surface mb-4">Account</h2>
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center text-white text-xl font-bold select-none flex-shrink-0">
-                  {initials}
-                </div>
-                <div>
-                  <p className="font-semibold text-on-surface">{user?.name}</p>
-                  <p className="text-sm text-on-surface-variant">{user?.email}</p>
-                  <span className="mt-1 inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-secondary/10 text-secondary">
-                    {user?.role === 'CLIENT' ? 'Client' : 'Freelancer'}
-                  </span>
-                </div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-base font-bold text-on-surface">Profile</h2>
+                {!editingProfile && (
+                  <button onClick={() => setEditingProfile(true)}
+                    className="flex items-center gap-1.5 text-sm font-semibold text-secondary hover:underline flex-shrink-0">
+                    <span className="material-symbols-outlined text-[16px]">edit</span>Edit
+                  </button>
+                )}
               </div>
+
+              {!editingProfile ? (
+                <div className="flex items-center gap-4">
+                  {user?.profileImageUrl ? (
+                    <img src={user.profileImageUrl} className="w-14 h-14 rounded-full object-cover border-2 border-slate-200 flex-shrink-0" alt={user.name} />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center text-white text-xl font-bold select-none flex-shrink-0">{initials}</div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-on-surface">{user?.name}</p>
+                    {user?.title && <p className="text-sm text-on-surface-variant">{user.title}</p>}
+                    <p className="text-sm text-on-surface-variant">{user?.email}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <span className="inline-flex px-2 py-0.5 rounded text-xs font-semibold bg-secondary/10 text-secondary">
+                        {user?.role === 'CLIENT' ? 'Client' : 'Freelancer'}
+                      </span>
+                      {user?.location && <span className="text-xs text-on-surface-variant flex items-center gap-1"><span className="material-symbols-outlined text-[13px]">location_on</span>{user.location}</span>}
+                      {user?.hourlyRate && <span className="text-xs text-secondary font-semibold">${user.hourlyRate}/hr</span>}
+                    </div>
+                    {user?.bio && <p className="text-xs text-on-surface-variant mt-2 line-clamp-2">{user.bio}</p>}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Photo upload */}
+                  <div className="flex items-center gap-4 pb-4 border-b border-outline-variant">
+                    <div className="relative group cursor-pointer flex-shrink-0"
+                      onClick={() => !profileUploading && profilePhotoRef.current?.click()}>
+                      {profileForm.profileImageUrl ? (
+                        <img src={profileForm.profileImageUrl} className="w-16 h-16 rounded-full object-cover border-2 border-slate-200" alt="Avatar" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center text-white font-bold text-xl select-none">{initials}</div>
+                      )}
+                      {profileUploading ? (
+                        <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <span className="material-symbols-outlined text-white text-[20px]">camera_alt</span>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-on-surface mb-1.5">Profile Photo</p>
+                      <button type="button" onClick={() => !profileUploading && profilePhotoRef.current?.click()} disabled={profileUploading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-50 transition-colors">
+                        <span className="material-symbols-outlined text-[15px]">upload</span>
+                        {profileUploading ? 'Uploading…' : 'Upload Photo'}
+                      </button>
+                    </div>
+                    <input ref={profilePhotoRef} type="file" accept="image/*" className="hidden"
+                      onChange={async e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setProfileUploading(true);
+                        try {
+                          const updated = await userApi.uploadProfileImage(file);
+                          setProfileForm(f => ({ ...f, profileImageUrl: updated.profileImageUrl ?? '' }));
+                          await refreshUser();
+                        } catch { setToast({ message: 'Photo upload failed.', error: true }); }
+                        finally { setProfileUploading(false); e.target.value = ''; }
+                      }} />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Full Name</label>
+                      <input value={profileForm.name} onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))}
+                        className="w-full border border-outline-variant rounded-xl px-4 py-2.5 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary transition-colors" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Professional Title</label>
+                      <input value={profileForm.title} onChange={e => setProfileForm(f => ({ ...f, title: e.target.value }))}
+                        className="w-full border border-outline-variant rounded-xl px-4 py-2.5 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary transition-colors"
+                        placeholder="e.g. Full Stack Developer" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Location</label>
+                      <input value={profileForm.location} onChange={e => setProfileForm(f => ({ ...f, location: e.target.value }))}
+                        className="w-full border border-outline-variant rounded-xl px-4 py-2.5 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary transition-colors"
+                        placeholder="e.g. New York, USA" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Hourly Rate (USD)</label>
+                      <input type="number" min={0} value={profileForm.hourlyRate} onChange={e => setProfileForm(f => ({ ...f, hourlyRate: e.target.value }))}
+                        className="w-full border border-outline-variant rounded-xl px-4 py-2.5 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary transition-colors"
+                        placeholder="e.g. 50" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Skills (comma-separated)</label>
+                      <input value={profileForm.skills} onChange={e => setProfileForm(f => ({ ...f, skills: e.target.value }))}
+                        className="w-full border border-outline-variant rounded-xl px-4 py-2.5 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary transition-colors"
+                        placeholder="React, TypeScript, Node.js" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Bio</label>
+                      <textarea rows={3} value={profileForm.bio} onChange={e => setProfileForm(f => ({ ...f, bio: e.target.value }))}
+                        className="w-full border border-outline-variant rounded-xl px-4 py-2.5 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary transition-colors resize-none"
+                        placeholder="Tell clients about yourself…" />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={async () => {
+                      setProfileSaving(true);
+                      try {
+                        await userApi.updateMe({
+                          name: profileForm.name.trim() || undefined,
+                          title: profileForm.title.trim() || undefined,
+                          bio: profileForm.bio.trim() || undefined,
+                          location: profileForm.location.trim() || undefined,
+                          hourlyRate: profileForm.hourlyRate ? Number(profileForm.hourlyRate) : undefined,
+                          skills: profileForm.skills.trim() || undefined,
+                          profileImageUrl: profileForm.profileImageUrl.trim() || undefined,
+                        });
+                        await refreshUser();
+                        setEditingProfile(false);
+                        setToast({ message: 'Profile updated successfully!' });
+                      } catch {
+                        setToast({ message: 'Failed to save profile. Try again.', error: true });
+                      } finally { setProfileSaving(false); }
+                    }} disabled={profileSaving || profileUploading}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-xl hover:brightness-110 disabled:opacity-60 transition-all">
+                      {profileSaving
+                        ? <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Saving…</>
+                        : 'Save Changes'}
+                    </button>
+                    <button onClick={() => setEditingProfile(false)}
+                      className="px-6 py-2.5 border border-outline-variant text-on-surface-variant text-sm font-semibold rounded-xl hover:bg-surface-container transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* AI Profile Optimizer */}

@@ -60,6 +60,8 @@ export default function Payments() {
   const [filter, setFilter] = useState<PaymentFilter>('ALL');
   const [page, setPage] = useState(0);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; error?: boolean } | null>(null);
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -81,6 +83,27 @@ export default function Payments() {
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const handleMilestoneAction = async (id: string, action: 'approve' | 'reject') => {
+    setActionLoading(id + action);
+    try {
+      if (action === 'approve') await milestonesApi.approveMilestone(id);
+      else await milestonesApi.rejectMilestone(id);
+      setMilestones(prev => prev.map(m => m.id === id
+        ? { ...m, status: action === 'approve' ? 'APPROVED' : 'REJECTED', funded: action === 'reject' ? false : m.funded }
+        : m
+      ));
+      setToast({ message: action === 'approve' ? 'Milestone approved — payment released!' : 'Milestone rejected.' });
+    } catch {
+      setToast({ message: `Failed to ${action} milestone. Try again.`, error: true });
+    } finally { setActionLoading(null); }
+  };
 
   const handleLogout = async () => { await logout(); navigate('/login', { replace: true }); };
   const initials = user ? getInitials(user.name) : '?';
@@ -288,6 +311,9 @@ export default function Payments() {
                                 <div className="flex flex-wrap items-center gap-2 mb-0.5">
                                   <p className="text-sm font-bold text-on-surface truncate">{m.title}</p>
                                   <span className={`px-2 py-0.5 rounded text-xs font-semibold ${cfg.cls}`}>{cfg.label}</span>
+                                  {m.status === 'SUBMITTED' && state === 'ESCROWED' && (
+                                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700">Work Submitted</span>
+                                  )}
                                 </div>
                                 <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-on-surface-variant">
                                   {m.jobTitle && <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">work</span>{m.jobTitle}</span>}
@@ -297,11 +323,46 @@ export default function Payments() {
                                   </button>
                                 </div>
                               </div>
-                              <div className="text-right flex-shrink-0">
-                                <p className={`text-lg font-bold ${state === 'RELEASED' ? 'text-emerald-600' : state === 'ESCROWED' ? 'text-amber-600' : 'text-on-surface'}`}>
-                                  {state === 'RELEASED' ? '+' : ''}{formatCurrency(m.amount)}
-                                </p>
-                                <p className="text-xs text-on-surface-variant mt-0.5">USD</p>
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                <div className="text-right">
+                                  <p className={`text-lg font-bold ${state === 'RELEASED' ? 'text-emerald-600' : state === 'ESCROWED' ? 'text-amber-600' : 'text-on-surface'}`}>
+                                    {state === 'RELEASED' ? '+' : ''}{formatCurrency(m.amount)}
+                                  </p>
+                                  <p className="text-xs text-on-surface-variant">USD</p>
+                                </div>
+                                {isClient && state === 'PENDING' && (
+                                  <button onClick={() => navigate(`/contracts/${m.contractId}`)}
+                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-secondary text-white rounded-lg hover:brightness-110 transition-all">
+                                    <span className="material-symbols-outlined text-[13px]">lock</span>Fund
+                                  </button>
+                                )}
+                                {isClient && state === 'ESCROWED' && m.status === 'SUBMITTED' && (
+                                  <div className="flex gap-1.5">
+                                    <button onClick={() => handleMilestoneAction(m.id, 'approve')}
+                                      disabled={actionLoading === m.id + 'approve'}
+                                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+                                      <span className="material-symbols-outlined text-[13px]">check</span>
+                                      {actionLoading === m.id + 'approve' ? '…' : 'Approve'}
+                                    </button>
+                                    <button onClick={() => handleMilestoneAction(m.id, 'reject')}
+                                      disabled={actionLoading === m.id + 'reject'}
+                                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-60 transition-all">
+                                      <span className="material-symbols-outlined text-[13px]">close</span>
+                                      {actionLoading === m.id + 'reject' ? '…' : 'Reject'}
+                                    </button>
+                                  </div>
+                                )}
+                                {!isClient && state === 'ESCROWED' && m.status !== 'SUBMITTED' && (
+                                  <button onClick={() => navigate(`/contracts/${m.contractId}`)}
+                                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold bg-secondary text-white rounded-lg hover:brightness-110 transition-all">
+                                    <span className="material-symbols-outlined text-[13px]">upload</span>Submit Work
+                                  </button>
+                                )}
+                                {!isClient && state === 'ESCROWED' && m.status === 'SUBMITTED' && (
+                                  <span className="text-xs font-semibold text-blue-600 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[13px]">hourglass_top</span>Awaiting Review
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </article>
@@ -319,7 +380,12 @@ export default function Payments() {
                               <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.iconBg}`}>
                                 <span className={`material-symbols-outlined text-[18px] ${state === 'RELEASED' ? 'text-emerald-600' : state === 'ESCROWED' ? 'text-amber-600' : 'text-slate-500'}`}>{cfg.icon}</span>
                               </div>
-                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${cfg.cls}`}>{cfg.label}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                <span className={`px-2 py-0.5 rounded text-xs font-semibold ${cfg.cls}`}>{cfg.label}</span>
+                                {m.status === 'SUBMITTED' && state === 'ESCROWED' && (
+                                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-blue-50 text-blue-700">Submitted</span>
+                                )}
+                              </div>
                             </div>
                             <p className="text-sm font-bold text-on-surface line-clamp-2">{m.title}</p>
                             <p className={`text-base font-bold ${state === 'RELEASED' ? 'text-emerald-600' : state === 'ESCROWED' ? 'text-amber-600' : 'text-on-surface'}`}>
@@ -329,9 +395,44 @@ export default function Payments() {
                               {m.jobTitle && <p className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">work</span>{m.jobTitle}</p>}
                               <p className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">calendar_today</span>{formatDate(m.createdAt)}</p>
                             </div>
-                            <button onClick={() => navigate(`/contracts/${m.contractId}`)} className="mt-auto flex items-center justify-center gap-1 text-xs font-semibold text-secondary hover:underline">
-                              <span className="material-symbols-outlined text-[12px]">open_in_new</span>View Contract
-                            </button>
+                            <div className="mt-auto flex flex-col gap-1.5">
+                              {isClient && state === 'PENDING' && (
+                                <button onClick={() => navigate(`/contracts/${m.contractId}`)}
+                                  className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold bg-secondary text-white rounded-lg hover:brightness-110 transition-all">
+                                  <span className="material-symbols-outlined text-[13px]">lock</span>Fund Milestone
+                                </button>
+                              )}
+                              {isClient && state === 'ESCROWED' && m.status === 'SUBMITTED' && (
+                                <div className="flex gap-1.5">
+                                  <button onClick={() => handleMilestoneAction(m.id, 'approve')}
+                                    disabled={actionLoading === m.id + 'approve'}
+                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold bg-emerald-600 text-white rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+                                    <span className="material-symbols-outlined text-[13px]">check</span>
+                                    {actionLoading === m.id + 'approve' ? '…' : 'Approve'}
+                                  </button>
+                                  <button onClick={() => handleMilestoneAction(m.id, 'reject')}
+                                    disabled={actionLoading === m.id + 'reject'}
+                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-semibold border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-60 transition-all">
+                                    <span className="material-symbols-outlined text-[13px]">close</span>
+                                    {actionLoading === m.id + 'reject' ? '…' : 'Reject'}
+                                  </button>
+                                </div>
+                              )}
+                              {!isClient && state === 'ESCROWED' && m.status !== 'SUBMITTED' && (
+                                <button onClick={() => navigate(`/contracts/${m.contractId}`)}
+                                  className="flex items-center justify-center gap-1 px-3 py-1.5 text-xs font-semibold bg-secondary text-white rounded-lg hover:brightness-110 transition-all">
+                                  <span className="material-symbols-outlined text-[13px]">upload</span>Submit Work
+                                </button>
+                              )}
+                              {!isClient && state === 'ESCROWED' && m.status === 'SUBMITTED' && (
+                                <span className="text-xs font-semibold text-blue-600 flex items-center justify-center gap-1">
+                                  <span className="material-symbols-outlined text-[13px]">hourglass_top</span>Awaiting Review
+                                </span>
+                              )}
+                              <button onClick={() => navigate(`/contracts/${m.contractId}`)} className="flex items-center justify-center gap-1 text-xs font-semibold text-secondary hover:underline">
+                                <span className="material-symbols-outlined text-[12px]">open_in_new</span>View Contract
+                              </button>
+                            </div>
                           </article>
                         );
                       })}
@@ -351,6 +452,12 @@ export default function Payments() {
         </main>
       </div>
 
+      {toast && (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-5 py-3 rounded-xl shadow-xl text-sm font-semibold transition-all ${toast.error ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>
+          <span className="material-symbols-outlined text-[18px]">{toast.error ? 'error' : 'check_circle'}</span>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }

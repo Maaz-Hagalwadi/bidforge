@@ -4,12 +4,14 @@ import com.bidforge.app.admin.dto.AdminDisputeResponse;
 import com.bidforge.app.admin.dto.AdminPaymentResponse;
 import com.bidforge.app.admin.dto.AdminStatsResponse;
 import com.bidforge.app.admin.dto.AdminUserResponse;
+import com.bidforge.app.admin.dto.TimeSeriesPoint;
 import com.bidforge.app.job.dto.response.JobResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -96,5 +98,28 @@ public class AdminController {
             "totalRevenue", adminService.getStats().getTotalRevenue(),
             "escrowed", adminService.getEscrowedAmount()
         );
+    }
+
+    @GetMapping("/analytics/revenue")
+    public List<TimeSeriesPoint> revenueByMonth(
+            @RequestParam(defaultValue = "12") int months) {
+        return adminService.getRevenueByMonth(months);
+    }
+
+    @GetMapping("/analytics/users")
+    public List<TimeSeriesPoint> usersJoinedByWeek(
+            @RequestParam(defaultValue = "12") int weeks) {
+        return adminService.getUsersJoinedByWeek(weeks);
+    }
+
+    @GetMapping("/analytics/bids")
+    public List<TimeSeriesPoint> bidsPerCategory() {
+        return adminService.getBidsPerCategory();
+    }
+
+    @GetMapping("/analytics/disputes")
+    public List<TimeSeriesPoint> disputeResolutionTime(
+            @RequestParam(defaultValue = "12") int months) {
+        return adminService.getDisputeResolutionTime(months);
     }
 }

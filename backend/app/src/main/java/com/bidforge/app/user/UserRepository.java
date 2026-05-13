@@ -56,4 +56,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("q") String q,
             @Param("status") String status,
             Pageable pageable);
+
+    @Query(value = "SELECT TO_CHAR(DATE_TRUNC('week', u.created_at), 'IYYY-IW') AS label, COUNT(*) AS value " +
+                   "FROM users u WHERE u.created_at >= :since " +
+                   "GROUP BY label ORDER BY label", nativeQuery = true)
+    List<Object[]> usersJoinedByWeek(@Param("since") LocalDateTime since);
 }

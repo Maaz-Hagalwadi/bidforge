@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,4 +29,9 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Query(value = "SELECT p FROM Payment p LEFT JOIN FETCH p.milestone m LEFT JOIN FETCH m.contract c LEFT JOIN FETCH c.client LEFT JOIN FETCH c.freelancer WHERE p.status = :status ORDER BY p.createdAt DESC",
            countQuery = "SELECT COUNT(p) FROM Payment p WHERE p.status = :status")
     Page<Payment> findAllWithDetailsByStatus(@Param("status") PaymentStatus status, Pageable pageable);
+
+    @Query(value = "SELECT TO_CHAR(DATE_TRUNC('month', p.created_at), 'YYYY-MM') AS label, COALESCE(SUM(p.amount), 0) AS value " +
+                   "FROM payment p WHERE p.status = 'RELEASED' AND p.created_at >= :since " +
+                   "GROUP BY label ORDER BY label", nativeQuery = true)
+    List<Object[]> revenueByMonth(@Param("since") java.time.LocalDateTime since);
 }

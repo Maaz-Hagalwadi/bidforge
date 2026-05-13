@@ -222,6 +222,7 @@ export default function BrowseJobs() {
     })();
     setApplied({ keyword, category, skills, minBudget: range.min, maxBudget: range.max, postedAfter: postedAfterVal, experienceLevel, urgencyLevel, deadline });
     setPage(0);
+    setFiltersOpen(false);
   };
 
   const handleClear = () => {
@@ -370,7 +371,6 @@ export default function BrowseJobs() {
                             {job.createdAt ? timeAgo(job.createdAt) : ''}
                           </span>
                           <h3 className="text-base font-bold text-on-surface group-hover:text-secondary transition-colors">{job.title}</h3>
-                          <p className="text-sm text-on-surface-variant line-clamp-1">{job.description}</p>
                           {skillList.length > 0 && (
                             <div className="flex flex-wrap gap-1.5">
                               {skillList.slice(0, 4).map(s => (
@@ -410,107 +410,198 @@ export default function BrowseJobs() {
 
             {/* Filters */}
             {activeTab === 'browse' && (
-              <form onSubmit={handleSearch} className="tonal-card rounded-xl p-4 space-y-3">
-                {/* Search row — always visible */}
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                    <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)}
-                      placeholder="Search jobs, skills…"
-                      className="w-full pl-10 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
-                  </div>
-                  {/* Mobile: filters toggle */}
-                  <button type="button" onClick={() => setFiltersOpen(o => !o)}
-                    className={`lg:hidden relative flex items-center gap-1.5 px-3 py-2.5 border rounded-lg text-sm font-semibold transition-colors flex-shrink-0 ${filtersOpen ? 'border-secondary text-secondary bg-secondary/5' : 'border-outline-variant text-on-surface-variant hover:bg-white'}`}>
+              <>
+                <div className="hidden lg:flex justify-end">
+                  <button type="button" onClick={() => setFiltersOpen(true)}
+                    className="relative flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-semibold shadow-lg shadow-slate-900/10 hover:bg-slate-800 active:scale-[0.98] transition-all">
                     <span className="material-symbols-outlined text-[18px]">tune</span>
+                    Filters
                     {activeFilterCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center">{activeFilterCount}</span>
+                      <span className="min-w-5 h-5 px-1 rounded-full bg-secondary text-white text-[11px] font-bold flex items-center justify-center">{activeFilterCount}</span>
                     )}
                   </button>
-                  {/* Desktop: Clear + Search always visible */}
-                  <div className="hidden lg:flex gap-2 flex-shrink-0">
-                    <button type="button" onClick={handleClear}
-                      className="px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
-                      Clear
-                    </button>
-                    <button type="submit"
-                      className="flex items-center gap-2 px-5 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                      <span className="material-symbols-outlined text-[18px]">filter_list</span>
-                      Search
-                    </button>
-                  </div>
                 </div>
 
-                {/* Filter grid — always on desktop, collapsible on mobile */}
-                <div className={`${filtersOpen ? 'block' : 'hidden'} lg:block`}>
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Category</label>
-                      <select value={category} onChange={e => setCategory(e.target.value === 'All Categories' ? '' : e.target.value)}
-                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
-                        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                      </select>
+                <form onSubmit={handleSearch} className="lg:hidden tonal-card rounded-xl p-4 space-y-3">
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+                      <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)}
+                        placeholder="Search jobs, skills..."
+                        className="w-full pl-10 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
                     </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Budget</label>
-                      <select value={budgetRange} onChange={e => setBudgetRange(e.target.value)}
-                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
-                        {BUDGET_RANGES.map(r => <option key={r.label} value={r.label}>{r.label}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Skills</label>
-                      <input type="text" value={skills} onChange={e => setSkills(e.target.value)}
-                        placeholder="e.g. React, Python"
-                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Posted</label>
-                      <select value={postedDate} onChange={e => setPostedDate(e.target.value)}
-                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
-                        {POSTED_DATE_OPTIONS.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Experience Level</label>
-                      <select value={experienceLevel} onChange={e => setExperienceLevel(e.target.value)}
-                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
-                        <option value="">Any Level</option>
-                        <option value="ENTRY">Entry Level</option>
-                        <option value="INTERMEDIATE">Intermediate</option>
-                        <option value="EXPERT">Expert</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Urgency</label>
-                      <select value={urgencyLevel} onChange={e => setUrgencyLevel(e.target.value)}
-                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
-                        <option value="">Any Urgency</option>
-                        <option value="LOW">Low</option>
-                        <option value="NORMAL">Normal</option>
-                        <option value="HIGH">High / Urgent</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="block text-xs font-semibold text-on-surface-variant px-1">Deadline Before</label>
-                      <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)}
-                        className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
-                    </div>
-                  </div>
-                  {/* Mobile: Clear + Search inside expanded panel */}
-                  <div className="flex gap-2 mt-3 lg:hidden">
-                    <button type="button" onClick={handleClear}
-                      className="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
-                      Clear
-                    </button>
-                    <button type="submit" onClick={() => setFiltersOpen(false)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                      <span className="material-symbols-outlined text-[18px]">filter_list</span>
-                      Search
+                    <button type="button" onClick={() => setFiltersOpen(o => !o)}
+                      className={`relative flex items-center gap-1.5 px-3 py-2.5 border rounded-lg text-sm font-semibold transition-colors flex-shrink-0 ${filtersOpen ? 'border-secondary text-secondary bg-secondary/5' : 'border-outline-variant text-on-surface-variant hover:bg-white'}`}>
+                      <span className="material-symbols-outlined text-[18px]">tune</span>
+                      {activeFilterCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center">{activeFilterCount}</span>
+                      )}
                     </button>
                   </div>
-                </div>
-              </form>
+
+                  <div className={filtersOpen ? 'block' : 'hidden'}>
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-semibold text-on-surface-variant px-1">Category</label>
+                        <select value={category} onChange={e => setCategory(e.target.value === 'All Categories' ? '' : e.target.value)}
+                          className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-semibold text-on-surface-variant px-1">Budget</label>
+                        <select value={budgetRange} onChange={e => setBudgetRange(e.target.value)}
+                          className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                          {BUDGET_RANGES.map(r => <option key={r.label} value={r.label}>{r.label}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-semibold text-on-surface-variant px-1">Skills</label>
+                        <input type="text" value={skills} onChange={e => setSkills(e.target.value)}
+                          placeholder="e.g. React, Python"
+                          className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-semibold text-on-surface-variant px-1">Posted</label>
+                        <select value={postedDate} onChange={e => setPostedDate(e.target.value)}
+                          className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                          {POSTED_DATE_OPTIONS.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-semibold text-on-surface-variant px-1">Experience Level</label>
+                        <select value={experienceLevel} onChange={e => setExperienceLevel(e.target.value)}
+                          className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                          <option value="">Any Level</option>
+                          <option value="ENTRY">Entry Level</option>
+                          <option value="INTERMEDIATE">Intermediate</option>
+                          <option value="EXPERT">Expert</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-semibold text-on-surface-variant px-1">Urgency</label>
+                        <select value={urgencyLevel} onChange={e => setUrgencyLevel(e.target.value)}
+                          className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                          <option value="">Any Urgency</option>
+                          <option value="LOW">Low</option>
+                          <option value="NORMAL">Normal</option>
+                          <option value="HIGH">High / Urgent</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-semibold text-on-surface-variant px-1">Deadline Before</label>
+                        <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)}
+                          className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <button type="button" onClick={handleClear}
+                        className="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
+                        Clear
+                      </button>
+                      <button type="submit"
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                        <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                        Search
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                {filtersOpen && (
+                  <div className="hidden lg:flex fixed inset-0 z-[100] items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+                    <div className="bg-white w-full sm:max-w-3xl max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                        <div>
+                          <h2 className="text-base font-bold text-on-surface">Filter Jobs</h2>
+                          <p className="text-xs text-on-surface-variant mt-0.5">Search by skills, category, budget, timing, and experience.</p>
+                        </div>
+                        <button type="button" onClick={() => setFiltersOpen(false)}
+                          className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-slate-50 transition-colors"
+                          aria-label="Close filters">
+                          <span className="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                      </div>
+
+                      <form onSubmit={handleSearch} className="p-5 space-y-4 overflow-y-auto">
+                        <div className="relative">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+                          <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)}
+                            placeholder="Search jobs, skills..."
+                            className="w-full pl-10 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <label className="block text-xs font-semibold text-on-surface-variant px-1">Category</label>
+                            <select value={category} onChange={e => setCategory(e.target.value === 'All Categories' ? '' : e.target.value)}
+                              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-xs font-semibold text-on-surface-variant px-1">Budget</label>
+                            <select value={budgetRange} onChange={e => setBudgetRange(e.target.value)}
+                              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                              {BUDGET_RANGES.map(r => <option key={r.label} value={r.label}>{r.label}</option>)}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-xs font-semibold text-on-surface-variant px-1">Skills</label>
+                            <input type="text" value={skills} onChange={e => setSkills(e.target.value)}
+                              placeholder="e.g. React, Python"
+                              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-xs font-semibold text-on-surface-variant px-1">Posted</label>
+                            <select value={postedDate} onChange={e => setPostedDate(e.target.value)}
+                              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                              {POSTED_DATE_OPTIONS.map(o => <option key={o.label} value={o.label}>{o.label}</option>)}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-xs font-semibold text-on-surface-variant px-1">Experience Level</label>
+                            <select value={experienceLevel} onChange={e => setExperienceLevel(e.target.value)}
+                              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                              <option value="">Any Level</option>
+                              <option value="ENTRY">Entry Level</option>
+                              <option value="INTERMEDIATE">Intermediate</option>
+                              <option value="EXPERT">Expert</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-xs font-semibold text-on-surface-variant px-1">Urgency</label>
+                            <select value={urgencyLevel} onChange={e => setUrgencyLevel(e.target.value)}
+                              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white">
+                              <option value="">Any Urgency</option>
+                              <option value="LOW">Low</option>
+                              <option value="NORMAL">Normal</option>
+                              <option value="HIGH">High / Urgent</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="block text-xs font-semibold text-on-surface-variant px-1">Deadline Before</label>
+                            <input type="date" value={deadline} onChange={e => setDeadline(e.target.value)}
+                              className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-secondary/20 focus:border-secondary transition-all bg-white" />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2 border-t border-slate-100">
+                          <button type="button" onClick={handleClear}
+                            className="px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
+                            Clear
+                          </button>
+                          <button type="submit"
+                            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                            <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                            Apply Filters
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {activeTab === 'browse' && <>
@@ -597,7 +688,6 @@ export default function BrowseJobs() {
                               </span>
                             </div>
                             <h3 className="text-base font-bold text-secondary group-hover:opacity-80 transition-opacity pr-28">{job.title}</h3>
-                            <p className="text-sm text-secondary/70 line-clamp-2">{job.description}</p>
                             {skillList.length > 0 && (
                               <div className="flex flex-wrap gap-1.5">
                                 {skillList.slice(0, 6).map(s => (
@@ -679,7 +769,6 @@ export default function BrowseJobs() {
                             </span>
                           </div>
                           <h3 className="text-base font-bold text-on-surface group-hover:text-secondary transition-colors pr-28">{job.title}</h3>
-                          <p className="text-sm text-on-surface-variant line-clamp-2">{job.description}</p>
                           {skillList.length > 0 && (
                             <div className="flex flex-wrap gap-1.5">
                               {skillList.slice(0, 6).map(s => (

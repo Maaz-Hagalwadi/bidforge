@@ -550,6 +550,7 @@ export default function MyJobs() {
   const [archiveLoading, setArchiveLoading]     = useState(false);
   const [page, setPage]                         = useState(0);
   const [viewMode, setViewMode]                 = useState<'list' | 'grid'>('list');
+  const [filtersOpen, setFiltersOpen]           = useState(false);
   const PAGE_SIZE = 10;
 
   const profileRef = useRef<HTMLDivElement>(null);
@@ -597,6 +598,10 @@ export default function MyJobs() {
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated  = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const activeFilterCount =
+    (statusFilter !== 'ALL' ? 1 : 0) +
+    (visibilityFilter !== 'ALL' ? 1 : 0) +
+    (search.trim() ? 1 : 0);
 
   // ── Action buttons builder ──────────────────────────────────
   const buildActions = (job: JobResponse) => {
@@ -817,33 +822,138 @@ export default function MyJobs() {
             </div>
 
             {/* Filters */}
-            <div className="tonal-card rounded-xl p-4 space-y-4">
-              <div className="relative">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-                <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
-                  placeholder="Search by job title…"
-                  className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white" />
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex gap-1 flex-wrap flex-1">
-                  {STATUS_TABS.map(tab => (
-                    <button key={tab} onClick={() => handleFilterChange(setStatusFilter)(tab)}
-                      className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', statusFilter === tab ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
-                      {tab === 'ALL' ? `All (${activeJobs.length})` : `${STATUS_CFG[tab]?.label ?? tab} (${activeJobs.filter(j => j.status === tab).length})`}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-1 flex-wrap flex-shrink-0">
-                  {(['ALL', 'PUBLIC', 'INVITE_ONLY'] as const).map(v => (
-                    <button key={v} onClick={() => handleFilterChange(setVisibilityFilter)(v)}
-                      className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1', visibilityFilter === v ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
-                      {v !== 'ALL' && <span className="material-symbols-outlined text-[13px]">{v === 'PUBLIC' ? 'public' : 'lock'}</span>}
-                      {v === 'ALL' ? 'All Visibility' : v === 'PUBLIC' ? 'Public' : 'Invite Only'}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <button type="button" onClick={() => setFiltersOpen(open => !open)}
+                className="md:hidden inline-flex items-center gap-2 px-4 py-2.5 tonal-card rounded-lg text-sm font-semibold text-on-surface hover:border-secondary/40 transition-colors">
+                <span className="material-symbols-outlined text-[18px]">tune</span>
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="min-w-5 h-5 px-1 rounded-full bg-secondary text-white text-[11px] flex items-center justify-center">{activeFilterCount}</span>
+                )}
+                <span className="material-symbols-outlined text-[18px]">{filtersOpen ? 'expand_less' : 'expand_more'}</span>
+              </button>
+              <button type="button" onClick={() => setFiltersOpen(true)}
+                className="hidden md:flex relative items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-semibold shadow-lg shadow-slate-900/10 hover:bg-slate-800 active:scale-[0.98] transition-all">
+                <span className="material-symbols-outlined text-[18px]">tune</span>
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="min-w-5 h-5 px-1 rounded-full bg-secondary text-white text-[11px] flex items-center justify-center">{activeFilterCount}</span>
+                )}
+              </button>
+              {activeFilterCount > 0 && (
+                <button type="button" onClick={() => { setStatusFilter('ALL'); setVisibilityFilter('ALL'); setSearch(''); setPage(0); }}
+                  className="text-xs font-semibold text-on-surface-variant hover:text-secondary transition-colors">
+                  Clear filters
+                </button>
+              )}
             </div>
+
+            {filtersOpen && (
+              <div className="md:hidden tonal-card rounded-xl p-4 space-y-4">
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                  <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
+                    placeholder="Search by job title…"
+                    className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white" />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex gap-1 flex-wrap flex-1">
+                    {STATUS_TABS.map(tab => (
+                      <button key={tab} onClick={() => handleFilterChange(setStatusFilter)(tab)}
+                        className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', statusFilter === tab ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+                        {tab === 'ALL' ? `All (${activeJobs.length})` : `${STATUS_CFG[tab]?.label ?? tab} (${activeJobs.filter(j => j.status === tab).length})`}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="md:hidden">
+                    <div className="grid grid-cols-2 rounded-lg border border-outline-variant bg-white p-1">
+                      {(['PUBLIC', 'INVITE_ONLY'] as const).map(v => (
+                        <button key={v} onClick={() => handleFilterChange(setVisibilityFilter)(v)}
+                          className={['h-9 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1', visibilityFilter === v ? 'bg-secondary text-white shadow-sm' : 'text-on-surface-variant'].join(' ')}>
+                          <span className="material-symbols-outlined text-[14px]">{v === 'PUBLIC' ? 'public' : 'lock'}</span>
+                          {v === 'PUBLIC' ? 'Public' : 'Invite Only'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="hidden md:flex gap-1 flex-wrap flex-shrink-0">
+                    {(['ALL', 'PUBLIC', 'INVITE_ONLY'] as const).map(v => (
+                      <button key={v} onClick={() => handleFilterChange(setVisibilityFilter)(v)}
+                        className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1', visibilityFilter === v ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+                        {v !== 'ALL' && <span className="material-symbols-outlined text-[13px]">{v === 'PUBLIC' ? 'public' : 'lock'}</span>}
+                        {v === 'ALL' ? 'All Visibility' : v === 'PUBLIC' ? 'Public' : 'Invite Only'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {filtersOpen && (
+              <div className="hidden md:flex fixed inset-0 z-[100] items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+                <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-base font-bold text-on-surface">Filter Jobs</h2>
+                      <p className="text-xs text-on-surface-variant mt-0.5">Refine your jobs by title, status, and visibility.</p>
+                    </div>
+                    <button type="button" onClick={() => setFiltersOpen(false)}
+                      className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-slate-50 transition-colors"
+                      aria-label="Close filters">
+                      <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                  </div>
+
+                  <div className="p-5 space-y-5 overflow-y-auto">
+                    <div className="relative">
+                      <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                      <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
+                        placeholder="Search by job title..."
+                        className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Status</p>
+                      <div className="flex gap-1 flex-wrap">
+                        {STATUS_TABS.map(tab => (
+                          <button key={tab} onClick={() => handleFilterChange(setStatusFilter)(tab)}
+                            className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all', statusFilter === tab ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+                            {tab === 'ALL' ? `All (${activeJobs.length})` : `${STATUS_CFG[tab]?.label ?? tab} (${activeJobs.filter(j => j.status === tab).length})`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Visibility</p>
+                      <div className="flex gap-1 flex-wrap">
+                        {(['ALL', 'PUBLIC', 'INVITE_ONLY'] as const).map(v => (
+                          <button key={v} onClick={() => handleFilterChange(setVisibilityFilter)(v)}
+                            className={['px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1', visibilityFilter === v ? 'bg-secondary text-white shadow-sm' : 'bg-white border border-outline-variant text-on-surface-variant hover:border-secondary/40'].join(' ')}>
+                            {v !== 'ALL' && <span className="material-symbols-outlined text-[13px]">{v === 'PUBLIC' ? 'public' : 'lock'}</span>}
+                            {v === 'ALL' ? 'All Visibility' : v === 'PUBLIC' ? 'Public' : 'Invite Only'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button type="button" onClick={() => { setStatusFilter('ALL'); setVisibilityFilter('ALL'); setSearch(''); setPage(0); }}
+                        className="px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
+                        Clear
+                      </button>
+                      <button type="button" onClick={() => setFiltersOpen(false)}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                        <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                        Apply Filters
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Summary stats */}
             {!loading && activeJobs.length > 0 && (

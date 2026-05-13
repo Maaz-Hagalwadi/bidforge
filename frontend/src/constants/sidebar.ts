@@ -31,6 +31,7 @@ export const FREELANCER_SIDEBAR: readonly SidebarLink[] = [
 
 export const ADMIN_SIDEBAR: readonly SidebarLink[] = [
   { icon: 'dashboard',        label: 'Dashboard',       short: 'Dash',     path: '/admin/dashboard' },
+  { icon: 'analytics',        label: 'Analytics',       short: 'Analytics',path: '/admin/analytics' },
   { icon: 'group',            label: 'User Management', short: 'Users',    path: '/admin/users'     },
   { icon: 'fact_check',       label: 'Job Moderation',  short: 'Jobs',     path: '/admin/jobs'      },
   { icon: 'gavel',            label: 'Disputes',         short: 'Disputes', path: '/admin/disputes'  },
