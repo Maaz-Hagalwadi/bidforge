@@ -9,11 +9,18 @@ import com.bidforge.app.job.enums.Visibility;
 import com.bidforge.app.user.User;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -223,7 +230,97 @@ public class AiController {
         return ResponseEntity.ok(suggestions);
     }
 
-    // ── Feature 6: Dashboard Chatbot ─────────────────────────────
+    // ── Feature 6: Bid Price Recommendation ──────────────────────
+
+    @PostMapping("/bid-price")
+    public ResponseEntity<BidPriceResponse> bidPrice(@RequestBody BidPriceRequest req) {
+        String budgetHint = (req.getBudgetMin() != null && req.getBudgetMax() != null)
+            ? String.format(" The client's budget is $%.0f–$%.0f.", req.getBudgetMin(), req.getBudgetMax())
+            : "";
+
+        String prompt = String.format(
+            "You are a freelance bidding advisor.%s\n\n" +
+            "Job: %s\nDescription: %s\nRequired skills: %s\n\n" +
+            "Suggest three bid amounts in USD that a freelancer could offer:\n" +
+            "- lowBid: a competitive low price to increase win chances\n" +
+            "- competitiveBid: a fair market-rate price\n" +
+            "- premiumBid: a premium price reflecting high quality\n\n" +
+            "Return ONLY valid JSON (no markdown):\n" +
+            "{\"lowBid\":0,\"competitiveBid\":0,\"premiumBid\":0,\"reasoning\":\"one sentence\"}\n\n" +
+            "All amounts must be positive integers. reasoning must be under 100 chars.",
+            budgetHint, safe(req.getJobTitle()),
+            truncate(req.getJobDescription(), 300), safe(req.getRequiredSkills())
+        );
+
+        BidPriceResponse resp = gemini.generateJson(prompt, 200, BidPriceResponse.class);
+        return ResponseEntity.ok(resp);
+    }
+
+    // ── Feature 7: Interview Questions Generator ──────────────────
+
+    @PostMapping("/interview-questions")
+    public ResponseEntity<InterviewQuestionsResponse> interviewQuestions(
+            @RequestBody InterviewQuestionsRequest req) {
+
+        String prompt = String.format(
+            "You are a technical interviewer. Generate 6 concise interview questions to evaluate " +
+            "a freelancer for this job.\n\n" +
+            "Job: %s\nDescription: %s\nRequired skills: %s\n\n" +
+            "Return ONLY a valid JSON array of strings (no markdown, no explanation):\n" +
+            "[\"question 1\",\"question 2\",...]",
+            safe(req.getJobTitle()),
+            truncate(req.getJobDescription(), 300),
+            safe(req.getRequiredSkills())
+        );
+
+        List<String> questions = gemini.generateJson(
+                prompt, 400, new TypeReference<List<String>>() {}
+        );
+        return ResponseEntity.ok(new InterviewQuestionsResponse(questions));
+    }
+
+    // ── Feature 8: Resume Skill Extraction ───────────────────────
+
+    @PostMapping(value = "/extract-resume-skills", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ResumeSkillsResponse> extractResumeSkills(
+            @RequestParam("file") MultipartFile file) {
+
+        if (file.getSize() > 5_000_000) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "File must be under 5 MB");
+        }
+
+        String text;
+        String contentType = file.getContentType() != null ? file.getContentType() : "";
+        if (contentType.contains("pdf") || file.getOriginalFilename() != null
+                && file.getOriginalFilename().toLowerCase().endsWith(".pdf")) {
+            try (PDDocument doc = Loader.loadPDF(file.getBytes())) {
+                text = new PDFTextStripper().getText(doc);
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read PDF file");
+            }
+        } else {
+            try {
+                text = new String(file.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read file");
+            }
+        }
+
+        if (text.length() > 3000) text = text.substring(0, 3000);
+
+        String prompt = String.format(
+            "Extract all technical skills, programming languages, frameworks, tools, and technologies " +
+            "from this resume text. Return ONLY a valid JSON array of skill strings (no markdown):\n" +
+            "[\"React\",\"Java\",...]\n\nMax 20 items. Resume text:\n%s", text
+        );
+
+        List<String> skills = gemini.generateJson(
+                prompt, 300, new TypeReference<List<String>>() {}
+        );
+        return ResponseEntity.ok(new ResumeSkillsResponse(skills));
+    }
+
+    // ── Feature 9: Dashboard Chatbot ─────────────────────────────
 
     private static final String CHAT_SYSTEM_PROMPT =
         "You are BidForge Assistant inside a freelance marketplace. You help clients post jobs.\n\n" +

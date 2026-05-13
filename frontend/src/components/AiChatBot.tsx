@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { aiApi, type ChatMessage } from '@/api/ai';
 import { jobsApi } from '@/api/jobs';
+import { useAuth } from '@/context/AuthContext';
+import type { InterviewQuestionsResponse } from '@/api/ai';
 
 // ── Constants ─────────────────────────────────────────────────────
 
@@ -37,24 +39,46 @@ interface Msg {
   role: 'user' | 'bot';
   text: string;
   success?: boolean;
+  isProposal?: boolean;
+  isQuestions?: boolean;
+  questions?: string[];
 }
 
-const FAQ_ITEMS = [
-  { q: 'How to accept a bid?',       a: 'Go to My Jobs → open a job → scroll to Bids → click Accept on the bid you want. A contract is created automatically and the freelancer is notified.' },
-  { q: 'How do milestones work?',    a: 'Milestones split your project into paid phases. You create and fund each milestone (held in escrow), then release payment after approving the freelancer\'s submitted work.' },
-  { q: 'How to invite freelancers?', a: 'When posting a job, choose "Invite Only" visibility. You can search freelancers by name or email and add them before publishing.' },
-  { q: 'How to fund a milestone?',   a: 'Open your contract → find the milestone → click "Fund". Payment is securely held in escrow and only released when you approve the work.' },
-  { q: 'How to open a dispute?',     a: 'Go to Contracts → open the contract → click "Open Dispute". Describe the issue and our team will review and help resolve it.' },
-  { q: 'How to complete a contract?',a: 'Once the freelancer submits their work, review it and click "Complete Contract". This releases payment and closes the contract.' },
+const CLIENT_FAQ = [
+  { q: 'How to accept a bid?',        a: 'Go to My Jobs → open a job → scroll to Bids → click Accept. A contract is created automatically and the freelancer is notified.' },
+  { q: 'How do milestones work?',     a: 'Milestones split your project into paid phases. You create and fund each one (held in escrow), then release payment after approving the submitted work.' },
+  { q: 'How to invite freelancers?',  a: 'When posting a job, choose "Invite Only" visibility. Search freelancers by name or email and add them before publishing.' },
+  { q: 'How to fund a milestone?',    a: 'Open your contract → find the milestone → click "Fund". Payment is securely held in escrow and only released when you approve the work.' },
+  { q: 'How to open a dispute?',      a: 'Go to Contracts → open the contract → click "Open Dispute". Describe the issue and our team will review and help resolve it.' },
+  { q: 'How to complete a contract?', a: 'Once the freelancer submits their work, review it and click "Complete Contract". This releases payment and closes the contract.' },
 ];
 
-const GREETING: Msg = { role: 'bot', text: "Hi! I'm your BidForge AI. I can help you post a job or answer any questions you have." };
+const FREELANCER_FAQ = [
+  { q: 'How to place a bid?',         a: 'Go to Browse Jobs → open a job → click "Place a Bid". Set your price, write a proposal, add your delivery days, then submit.' },
+  { q: 'How to submit my work?',      a: 'Open your contract → click "Submit Work". Add a note describing what you completed and an optional link, then submit for client review.' },
+  { q: 'How do milestones work?',     a: 'Clients create milestones for each phase of the project. Complete each milestone, submit the work, and receive payment once the client approves.' },
+  { q: 'How do I get paid?',          a: 'When the client approves your milestone submission, funds held in escrow are automatically released to your account.' },
+  { q: 'How do I handle a dispute?',  a: 'Go to Contracts → open the contract → click "Open Dispute". Describe the issue clearly and our team will step in to help resolve it.' },
+  { q: 'What are invite-only jobs?',  a: 'Some clients post jobs visible only to specific freelancers. Check "My Invites" in the sidebar to see if you\'ve been invited to bid on a job.' },
+];
 
 // ── Component ─────────────────────────────────────────────────────
 
 export function AiChatBot() {
+  const { user } = useAuth();
+  const isFreelancer = user?.role === 'FREELANCER';
+
+  const greeting: Msg = {
+    role: 'bot',
+    text: isFreelancer
+      ? "Hi! I'm your BidForge AI. I can help you find jobs, understand the platform, or answer any questions."
+      : "Hi! I'm your BidForge AI. I can help you post a job or answer any questions you have.",
+  };
+
+  const faqItems = isFreelancer ? FREELANCER_FAQ : CLIENT_FAQ;
+
   const [open, setOpen]       = useState(false);
-  const [msgs, setMsgs]       = useState<Msg[]>([GREETING]);
+  const [msgs, setMsgs]       = useState<Msg[]>([greeting]);
   const [input, setInput]     = useState('');
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -74,17 +98,33 @@ export function AiChatBot() {
   const [posting, setPosting]           = useState(false);
   const [helpOpen, setHelpOpen]         = useState(false);
 
+  // proposal drafter (freelancer)
+  const [propStep, setPropStep]           = useState<'title' | 'desc' | null>(null);
+  const [propTitleInput, setPropTitleInput] = useState('');
+  const [propTitle, setPropTitle]           = useState('');
+  const [propDescInput, setPropDescInput]   = useState('');
+  const [propGenerating, setPropGenerating] = useState(false);
+  const [copiedProposal, setCopiedProposal] = useState(false);
+
+  // interview questions wizard (both roles)
+  const [iqStep, setIqStep]             = useState<'title' | 'skills' | null>(null);
+  const [iqTitleInput, setIqTitleInput] = useState('');
+  const [iqTitle, setIqTitle]           = useState('');
+  const [iqSkillsInput, setIqSkillsInput] = useState('');
+  const [iqGenerating, setIqGenerating] = useState(false);
+  const [copiedIQ, setCopiedIQ]         = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const navigate  = useNavigate();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [msgs, open, wizStep]);
+  }, [msgs, open, wizStep, propStep]);
 
   const push = (...m: Msg[]) => setMsgs(prev => [...prev, ...m]);
 
   const reset = () => {
-    setMsgs([GREETING]);
+    setMsgs([greeting]);
     setInput('');
     setAiLoading(false);
     setWizStep(null);
@@ -101,6 +141,103 @@ export function AiChatBot() {
     setWizUrgency('');
     setPosting(false);
     setHelpOpen(false);
+    setPropStep(null);
+    setPropTitleInput('');
+    setPropTitle('');
+    setPropDescInput('');
+    setPropGenerating(false);
+    setCopiedProposal(false);
+    setIqStep(null);
+    setIqTitleInput('');
+    setIqTitle('');
+    setIqSkillsInput('');
+    setIqGenerating(false);
+    setCopiedIQ(false);
+  };
+
+  // ── Proposal drafter ─────────────────────────────────────────
+
+  const startPropWizard = () => {
+    push(
+      { role: 'user', text: 'Draft a Proposal' },
+      { role: 'bot', text: "What's the job title you're bidding on?" },
+    );
+    setPropStep('title');
+  };
+
+  const submitPropTitle = () => {
+    const t = propTitleInput.trim();
+    if (!t) return;
+    setPropTitle(t);
+    setPropTitleInput('');
+    push(
+      { role: 'user', text: t },
+      { role: 'bot', text: 'Briefly describe what the job requires or any key details:' },
+    );
+    setPropStep('desc');
+  };
+
+  const generateProposal = async () => {
+    const desc = propDescInput.trim();
+    setPropGenerating(true);
+    push(
+      { role: 'user', text: desc || '(No extra details)' },
+      { role: 'bot', text: 'Writing your proposal…' },
+    );
+    setPropStep(null);
+    setPropDescInput('');
+    try {
+      const res = await aiApi.generateProposal({ jobTitle: propTitle, jobDescription: desc });
+      push({ role: 'bot', text: res.proposal, isProposal: true } as Msg);
+    } catch {
+      push({ role: 'bot', text: 'Failed to generate proposal. Please try again.' });
+    } finally {
+      setPropGenerating(false);
+    }
+  };
+
+  // ── Interview Questions wizard ────────────────────────────────
+
+  const startIqWizard = () => {
+    push(
+      { role: 'user', text: 'Generate Interview Questions' },
+      { role: 'bot', text: "What's the job title you need interview questions for?" },
+    );
+    setIqStep('title');
+  };
+
+  const submitIqTitle = () => {
+    const t = iqTitleInput.trim();
+    if (!t) return;
+    setIqTitle(t);
+    setIqTitleInput('');
+    push(
+      { role: 'user', text: t },
+      { role: 'bot', text: 'Any specific skills or technologies involved? (type or press Skip)' },
+    );
+    setIqStep('skills');
+  };
+
+  const generateIQ = async (skills: string) => {
+    setIqGenerating(true);
+    setIqStep(null);
+    setIqSkillsInput('');
+    push(
+      { role: 'user', text: skills || 'Skip' },
+      { role: 'bot', text: isFreelancer ? 'Generating likely interview questions…' : 'Generating interview questions…' },
+    );
+    try {
+      const res: InterviewQuestionsResponse = await aiApi.getInterviewQuestions({
+        jobTitle: iqTitle,
+        jobDescription: '',
+        requiredSkills: skills,
+      });
+      push({ role: 'bot', text: '', isQuestions: true, questions: res.questions } as Msg);
+    } catch {
+      push({ role: 'bot', text: 'Failed to generate questions. Please try again.' });
+    } finally {
+      setIqGenerating(false);
+    }
   };
 
   // ── AI Q&A ────────────────────────────────────────────────────
@@ -220,6 +357,82 @@ export function AiChatBot() {
   // ── Wizard panels (shown below the last bot message) ──────────
 
   const renderOptions = () => {
+    // ── Proposal drafter panels ──
+    if (propStep === 'title') return (
+      <div className="flex gap-2 mt-2 pl-9">
+        <input value={propTitleInput} onChange={e => setPropTitleInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') submitPropTitle(); }}
+          placeholder="e.g. Build a React dashboard" autoFocus
+          className="flex-1 px-3 py-2 border border-secondary/30 rounded-xl text-sm focus:outline-none focus:border-secondary bg-white" />
+        <button onClick={submitPropTitle} disabled={!propTitleInput.trim()}
+          className="px-3 py-2 bg-secondary text-white text-xs font-bold rounded-xl hover:brightness-110 disabled:opacity-40 transition-all">
+          Next
+        </button>
+      </div>
+    );
+
+    if (propStep === 'desc') return (
+      <div className="mt-2 pl-9 space-y-2">
+        <textarea value={propDescInput} onChange={e => setPropDescInput(e.target.value)}
+          rows={3} placeholder="e.g. Need React + TypeScript, responsive UI, integrate REST API…"
+          className="w-full px-3 py-2 border border-secondary/30 rounded-xl text-sm focus:outline-none focus:border-secondary bg-white resize-none" />
+        <button onClick={generateProposal} disabled={propGenerating}
+          className="w-full py-2 bg-secondary text-white text-xs font-bold rounded-xl hover:brightness-110 disabled:opacity-60 transition-all flex items-center justify-center gap-2">
+          {propGenerating
+            ? <><span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>Writing…</>
+            : <><span className="material-symbols-outlined text-[14px]">auto_awesome</span>Generate Proposal</>}
+        </button>
+      </div>
+    );
+
+    if (propGenerating) return (
+      <div className="mt-2 pl-9 flex items-center gap-2 text-xs text-slate-500">
+        <span className="material-symbols-outlined text-[15px] animate-spin text-secondary">progress_activity</span>
+        Crafting your proposal…
+      </div>
+    );
+
+    // ── Interview Questions wizard panels ──
+    if (iqStep === 'title') return (
+      <div className="flex gap-2 mt-2 pl-9">
+        <input value={iqTitleInput} onChange={e => setIqTitleInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') submitIqTitle(); }}
+          placeholder="e.g. React Developer" autoFocus
+          className="flex-1 px-3 py-2 border border-secondary/30 rounded-xl text-sm focus:outline-none focus:border-secondary bg-white" />
+        <button onClick={submitIqTitle} disabled={!iqTitleInput.trim()}
+          className="px-3 py-2 bg-secondary text-white text-xs font-bold rounded-xl hover:brightness-110 disabled:opacity-40 transition-all">
+          Next
+        </button>
+      </div>
+    );
+
+    if (iqStep === 'skills') return (
+      <div className="mt-2 pl-9 space-y-2">
+        <input value={iqSkillsInput} onChange={e => setIqSkillsInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') generateIQ(iqSkillsInput.trim()); }}
+          placeholder="e.g. React, TypeScript, REST APIs"
+          className="w-full px-3 py-2 border border-secondary/30 rounded-xl text-sm focus:outline-none focus:border-secondary bg-white" />
+        <div className="flex gap-2">
+          <button onClick={() => generateIQ(iqSkillsInput.trim())} disabled={iqGenerating}
+            className="flex-1 py-2 bg-secondary text-white text-xs font-bold rounded-xl hover:brightness-110 disabled:opacity-60 transition-all flex items-center justify-center gap-1.5">
+            <span className="material-symbols-outlined text-[14px]">auto_awesome</span>Generate
+          </button>
+          <button onClick={() => generateIQ('')} disabled={iqGenerating}
+            className="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-semibold rounded-xl hover:border-secondary hover:text-secondary transition-all">
+            Skip
+          </button>
+        </div>
+      </div>
+    );
+
+    if (iqGenerating) return (
+      <div className="mt-2 pl-9 flex items-center gap-2 text-xs text-slate-500">
+        <span className="material-symbols-outlined text-[15px] animate-spin text-secondary">progress_activity</span>
+        Generating questions…
+      </div>
+    );
+
+    // ── Job posting wizard panels ──
     if (wizStep === 'title') return (
       <div className="flex gap-2 mt-2 pl-9">
         <input value={wizTitleInput} onChange={e => setWizTitleInput(e.target.value)}
@@ -384,7 +597,7 @@ export function AiChatBot() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold leading-none">BidForge AI</p>
-              <p className="text-[11px] text-white/60 mt-0.5">Client Assistant</p>
+              <p className="text-[11px] text-white/60 mt-0.5">{isFreelancer ? 'Freelancer Assistant' : 'Client Assistant'}</p>
             </div>
             <button onClick={reset} title="Start over" className="p-1 text-white/60 hover:text-white transition-colors">
               <span className="material-symbols-outlined text-[18px]">restart_alt</span>
@@ -409,14 +622,61 @@ export function AiChatBot() {
                         </span>
                       </div>
                     )}
-                    <div className={`max-w-[82%] px-3 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                      m.role === 'user'
-                        ? 'bg-secondary text-white rounded-tr-sm'
-                        : m.success
-                          ? 'bg-green-50 text-green-800 border border-green-200 rounded-tl-sm'
-                          : 'bg-slate-100 text-slate-800 rounded-tl-sm'
-                    }`}>
-                      {m.text}
+                    <div className={`max-w-[82%] ${m.isProposal || m.isQuestions ? 'w-full' : ''}`}>
+                      {m.isProposal ? (
+                        <div className="bg-secondary/5 border border-secondary/20 rounded-2xl rounded-tl-sm p-3 space-y-2">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-secondary flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[13px]">auto_awesome</span>
+                            Your Proposal Draft
+                          </p>
+                          <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">{m.text}</p>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(m.text);
+                              setCopiedProposal(true);
+                              setTimeout(() => setCopiedProposal(false), 2000);
+                            }}
+                            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${copiedProposal ? 'bg-green-500 text-white' : 'bg-secondary text-white hover:brightness-110'}`}>
+                            <span className="material-symbols-outlined text-[14px]">{copiedProposal ? 'check' : 'content_copy'}</span>
+                            {copiedProposal ? 'Copied!' : 'Copy Proposal'}
+                          </button>
+                        </div>
+                      ) : m.isQuestions && m.questions ? (
+                        <div className="bg-secondary/5 border border-secondary/20 rounded-2xl rounded-tl-sm p-3 space-y-2">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-secondary flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[13px]">quiz</span>
+                            Interview Questions
+                          </p>
+                          <ol className="space-y-2 list-none">
+                            {m.questions.map((q, qi) => (
+                              <li key={qi} className="flex gap-2 text-xs text-slate-700 leading-relaxed">
+                                <span className="font-bold text-secondary flex-shrink-0 min-w-[16px]">{qi + 1}.</span>
+                                <span>{q}</span>
+                              </li>
+                            ))}
+                          </ol>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText((m.questions ?? []).map((q, qi) => `${qi + 1}. ${q}`).join('\n'));
+                              setCopiedIQ(true);
+                              setTimeout(() => setCopiedIQ(false), 2000);
+                            }}
+                            className={`w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all ${copiedIQ ? 'bg-green-500 text-white' : 'bg-secondary text-white hover:brightness-110'}`}>
+                            <span className="material-symbols-outlined text-[14px]">{copiedIQ ? 'check' : 'content_copy'}</span>
+                            {copiedIQ ? 'Copied!' : 'Copy All Questions'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className={`px-3 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                          m.role === 'user'
+                            ? 'bg-secondary text-white rounded-tr-sm'
+                            : m.success
+                              ? 'bg-green-50 text-green-800 border border-green-200 rounded-tl-sm'
+                              : 'bg-slate-100 text-slate-800 rounded-tl-sm'
+                        }`}>
+                          {m.text}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {/* Wizard options below the last bot message */}
@@ -443,15 +703,34 @@ export function AiChatBot() {
           </div>
 
           {/* Quick actions + help — only at start */}
-          {wizStep === null && !posting && msgs.length <= 2 && (
+          {wizStep === null && iqStep === null && propStep === null && !posting && !iqGenerating && !propGenerating && msgs.length <= 2 && (
             <div className="px-4 pb-2 flex-shrink-0 space-y-2">
-              {/* Action chips */}
-              <div className="flex gap-2">
-                <button onClick={startWizard}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-secondary text-white rounded-full text-xs font-semibold hover:brightness-110 transition-all">
-                  <span className="material-symbols-outlined text-[14px]">work</span>
-                  Post a Job
-                </button>
+              <div className="flex flex-wrap gap-2">
+                {/* Primary action chip */}
+                {isFreelancer ? (
+                  <button onClick={startPropWizard}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-secondary text-white rounded-full text-xs font-semibold hover:brightness-110 transition-all">
+                    <span className="material-symbols-outlined text-[14px]">edit_note</span>
+                    Draft a Proposal
+                  </button>
+                ) : (
+                  <button onClick={startWizard}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-secondary text-white rounded-full text-xs font-semibold hover:brightness-110 transition-all">
+                    <span className="material-symbols-outlined text-[14px]">work</span>
+                    Post a Job
+                  </button>
+                )}
+
+                {/* Interview Questions chip — CLIENT only */}
+                {!isFreelancer && (
+                  <button onClick={startIqWizard}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-secondary/30 text-secondary rounded-full text-xs font-semibold hover:bg-secondary hover:text-white hover:border-secondary transition-all">
+                    <span className="material-symbols-outlined text-[14px]">quiz</span>
+                    Interview Qs
+                  </button>
+                )}
+
+                {/* Help chip */}
                 <button onClick={() => setHelpOpen(o => !o)}
                   className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold border transition-all ${helpOpen ? 'bg-secondary/10 text-secondary border-secondary/30' : 'bg-white border-slate-200 text-slate-600 hover:border-secondary hover:text-secondary'}`}>
                   <span className="material-symbols-outlined text-[14px]">help</span>
@@ -463,7 +742,7 @@ export function AiChatBot() {
               {helpOpen && (
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-1.5">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Common questions</p>
-                  {FAQ_ITEMS.map(f => (
+                  {faqItems.map(f => (
                     <button key={f.q}
                       onClick={() => {
                         push({ role: 'user', text: f.q }, { role: 'bot', text: f.a });

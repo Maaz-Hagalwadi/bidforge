@@ -12,6 +12,7 @@ import { PageLoader } from '@/components/ui/PageLoader';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { FreelancerDashboardData, FreelancerActivity } from '@/types/dashboard';
 import { aiApi, type JobRecommendation } from '@/api/ai';
+import { AiChatBot } from '@/components/AiChatBot';
 
 
 
@@ -362,6 +363,7 @@ export default function FreelancerDashboard() {
         </main>
       </div>
 
+      <AiChatBot />
     </div>
   );
 }

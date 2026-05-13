@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, withActive } from '@/constants/sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { jobsApi } from '@/api/jobs';
+import { aiApi } from '@/api/ai';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
@@ -154,6 +155,7 @@ export default function BrowseJobs() {
   const [loading, setLoading] = useState(true);
   const [savedJobs, setSavedJobs] = useState<Map<string, JobResponse>>(loadSaved);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<string>>(new Set());
+  const [matchMap, setMatchMap] = useState<Record<string, { score: number; reason: string }>>({});
 
   const toggleSave = (job: JobResponse) => {
     setSavedJobs(prev => {
@@ -192,6 +194,11 @@ export default function BrowseJobs() {
   useEffect(() => {
     if (user?.role === 'FREELANCER') {
       jobsApi.getMyBids().then(bids => setAppliedJobIds(new Set(bids.map(b => b.jobId)))).catch(() => {});
+      aiApi.getJobRecommendations().then(recs => {
+        const map: Record<string, { score: number; reason: string }> = {};
+        recs.forEach(r => { map[r.jobId] = { score: r.matchScore, reason: r.matchReason }; });
+        setMatchMap(map);
+      }).catch(() => {});
     }
   }, [user]);
 
@@ -551,6 +558,7 @@ export default function BrowseJobs() {
 
                   const isSaved = savedJobs.has(job.id);
                   const isApplied = appliedJobIds.has(job.id);
+                  const match = matchMap[job.id];
 
                   if (isUrgent) {
                     return (
@@ -574,6 +582,13 @@ export default function BrowseJobs() {
                                 <span className="flex items-center gap-1 px-2.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
                                   <span className="material-symbols-outlined text-[12px]">check_circle</span>
                                   Applied
+                                </span>
+                              )}
+                              {match && (
+                                <span
+                                  title={match.reason}
+                                  className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold cursor-default">
+                                  ★ {match.score}% match
                                 </span>
                               )}
                               <span className="text-xs text-secondary/70 flex items-center gap-1">
@@ -649,6 +664,13 @@ export default function BrowseJobs() {
                               <span className="flex items-center gap-1 px-2.5 py-0.5 bg-green-100 text-green-700 rounded text-xs font-semibold">
                                 <span className="material-symbols-outlined text-[12px]">check_circle</span>
                                 Applied
+                              </span>
+                            )}
+                            {match && (
+                              <span
+                                title={match.reason}
+                                className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold cursor-default">
+                                ★ {match.score}% match
                               </span>
                             )}
                             <span className="text-xs text-on-surface-variant flex items-center gap-1">

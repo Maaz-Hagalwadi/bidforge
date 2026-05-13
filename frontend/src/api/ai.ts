@@ -48,6 +48,21 @@ export interface ChatResponse {
   reply: string;
 }
 
+export interface BidPriceResponse {
+  lowBid: number;
+  competitiveBid: number;
+  premiumBid: number;
+  reasoning: string;
+}
+
+export interface InterviewQuestionsResponse {
+  questions: string[];
+}
+
+export interface ResumeSkillsResponse {
+  skills: string[];
+}
+
 export const aiApi = {
   generateDescription: (payload: { title: string; notes: string; category: string }) =>
     api.post<GenerateDescriptionResponse>('/ai/generate-description', payload).then(r => r.data),
@@ -66,4 +81,18 @@ export const aiApi = {
 
   chat: (message: string, history: ChatMessage[]) =>
     api.post<ChatResponse>('/ai/chat', { message, history }).then(r => r.data),
+
+  getBidPrice: (payload: { jobTitle: string; jobDescription: string; requiredSkills: string; budgetMin?: number; budgetMax?: number }) =>
+    api.post<BidPriceResponse>('/ai/bid-price', payload).then(r => r.data),
+
+  getInterviewQuestions: (payload: { jobTitle: string; jobDescription: string; requiredSkills: string }) =>
+    api.post<InterviewQuestionsResponse>('/ai/interview-questions', payload).then(r => r.data),
+
+  extractResumeSkills: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post<ResumeSkillsResponse>('/ai/extract-resume-skills', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data);
+  },
 };

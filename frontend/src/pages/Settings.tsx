@@ -98,6 +98,14 @@ export default function Settings() {
   const [aiSuggestions, setAiSuggestions] = useState<ProfileSuggestions | null>(null);
   const [applyingField, setApplyingField] = useState<string | null>(null);
 
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeExtracting, setResumeExtracting] = useState(false);
+  const [extractedSkills, setExtractedSkills] = useState<string[] | null>(null);
+  const [removedSkills, setRemovedSkills] = useState<Set<string>>(new Set());
+  const [savingSkills, setSavingSkills] = useState(false);
+  const [skillsSaved, setSkillsSaved] = useState(false);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
+
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -266,15 +274,29 @@ export default function Settings() {
                       <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Suggested Title</p>
                       <p className="text-sm text-on-surface">{aiSuggestions.titleSuggestion}</p>
                     </div>
-                    <button onClick={async () => {
-                      setApplyingField('title');
-                      try { await userApi.updateMe({ title: aiSuggestions.titleSuggestion }); await refreshUser(); setToast({ message: 'Title updated!' }); }
-                      catch { setToast({ message: 'Failed to apply. Try again.', error: true }); }
-                      finally { setApplyingField(null); }
-                    }} disabled={applyingField === 'title'}
-                      className="text-xs font-bold text-secondary hover:underline flex-shrink-0 disabled:opacity-60">
-                      {applyingField === 'title' ? 'Applying…' : 'Apply'}
-                    </button>
+                    {(() => {
+                      const applied = user?.title === aiSuggestions.titleSuggestion;
+                      return (
+                        <button onClick={async () => {
+                          setApplyingField('title');
+                          try {
+                            await userApi.updateMe({ title: aiSuggestions.titleSuggestion });
+                            await refreshUser();
+                            setToast({ message: 'Title updated successfully!' });
+                          } catch (e) {
+                            console.error('Failed to apply title:', e);
+                            setToast({ message: 'Failed to apply. Try again.', error: true });
+                          } finally { setApplyingField(null); }
+                        }} disabled={applyingField === 'title' || applied}
+                          className={`flex items-center gap-1 text-xs font-bold flex-shrink-0 transition-colors disabled:opacity-60 ${applied ? 'text-emerald-600 cursor-default' : 'text-secondary hover:underline'}`}>
+                          {applyingField === 'title'
+                            ? 'Applying…'
+                            : applied
+                              ? <><span className="material-symbols-outlined text-[13px]">check_circle</span>Applied</>
+                              : 'Apply'}
+                        </button>
+                      );
+                    })()}
                   </div>
 
                   {/* Bio Suggestion */}
@@ -283,15 +305,29 @@ export default function Settings() {
                       <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Improved Bio</p>
                       <p className="text-sm text-on-surface">{aiSuggestions.bioRewrite}</p>
                     </div>
-                    <button onClick={async () => {
-                      setApplyingField('bio');
-                      try { await userApi.updateMe({ bio: aiSuggestions.bioRewrite }); await refreshUser(); setToast({ message: 'Bio updated!' }); }
-                      catch { setToast({ message: 'Failed to apply. Try again.', error: true }); }
-                      finally { setApplyingField(null); }
-                    }} disabled={applyingField === 'bio'}
-                      className="text-xs font-bold text-secondary hover:underline flex-shrink-0 disabled:opacity-60">
-                      {applyingField === 'bio' ? 'Applying…' : 'Apply'}
-                    </button>
+                    {(() => {
+                      const applied = user?.bio === aiSuggestions.bioRewrite;
+                      return (
+                        <button onClick={async () => {
+                          setApplyingField('bio');
+                          try {
+                            await userApi.updateMe({ bio: aiSuggestions.bioRewrite });
+                            await refreshUser();
+                            setToast({ message: 'Bio updated successfully!' });
+                          } catch (e) {
+                            console.error('Failed to apply bio:', e);
+                            setToast({ message: 'Failed to apply. Try again.', error: true });
+                          } finally { setApplyingField(null); }
+                        }} disabled={applyingField === 'bio' || applied}
+                          className={`flex items-center gap-1 text-xs font-bold flex-shrink-0 transition-colors disabled:opacity-60 ${applied ? 'text-emerald-600 cursor-default' : 'text-secondary hover:underline'}`}>
+                          {applyingField === 'bio'
+                            ? 'Applying…'
+                            : applied
+                              ? <><span className="material-symbols-outlined text-[13px]">check_circle</span>Applied</>
+                              : 'Apply'}
+                        </button>
+                      );
+                    })()}
                   </div>
 
                   {/* Skills to Add */}
@@ -308,6 +344,122 @@ export default function Settings() {
                 </div>
               )}
             </div>
+
+            {/* Resume Skill Extraction */}
+            {(
+              <div className="tonal-card rounded-xl border border-outline-variant p-6 space-y-4">
+                <div>
+                  <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
+                    <span className="material-symbols-outlined text-secondary text-[20px]">description</span>
+                    Extract Skills from Resume
+                  </h2>
+                  <p className="text-sm text-on-surface-variant mt-0.5">Upload your resume (PDF or TXT) and AI will extract your skills automatically.</p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={resumeInputRef}
+                    type="file"
+                    accept=".pdf,.txt"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0] ?? null;
+                      setResumeFile(f);
+                      setExtractedSkills(null);
+                      setRemovedSkills(new Set());
+                      setSkillsSaved(false);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => resumeInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface hover:bg-surface-container transition-colors">
+                    <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                    {resumeFile ? resumeFile.name : 'Choose File'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!resumeFile) return;
+                      setResumeExtracting(true);
+                      setExtractedSkills(null);
+                      setRemovedSkills(new Set());
+                      try {
+                        const result = await aiApi.extractResumeSkills(resumeFile);
+                        setExtractedSkills(result.skills);
+                      } catch {
+                        setToast({ message: 'Could not extract skills. Make sure the file is a valid PDF or text document.', error: true });
+                      } finally {
+                        setResumeExtracting(false);
+                      }
+                    }}
+                    disabled={!resumeFile || resumeExtracting}
+                    className="flex items-center gap-2 px-4 py-2 bg-secondary text-white text-sm font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+                    {resumeExtracting
+                      ? <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Extracting…</>
+                      : <><span className="material-symbols-outlined text-[16px]">auto_awesome</span>Extract Skills</>
+                    }
+                  </button>
+                </div>
+
+                {extractedSkills && (
+                  <div className="space-y-3 pt-2 border-t border-outline-variant">
+                    <p className="text-sm font-semibold text-on-surface">Extracted Skills — click to remove:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {extractedSkills
+                        .filter(s => !removedSkills.has(s))
+                        .map(skill => (
+                          <button
+                            key={skill}
+                            type="button"
+                            onClick={() => setRemovedSkills(prev => new Set([...prev, skill]))}
+                            className="flex items-center gap-1 px-3 py-1 bg-secondary/10 text-secondary text-xs font-semibold rounded-full hover:bg-red-50 hover:text-red-500 hover:line-through transition-colors group">
+                            {skill}
+                            <span className="material-symbols-outlined text-[12px] opacity-0 group-hover:opacity-100">close</span>
+                          </button>
+                        ))}
+                    </div>
+                    {extractedSkills.filter(s => !removedSkills.has(s)).length === 0 && (
+                      <p className="text-xs text-on-surface-variant">All skills removed. Select a different file to try again.</p>
+                    )}
+                    {extractedSkills.filter(s => !removedSkills.has(s)).length > 0 && (
+                      skillsSaved ? (
+                        <div className="flex items-center gap-2 text-sm font-semibold text-emerald-600">
+                          <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                          Skills added to your profile!
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setSavingSkills(true);
+                            try {
+                              const kept = extractedSkills.filter(s => !removedSkills.has(s));
+                              const existing = (user?.skills ?? '').split(',').map(s => s.trim()).filter(Boolean);
+                              const merged = [...new Set([...existing, ...kept])].join(', ');
+                              await userApi.updateMe({ skills: merged });
+                              await refreshUser();
+                              setSkillsSaved(true);
+                              setToast({ message: `${kept.length} skill${kept.length !== 1 ? 's' : ''} added to your profile!` });
+                            } catch {
+                              setToast({ message: 'Failed to save skills. Try again.', error: true });
+                            } finally {
+                              setSavingSkills(false);
+                            }
+                          }}
+                          disabled={savingSkills}
+                          className="flex items-center gap-2 px-4 py-2 bg-secondary text-white text-sm font-bold rounded-lg hover:brightness-110 disabled:opacity-60 transition-all">
+                          {savingSkills
+                            ? <><span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>Saving…</>
+                            : <><span className="material-symbols-outlined text-[16px]">save</span>Add to Profile</>
+                          }
+                        </button>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Notification Preferences Card */}
             <div className="tonal-card rounded-xl border border-outline-variant p-6">
@@ -385,7 +537,7 @@ export default function Settings() {
       </div>
 
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all ${toast.error ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 px-5 py-3 rounded-xl shadow-xl text-sm font-semibold transition-all ${toast.error ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'}`}>
           <span className="material-symbols-outlined text-[18px]">{toast.error ? 'error' : 'check_circle'}</span>
           {toast.message}
         </div>

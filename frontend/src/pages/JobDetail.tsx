@@ -252,6 +252,12 @@ function JobDetailContent({
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [serverError, setServerError] = useState('');
   const [aiDrafting, setAiDrafting] = useState(false);
+  const [bidPrice, setBidPrice] = useState<import('@/api/ai').BidPriceResponse | null>(null);
+  const [bidPriceLoading, setBidPriceLoading] = useState(false);
+  const [questions, setQuestions] = useState<string[] | null>(null);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [questionsOpen, setQuestionsOpen] = useState(false);
+  const [copiedQuestions, setCopiedQuestions] = useState(false);
 
   const handleDraftProposal = async () => {
     setAiDrafting(true);
@@ -267,6 +273,48 @@ function JobDetailContent({
     } finally {
       setAiDrafting(false);
     }
+  };
+
+  const isFreelancer = user?.role === 'FREELANCER';
+  const isAdmin = user?.role === 'ADMIN';
+  const canBid = isFreelancer && job.status === 'OPEN';
+
+  useEffect(() => {
+    if (canBid && !bidPrice && !bidPriceLoading) {
+      setBidPriceLoading(true);
+      aiApi.getBidPrice({
+        jobTitle: job.title,
+        jobDescription: job.description ?? '',
+        requiredSkills: job.requiredSkills ?? '',
+        budgetMin: job.budgetMin,
+        budgetMax: job.budgetMax,
+      }).then(setBidPrice).catch(() => {}).finally(() => setBidPriceLoading(false));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canBid]);
+
+  const handleGenerateQuestions = async () => {
+    setQuestionsLoading(true);
+    try {
+      const result = await aiApi.getInterviewQuestions({
+        jobTitle: job.title,
+        jobDescription: job.description ?? '',
+        requiredSkills: job.requiredSkills ?? '',
+      });
+      setQuestions(result.questions);
+      setQuestionsOpen(true);
+    } catch {
+      // silently ignore
+    } finally {
+      setQuestionsLoading(false);
+    }
+  };
+
+  const handleCopyQuestions = () => {
+    if (!questions) return;
+    navigator.clipboard.writeText(questions.map((q, i) => `${i + 1}. ${q}`).join('\n'));
+    setCopiedQuestions(true);
+    setTimeout(() => setCopiedQuestions(false), 2000);
   };
 
   const st = STATUS_CFG[job.status] ?? { label: job.status, cls: 'bg-slate-100 text-slate-600' };
@@ -309,10 +357,6 @@ function JobDetailContent({
       setSubmitting(false);
     }
   };
-
-  const isFreelancer = user?.role === 'FREELANCER';
-  const isAdmin = user?.role === 'ADMIN';
-  const canBid = isFreelancer && job.status === 'OPEN';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -439,6 +483,33 @@ function JobDetailContent({
                     </span>
                   )}
                   {errors.amount && <p className="text-xs text-red-500">{errors.amount}</p>}
+                  {/* AI price suggestions */}
+                  {bidPriceLoading && (
+                    <div className="flex gap-1.5 mt-1">
+                      {[0,1,2].map(i => (
+                        <div key={i} className="h-7 w-24 bg-slate-100 rounded-full animate-pulse" />
+                      ))}
+                    </div>
+                  )}
+                  {bidPrice && !bidPriceLoading && (
+                    <div className="mt-1 space-y-1.5">
+                      <div className="flex flex-wrap gap-1.5">
+                        <button type="button" onClick={() => setBidAmount(String(bidPrice.lowBid))}
+                          className="px-3 py-1 bg-slate-50 border border-slate-200 hover:border-secondary hover:bg-secondary/5 rounded-full text-xs font-semibold text-slate-600 transition-colors">
+                          Low ${bidPrice.lowBid.toLocaleString()}
+                        </button>
+                        <button type="button" onClick={() => setBidAmount(String(bidPrice.competitiveBid))}
+                          className="px-3 py-1 bg-secondary/5 border border-secondary/30 hover:border-secondary hover:bg-secondary/10 rounded-full text-xs font-semibold text-secondary transition-colors">
+                          ★ Market ${bidPrice.competitiveBid.toLocaleString()}
+                        </button>
+                        <button type="button" onClick={() => setBidAmount(String(bidPrice.premiumBid))}
+                          className="px-3 py-1 bg-slate-50 border border-slate-200 hover:border-secondary hover:bg-secondary/5 rounded-full text-xs font-semibold text-slate-600 transition-colors">
+                          Premium ${bidPrice.premiumBid.toLocaleString()}
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant">{bidPrice.reasoning}</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Estimated Delivery */}
@@ -604,6 +675,55 @@ function JobDetailContent({
             </div>
           </div>
         </div>
+
+        {/* AI Interview Questions — CLIENT on any open job */}
+        {user?.role === 'CLIENT' && job.status === 'OPEN' && (
+          <div className="bg-white rounded-xl p-6 border border-outline-variant shadow-[0px_4px_12px_rgba(10,25,47,0.05)]">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Interview Questions</h3>
+              <button
+                onClick={handleGenerateQuestions}
+                disabled={questionsLoading}
+                className="flex items-center gap-1 text-xs font-semibold text-secondary hover:text-secondary/80 disabled:opacity-60 transition-colors">
+                {questionsLoading
+                  ? <><span className="material-symbols-outlined text-[13px] animate-spin">progress_activity</span>Generating…</>
+                  : <><span className="material-symbols-outlined text-[13px]">auto_awesome</span>Generate</>
+                }
+              </button>
+            </div>
+            {!questions && !questionsLoading && (
+              <p className="text-xs text-on-surface-variant">Generate AI-tailored interview questions to evaluate freelancer applicants for this job.</p>
+            )}
+            {questions && (
+              <div>
+                <button
+                  onClick={() => setQuestionsOpen(o => !o)}
+                  className="flex items-center justify-between w-full text-xs font-semibold text-on-surface mb-2">
+                  <span>{questionsOpen ? 'Hide' : 'Show'} {questions.length} questions</span>
+                  <span className="material-symbols-outlined text-[16px]">{questionsOpen ? 'expand_less' : 'expand_more'}</span>
+                </button>
+                {questionsOpen && (
+                  <div className="space-y-2">
+                    <ol className="space-y-2 list-none">
+                      {questions.map((q, i) => (
+                        <li key={i} className="flex gap-2 text-xs text-on-surface-variant">
+                          <span className="font-bold text-secondary flex-shrink-0">{i + 1}.</span>
+                          <span>{q}</span>
+                        </li>
+                      ))}
+                    </ol>
+                    <button
+                      onClick={handleCopyQuestions}
+                      className="mt-2 flex items-center gap-1 text-xs font-semibold text-secondary hover:text-secondary/80 transition-colors">
+                      <span className="material-symbols-outlined text-[13px]">{copiedQuestions ? 'check' : 'content_copy'}</span>
+                      {copiedQuestions ? 'Copied!' : 'Copy All'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {!isAdmin && (
           <div className="bg-white dark:bg-primary-container text-slate-900 dark:text-white rounded-xl p-6 overflow-hidden relative group">
