@@ -68,6 +68,11 @@ export interface AdminPaymentSummary {
   escrowed: number;
 }
 
+export interface AnalyticsPoint {
+  label: string;
+  value: number;
+}
+
 export const adminApi = {
   getStats: () =>
     api.get<AdminStats>('/admin/stats').then(r => r.data),
@@ -103,4 +108,16 @@ export const adminApi = {
 
   getPaymentSummary: () =>
     api.get<AdminPaymentSummary>('/admin/payments/summary').then(r => r.data),
+
+  getRevenueAnalytics: (months = 12) =>
+    api.get<AnalyticsPoint[]>('/admin/analytics/revenue', { params: { months } }).then(r => r.data),
+
+  getUserAnalytics: (weeks = 12) =>
+    api.get<AnalyticsPoint[]>('/admin/analytics/users', { params: { weeks } }).then(r => r.data),
+
+  getBidsAnalytics: () =>
+    api.get<AnalyticsPoint[]>('/admin/analytics/bids').then(r => r.data),
+
+  getDisputesAnalytics: (months = 12) =>
+    api.get<AnalyticsPoint[]>('/admin/analytics/disputes', { params: { months } }).then(r => r.data),
 };

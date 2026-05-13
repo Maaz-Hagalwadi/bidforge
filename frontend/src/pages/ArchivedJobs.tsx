@@ -377,7 +377,7 @@ export default function ArchivedJobs() {
           title="Repost this job?"
           message={<>This will republish <span className="font-semibold text-on-surface">"{repostTarget.title}"</span> as an open job and make it visible to freelancers again.</>}
           confirmLabel="Repost Job"
-          confirmCls="bg-secondary hover:brightness-110"
+          confirmCls="bg-secondary text-white hover:brightness-110"
           loading={actionLoading}
           onConfirm={handleRepost}
           onCancel={() => setRepostTarget(null)}

@@ -17,6 +17,8 @@ export const userApi = {
     api.get<PortfolioItem[]>(`/users/${userId}/portfolio`).then(r => r.data),
   addPortfolioItem: (payload: AddPortfolioPayload) =>
     api.post<PortfolioItem>('/users/me/portfolio', payload).then(r => r.data),
-  deletePortfolioItem: (itemId: number) =>
+  updatePortfolioItem: (itemId: number | string, payload: AddPortfolioPayload) =>
+    api.put<PortfolioItem>(`/users/me/portfolio/${itemId}`, payload).then(r => r.data),
+  deletePortfolioItem: (itemId: number | string) =>
     api.delete(`/users/me/portfolio/${itemId}`),
 };

@@ -110,6 +110,21 @@ public class UserService {
         return mapPortfolioToResponse(portfolioRepository.save(item));
     }
 
+    public PortfolioResponse updatePortfolioItem(UUID itemId, PortfolioRequest request) {
+        User user = getAuthenticatedUser();
+        PortfolioItem item = portfolioRepository.findById(itemId)
+                .orElseThrow(() -> new RuntimeException("Portfolio item not found"));
+        if (!item.getUser().getId().equals(user.getId())) {
+            throw new RuntimeException("Not your portfolio item");
+        }
+        item.setTitle(request.getTitle());
+        item.setDescription(request.getDescription());
+        item.setImageUrl(request.getImageUrl());
+        item.setProjectUrl(request.getProjectUrl());
+        item.setTechnologies(request.getTechnologies());
+        return mapPortfolioToResponse(portfolioRepository.save(item));
+    }
+
     public void deletePortfolioItem(UUID itemId) {
         User user = getAuthenticatedUser();
         PortfolioItem item = portfolioRepository.findById(itemId)

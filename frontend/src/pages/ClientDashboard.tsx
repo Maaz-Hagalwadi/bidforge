@@ -25,7 +25,7 @@ function mapProject(p: RecentProject): {
   title: string; status: string; statusCls: string; meta: string; extra: string;
 } {
   const statusMap = {
-    OPEN:      { label: 'Open',      cls: 'bg-secondary/10 text-secondary' },
+    OPEN:      { label: 'Open',      cls: 'bg-green-500/10 text-green-600' },
     ASSIGNED:  { label: 'Assigned',  cls: 'bg-green-500/10 text-green-600' },
     COMPLETED: { label: 'Completed', cls: 'bg-slate-500/10 text-slate-500' },
   };
@@ -76,7 +76,7 @@ function StatCard({ icon, label, value, trend, trendColor }: { icon: string; lab
 
 // ── ProjectRow ────────────────────────────────────────────────
 
-function ProjectRow({ title, status, statusCls, meta, extra }: { title: string; status: string; statusCls: string; meta: string; extra: string }) {
+function ProjectRow({ title, status, statusCls, meta, extra, onAction }: { title: string; status: string; statusCls: string; meta: string; extra: string; onAction: () => void }) {
   return (
     <div className="px-4 md:px-6 py-4 flex flex-col gap-3 hover:bg-slate-50 transition-colors">
       <div className="flex items-start justify-between gap-3">
@@ -87,7 +87,12 @@ function ProjectRow({ title, status, statusCls, meta, extra }: { title: string; 
           </div>
           <p className="text-xs text-on-surface-variant leading-relaxed">{meta}</p>
         </div>
-        <button className="p-1.5 border border-outline-variant rounded-lg hover:border-secondary transition-colors flex-shrink-0">
+        <button
+          type="button"
+          onClick={onAction}
+          aria-label={`View details for ${title}`}
+          className="p-1.5 border border-outline-variant rounded-lg hover:border-secondary hover:text-secondary transition-colors flex-shrink-0"
+        >
           <span className="material-symbols-outlined text-[18px]">more_horiz</span>
         </button>
       </div>
@@ -112,6 +117,76 @@ function ProjectRow({ title, status, statusCls, meta, extra }: { title: string; 
         <span className="text-label-sm font-bold text-slate-500 dark:text-slate-400">Paid Out</span>
       )}
     </div>
+  );
+}
+
+// ── ClientProjectInsights ─────────────────────────────────────
+
+function ClientProjectInsights({ projects }: { projects: RecentProject[] }) {
+  const statusItems = [
+    { label: 'Open',      value: projects.filter(p => p.status === 'OPEN').length,      cls: 'bg-secondary' },
+    { label: 'Assigned',  value: projects.filter(p => p.status === 'ASSIGNED').length,  cls: 'bg-emerald-500' },
+    { label: 'Completed', value: projects.filter(p => p.status === 'COMPLETED').length, cls: 'bg-slate-500' },
+  ];
+  const totalBids = projects.reduce((sum, p) => sum + (p.bidsReceived ?? 0), 0);
+  const maxBids = Math.max(1, ...projects.map(p => p.bidsReceived ?? 0));
+  const topProjects = [...projects]
+    .sort((a, b) => (b.bidsReceived ?? 0) - (a.bidsReceived ?? 0))
+    .slice(0, 4);
+
+  return (
+    <section className="tonal-card rounded-xl overflow-hidden">
+      <div className="px-6 py-4 border-b border-slate-100">
+        <h3 className="text-sm font-semibold text-on-surface">Project Insights</h3>
+        <p className="text-xs text-on-surface-variant mt-0.5">Bid traction and project pipeline</p>
+      </div>
+
+      <div className="p-6 space-y-6">
+        <div className="grid grid-cols-3 gap-3">
+          {statusItems.map(item => (
+            <div key={item.label} className="rounded-lg bg-slate-50 border border-slate-100 p-3 text-center">
+              <div className={`w-2 h-2 rounded-full mx-auto mb-2 ${item.cls}`} />
+              <p className="text-lg font-bold text-on-surface">{item.value}</p>
+              <p className="text-[11px] font-semibold text-on-surface-variant">{item.label}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-xl bg-gradient-to-br from-secondary/10 to-sky-50 border border-secondary/10 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-secondary">Total Bids</p>
+              <p className="text-3xl font-bold text-on-surface mt-1">{totalBids}</p>
+            </div>
+            <span className="material-symbols-outlined text-secondary text-[36px]">query_stats</span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">Bids by Project</p>
+            <p className="text-xs font-semibold text-on-surface-variant">Top {topProjects.length}</p>
+          </div>
+          {topProjects.length ? topProjects.map(project => {
+            const bids = project.bidsReceived ?? 0;
+            const width = `${Math.max(8, (bids / maxBids) * 100)}%`;
+            return (
+              <div key={project.title} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-on-surface truncate">{project.title}</p>
+                  <p className="text-xs font-bold text-secondary flex-shrink-0">{bids}</p>
+                </div>
+                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full rounded-full bg-secondary transition-all duration-500" style={{ width }} />
+                </div>
+              </div>
+            );
+          }) : (
+            <p className="py-8 text-center text-on-surface-variant text-sm">Project insights will appear once you post jobs.</p>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -290,19 +365,29 @@ export default function ClientDashboard() {
               </section>
             )}
 
-            {/* Recent projects */}
-            <section className="tonal-card rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-on-surface">Recent Project Activity</h3>
-                <button onClick={() => navigate('/client/jobs')} className="text-secondary font-semibold text-sm hover:underline">View All →</button>
+            {/* Recent projects + insights */}
+            <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+              <div className="tonal-card rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-on-surface">Recent Project Activity</h3>
+                  <button onClick={() => navigate('/client/jobs')} className="text-secondary font-semibold text-sm hover:underline">View All →</button>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {dashboardData?.recentProjects.length ? (
+                    dashboardData.recentProjects.map(p => (
+                      <ProjectRow
+                        key={p.title}
+                        {...mapProject(p)}
+                        onAction={() => navigate('/client/jobs')}
+                      />
+                    ))
+                  ) : (
+                    <p className="px-6 py-8 text-center text-on-surface-variant text-sm">No projects yet. Post your first job to get started.</p>
+                  )}
+                </div>
               </div>
-              <div className="divide-y divide-slate-100">
-                {dashboardData?.recentProjects.length ? (
-                  dashboardData.recentProjects.map(p => <ProjectRow key={p.title} {...mapProject(p)} />)
-                ) : (
-                  <p className="px-6 py-8 text-center text-on-surface-variant text-sm">No projects yet. Post your first job to get started.</p>
-                )}
-              </div>
+
+              <ClientProjectInsights projects={dashboardData?.recentProjects ?? []} />
             </section>
 
             {/* Talent + News */}

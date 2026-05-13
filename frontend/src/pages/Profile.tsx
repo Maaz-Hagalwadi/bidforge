@@ -241,6 +241,11 @@ export default function Profile() {
   const [portfolioSaving, setPortfolioSaving] = useState(false);
   const [portfolioErr, setPortfolioErr] = useState('');
 
+  const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null);
+  const [editPortfolioForm, setEditPortfolioForm] = useState({ title: '', description: '', imageUrl: '', projectUrl: '', technologies: '' });
+  const [editPortfolioSaving, setEditPortfolioSaving] = useState(false);
+  const [editPortfolioErr, setEditPortfolioErr] = useState('');
+
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState('');
@@ -323,7 +328,39 @@ export default function Profile() {
     }
   };
 
-  const handleDeletePortfolio = async (itemId: number) => {
+  const startEditPortfolio = (item: PortfolioItem) => {
+    setEditingPortfolioId(item.id);
+    setEditPortfolioForm({
+      title: item.title,
+      description: item.description ?? '',
+      imageUrl: item.imageUrl ?? '',
+      projectUrl: item.projectUrl ?? '',
+      technologies: item.technologies ?? '',
+    });
+    setEditPortfolioErr('');
+  };
+
+  const handleUpdatePortfolio = async () => {
+    if (!editingPortfolioId || !editPortfolioForm.title.trim()) return;
+    setEditPortfolioSaving(true); setEditPortfolioErr('');
+    try {
+      const updated = await userApi.updatePortfolioItem(editingPortfolioId, {
+        title: editPortfolioForm.title.trim(),
+        description: editPortfolioForm.description.trim() || undefined,
+        imageUrl: editPortfolioForm.imageUrl.trim() || undefined,
+        projectUrl: editPortfolioForm.projectUrl.trim() || undefined,
+        technologies: editPortfolioForm.technologies.trim() || undefined,
+      });
+      setPortfolio(p => p.map(i => i.id === editingPortfolioId ? updated : i));
+      setEditingPortfolioId(null);
+    } catch {
+      setEditPortfolioErr('Failed to update portfolio item.');
+    } finally {
+      setEditPortfolioSaving(false);
+    }
+  };
+
+  const handleDeletePortfolio = async (itemId: string) => {
     try {
       await userApi.deletePortfolioItem(itemId);
       setPortfolio(p => p.filter(i => i.id !== itemId));
@@ -456,7 +493,7 @@ export default function Profile() {
 
           {/* Profile identity — overlaps hero */}
           <div className="max-w-[1280px] w-full mx-auto px-4 md:px-8">
-            <div className="-mt-14 md:-mt-16 relative z-10 mb-0 pb-5 border-b border-outline-variant">
+            <div className="-mt-14 md:-mt-16 relative z-10 mb-6 p-5 md:p-6 bg-white rounded-2xl border border-outline-variant shadow-[0px_12px_30px_rgba(10,25,47,0.12)]">
               <div className="flex flex-col sm:flex-row sm:items-end gap-4">
 
                 {/* Avatar */}
@@ -475,7 +512,7 @@ export default function Profile() {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-0.5">
                       <h1 className="text-2xl md:text-3xl font-bold text-on-surface">{profile.name}</h1>
-                      <span className="px-2.5 py-0.5 bg-secondary/10 text-secondary text-xs font-semibold rounded-full">
+                      <span className="px-2.5 py-0.5 bg-secondary/10 text-secondary border border-secondary/20 text-xs font-semibold rounded-full">
                         {profile.role.charAt(0) + profile.role.slice(1).toLowerCase()}
                       </span>
                     </div>
@@ -667,37 +704,82 @@ export default function Profile() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {portfolio.map(item => (
                         <div key={item.id} className="border border-outline-variant rounded-xl overflow-hidden hover:shadow-md transition-shadow bg-surface">
-                          {item.imageUrl && (
-                            <img src={item.imageUrl} alt={item.title}
-                              className="w-full h-36 object-cover"
-                              onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                          )}
-                          <div className="p-3.5">
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <p className="text-sm font-semibold text-on-surface leading-tight">{item.title}</p>
-                              {isOwnProfile && (
-                                <button onClick={() => handleDeletePortfolio(item.id)}
-                                  className="flex-shrink-0 text-on-surface-variant/50 hover:text-red-400 transition-colors" title="Delete">
-                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                          {editingPortfolioId === item.id ? (
+                            <div className="p-4 space-y-3">
+                              <p className="text-xs font-bold text-on-surface uppercase tracking-wider">Edit Item</p>
+                              <input value={editPortfolioForm.title}
+                                onChange={e => setEditPortfolioForm(f => ({ ...f, title: e.target.value }))}
+                                className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
+                                placeholder="Project title *" />
+                              <textarea rows={2} value={editPortfolioForm.description}
+                                onChange={e => setEditPortfolioForm(f => ({ ...f, description: e.target.value }))}
+                                className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary resize-none"
+                                placeholder="Description" />
+                              <input value={editPortfolioForm.imageUrl}
+                                onChange={e => setEditPortfolioForm(f => ({ ...f, imageUrl: e.target.value }))}
+                                className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
+                                placeholder="Image URL" />
+                              <input value={editPortfolioForm.projectUrl}
+                                onChange={e => setEditPortfolioForm(f => ({ ...f, projectUrl: e.target.value }))}
+                                className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
+                                placeholder="Project URL" />
+                              <input value={editPortfolioForm.technologies}
+                                onChange={e => setEditPortfolioForm(f => ({ ...f, technologies: e.target.value }))}
+                                className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
+                                placeholder="Technologies (e.g. React, Node.js)" />
+                              {editPortfolioErr && <p className="text-xs text-red-500">{editPortfolioErr}</p>}
+                              <div className="flex gap-2 pt-1">
+                                <button onClick={handleUpdatePortfolio} disabled={editPortfolioSaving || !editPortfolioForm.title.trim()}
+                                  className="px-4 py-1.5 text-xs font-semibold text-white bg-secondary rounded-xl disabled:opacity-60 hover:brightness-110 transition-all">
+                                  {editPortfolioSaving ? 'Saving…' : 'Save'}
                                 </button>
-                              )}
-                            </div>
-                            {item.description && <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-2">{item.description}</p>}
-                            {item.technologies && (
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {item.technologies.split(',').map(t => t.trim()).filter(Boolean).map(t => (
-                                  <span key={t} className="px-2 py-0.5 text-[11px] font-medium bg-secondary/8 text-secondary rounded-full bg-secondary/10">{t}</span>
-                                ))}
+                                <button onClick={() => setEditingPortfolioId(null)}
+                                  className="px-4 py-1.5 text-xs font-semibold text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors">
+                                  Cancel
+                                </button>
                               </div>
-                            )}
-                            {item.projectUrl && (
-                              <a href={item.projectUrl} target="_blank" rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs font-semibold text-secondary mt-2 hover:underline">
-                                <span className="material-symbols-outlined text-[13px]">open_in_new</span>
-                                View Project
-                              </a>
-                            )}
-                          </div>
+                            </div>
+                          ) : (
+                            <>
+                              {item.imageUrl && (
+                                <img src={item.imageUrl} alt={item.title}
+                                  className="w-full h-36 object-cover"
+                                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                              )}
+                              <div className="p-3.5">
+                                <div className="flex items-start justify-between gap-2 mb-1">
+                                  <p className="text-sm font-semibold text-on-surface leading-tight">{item.title}</p>
+                                  {isOwnProfile && (
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                      <button onClick={() => startEditPortfolio(item)}
+                                        className="text-on-surface-variant/50 hover:text-secondary transition-colors" title="Edit">
+                                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                                      </button>
+                                      <button onClick={() => handleDeletePortfolio(item.id)}
+                                        className="text-on-surface-variant/50 hover:text-red-400 transition-colors" title="Delete">
+                                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                                {item.description && <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-2">{item.description}</p>}
+                                {item.technologies && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {item.technologies.split(',').map(t => t.trim()).filter(Boolean).map(t => (
+                                      <span key={t} className="px-2 py-0.5 text-[11px] font-medium bg-secondary/10 text-secondary rounded-full">{t}</span>
+                                    ))}
+                                  </div>
+                                )}
+                                {item.projectUrl && (
+                                  <a href={item.projectUrl} target="_blank" rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs font-semibold text-secondary mt-2 hover:underline">
+                                    <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                                    View Project
+                                  </a>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       ))}
                     </div>

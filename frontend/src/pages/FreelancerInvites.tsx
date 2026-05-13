@@ -69,6 +69,7 @@ export default function FreelancerInvites() {
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [confirmAction, setConfirmAction] = useState<{ inviteId: string; action: 'accept' | 'decline'; title: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Form-input state (live, not yet applied)
   const [keyword, setKeyword] = useState('');
@@ -103,6 +104,7 @@ export default function FreelancerInvites() {
     e.preventDefault();
     setApplied({ keyword, category, skills, minBudget, maxBudget });
     setPage(0);
+    setFiltersOpen(false);
   };
 
   const handleClear = () => {
@@ -174,6 +176,7 @@ export default function FreelancerInvites() {
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const activeFilterCount = [applied.keyword, applied.category, applied.skills, applied.minBudget, applied.maxBudget].filter(Boolean).length;
 
   const navLeft = (
     <button onClick={() => setDrawerOpen(true)} className="p-1.5 text-slate-900 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors" aria-label="Open menu">
@@ -249,80 +252,82 @@ export default function FreelancerInvites() {
               <p className="text-body-md text-on-surface-variant mt-1">Jobs you've been personally invited to by clients.</p>
             </div>
 
-            {/* Search form — only fires on submit */}
-            <form onSubmit={handleSearch} className="hidden lg:block tonal-card rounded-xl p-5 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="lg:col-span-2">
-                  <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Keyword</label>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-                    <input
-                      type="text"
-                      value={keyword}
-                      onChange={e => setKeyword(e.target.value)}
-                      placeholder="Search job titles, descriptions…"
-                      className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                    />
+            <div className="hidden lg:flex justify-end">
+              <button type="button" onClick={() => setFiltersOpen(true)}
+                className="relative flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-semibold shadow-lg shadow-slate-900/10 hover:bg-slate-800 active:scale-[0.98] transition-all">
+                <span className="material-symbols-outlined text-[18px]">tune</span>
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="min-w-5 h-5 px-1 rounded-full bg-secondary text-white text-[11px] font-bold flex items-center justify-center">{activeFilterCount}</span>
+                )}
+              </button>
+            </div>
+
+            {filtersOpen && (
+              <div className="hidden lg:flex fixed inset-0 z-[100] items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+                <div className="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-base font-bold text-on-surface">Filter Invites</h2>
+                      <p className="text-xs text-on-surface-variant mt-0.5">Search invited jobs by keyword, category, skills, and budget.</p>
+                    </div>
+                    <button type="button" onClick={() => setFiltersOpen(false)}
+                      className="w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-slate-50 transition-colors"
+                      aria-label="Close filters">
+                      <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
                   </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Category</label>
-                  <select
-                    value={category || 'All Categories'}
-                    onChange={e => setCategory(e.target.value === 'All Categories' ? '' : e.target.value)}
-                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                  >
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Skills</label>
-                  <input
-                    type="text"
-                    value={skills}
-                    onChange={e => setSkills(e.target.value)}
-                    placeholder="React, Python, AWS…"
-                    className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                  />
+
+                  <form onSubmit={handleSearch} className="p-5 space-y-4 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Keyword</label>
+                        <div className="relative">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                          <input type="text" value={keyword} onChange={e => setKeyword(e.target.value)}
+                            placeholder="Search job titles, descriptions..."
+                            className="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Category</label>
+                        <select value={category || 'All Categories'} onChange={e => setCategory(e.target.value === 'All Categories' ? '' : e.target.value)}
+                          className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white">
+                          {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Skills</label>
+                        <input type="text" value={skills} onChange={e => setSkills(e.target.value)}
+                          placeholder="React, Python, AWS..."
+                          className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Min Budget ($)</label>
+                        <input type="number" value={minBudget} onChange={e => setMinBudget(e.target.value)} placeholder="0" min="0"
+                          className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Max Budget ($)</label>
+                        <input type="number" value={maxBudget} onChange={e => setMaxBudget(e.target.value)} placeholder="Any" min="0"
+                          className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white" />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                      <button type="button" onClick={handleClear}
+                        className="px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-slate-50 transition-colors">
+                        Clear
+                      </button>
+                      <button type="submit"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
+                        <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                        Apply Filters
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
-              <div className="flex flex-col sm:flex-row items-end gap-4">
-                <div className="flex gap-3 flex-1">
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Min Budget ($)</label>
-                    <input
-                      type="number"
-                      value={minBudget}
-                      onChange={e => setMinBudget(e.target.value)}
-                      placeholder="0"
-                      min="0"
-                      className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1.5">Max Budget ($)</label>
-                    <input
-                      type="number"
-                      value={maxBudget}
-                      onChange={e => setMaxBudget(e.target.value)}
-                      placeholder="Any"
-                      min="0"
-                      className="w-full px-3 py-2.5 border border-outline-variant rounded-lg text-sm focus:outline-none focus:border-secondary transition-colors bg-white"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <button type="button" onClick={handleClear}
-                    className="px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-semibold text-on-surface-variant hover:bg-white transition-colors">
-                    Clear
-                  </button>
-                  <button type="submit"
-                    className="px-6 py-2.5 bg-secondary text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all">
-                    Search
-                  </button>
-                </div>
-              </div>
-            </form>
+            )}
 
             {loading ? (
               <PageLoader message="Loading invites…" />

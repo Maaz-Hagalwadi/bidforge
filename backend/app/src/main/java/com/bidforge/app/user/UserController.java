@@ -56,6 +56,11 @@ public class UserController {
         return userService.uploadProfileImage(file);
     }
 
+    @PutMapping("/me/portfolio/{itemId}")
+    public PortfolioResponse updatePortfolioItem(@PathVariable UUID itemId, @Valid @RequestBody PortfolioRequest request) {
+        return userService.updatePortfolioItem(itemId, request);
+    }
+
     @DeleteMapping("/me/portfolio/{itemId}")
     public void deletePortfolioItem(@PathVariable UUID itemId) {
         userService.deletePortfolioItem(itemId);
