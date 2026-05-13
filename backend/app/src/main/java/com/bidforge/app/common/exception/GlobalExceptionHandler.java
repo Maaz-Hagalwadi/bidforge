@@ -269,8 +269,10 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {
         ex.printStackTrace();
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR",
-                "Something went wrong", request);
+        String message = (ex.getMessage() != null && ex.getMessage().contains("Gemini"))
+                ? ex.getMessage()
+                : "Something went wrong";
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", message, request);
     }
 
     @ExceptionHandler(InviteAlreadyProcessedException.class)

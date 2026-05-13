@@ -11,6 +11,7 @@ import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { FreelancerDashboardData, FreelancerActivity } from '@/types/dashboard';
+import { aiApi, type JobRecommendation } from '@/api/ai';
 
 
 
@@ -95,6 +96,8 @@ export default function FreelancerDashboard() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [data, setData] = useState<FreelancerDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recommendations, setRecommendations] = useState<JobRecommendation[]>([]);
+  const [recsLoading, setRecsLoading] = useState(true);
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -103,6 +106,10 @@ export default function FreelancerDashboard() {
       .then(setData)
       .catch(console.error)
       .finally(() => setLoading(false));
+    aiApi.getJobRecommendations()
+      .then(setRecommendations)
+      .catch(() => setRecommendations([]))
+      .finally(() => setRecsLoading(false));
   }, []);
 
   useEffect(() => {
@@ -232,6 +239,61 @@ export default function FreelancerDashboard() {
                   </button>
                 </div>
               </div>
+            </section>
+
+            {/* AI Job Recommendations */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary text-[18px]">auto_awesome</span>
+                  Recommended for You
+                </h3>
+                {!recsLoading && recommendations.length > 0 && (
+                  <button onClick={() => navigate('/browse')} className="text-secondary font-semibold text-xs hover:underline">
+                    Browse All
+                  </button>
+                )}
+              </div>
+              {recsLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="tonal-card rounded-xl p-4 space-y-3 animate-pulse">
+                      <div className="h-4 bg-slate-200 rounded w-3/4" />
+                      <div className="h-3 bg-slate-200 rounded w-1/2" />
+                      <div className="h-3 bg-slate-200 rounded w-full" />
+                    </div>
+                  ))}
+                </div>
+              ) : recommendations.length === 0 ? (
+                <div className="tonal-card rounded-xl p-6 text-center">
+                  <span className="material-symbols-outlined text-3xl text-on-surface-variant">manage_search</span>
+                  <p className="text-sm text-on-surface-variant mt-2">Complete your profile with skills and bio to get personalised job matches.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {recommendations.map(rec => (
+                    <div key={rec.jobId} className="tonal-card rounded-xl p-4 flex flex-col gap-3 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between gap-2">
+                        <h4 className="text-sm font-semibold text-on-surface line-clamp-2 flex-1">{rec.title}</h4>
+                        <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-bold bg-secondary/10 text-secondary">
+                          {rec.matchScore}%
+                        </span>
+                      </div>
+                      {rec.category && <span className="text-xs text-on-surface-variant">{rec.category}</span>}
+                      {(rec.budgetMin || rec.budgetMax) && (
+                        <span className="text-xs font-semibold text-on-surface">
+                          ${rec.budgetMin?.toLocaleString()} – ${rec.budgetMax?.toLocaleString()}
+                        </span>
+                      )}
+                      <p className="text-xs text-on-surface-variant line-clamp-2">{rec.matchReason}</p>
+                      <button onClick={() => navigate(`/jobs/${rec.jobId}`)}
+                        className="mt-auto w-full py-2 bg-secondary/10 text-secondary text-xs font-bold rounded-lg hover:bg-secondary/20 transition-colors">
+                        View Job
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* Recent Activity + Profile Completion */}
