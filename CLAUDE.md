@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented: auth (password + OTP email), user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, milestones with escrow-style payments, dashboards, real-time notifications (WebSocket + REST), real-time chat (WebSocket + REST), reviews, disputes, file uploads (local + S3), admin panel, and Stripe payment integration (partially wired).
+**BidForge** is a freelance marketplace (Fiverr/Upwork-style) with a Spring Boot backend and a React + TypeScript frontend. Implemented: auth (password + OTP email + Google OAuth), user profile, full job module (post, browse, edit, archive, invite-only visibility, per-freelancer invitations), bidding, contracts, milestones with escrow-style payments, dashboards, real-time notifications (WebSocket + REST), real-time chat (WebSocket + REST), reviews, disputes, file uploads (local + S3), admin panel, Stripe payment integration (partially wired), and AI-assisted features (job descriptions, proposals, bid pricing, profile optimization via Groq/llama-3.1-8b-instant).
 
 ---
 
@@ -21,15 +21,16 @@ All Maven commands run from `backend/app/`:
 ```
 
 **Prerequisites**: PostgreSQL on `localhost:5433`, database `bidforge`, user `admin`, password `admin`.  
-Override with env vars: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `RESEND_API_KEY` (email via Resend), `EMAIL_TEST_MODE` (set `true` to avoid real sends), `APP_BASE_URL` (frontend origin, default `http://localhost:5173`), `APP_SERVER_URL` (backend origin, default `http://localhost:8080`), `APP_UPLOAD_DIR` (file storage path, default `uploads`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, `GOOGLE_CLIENT_ID`, `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `aws.s3.region`, `aws.s3.bucket` (S3 file storage; falls back to local disk when not configured).
+Override with env vars: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `RESEND_API_KEY` (email via Resend), `EMAIL_TEST_MODE` (set `true` to avoid real sends), `APP_BASE_URL` (frontend origin, default `http://localhost:5173`), `APP_SERVER_URL` (backend origin, default `http://localhost:8080`), `APP_UPLOAD_DIR` (file storage path, default `uploads`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, `GOOGLE_CLIENT_ID` (Google OAuth), `GROQ_API_KEY` (AI features), `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `aws.s3.region`, `aws.s3.bucket` (S3 file storage; falls back to local disk when not configured).
 
-`spring.jpa.hibernate.ddl-auto=none` — schema is managed by Flyway migrations in `src/main/resources/db/migration/` (V1–V11). Tests use H2 in-memory with `create-drop`.
+`spring.jpa.hibernate.ddl-auto=none` — schema is managed by Flyway migrations in `src/main/resources/db/migration/` (V1–V16+; includes Google auth, disputes, notification preferences, admin ban, AI features). Tests use H2 in-memory with `create-drop`.
 
 ### Package structure (`com.bidforge.app`)
 
 ```
 auth/          AuthController, AuthService, JwtService, JwtAuthFilter,
-               RateLimitFilter, RefreshToken(Entity/Repository/Service)
+               RateLimitFilter, RefreshToken(Entity/Repository/Service),
+               GoogleAuthService (Google OAuth token verification + account linking)
                dto/request/  LoginRequest, RegisterRequest, RefreshTokenRequest
                dto/response/ LoginResponse
 user/          User (entity), Role (enum: CLIENT/FREELANCER/ADMIN),
@@ -76,9 +77,14 @@ otp/           OtpAuthController, OtpService, EmailOtp (entity), EmailOtpReposit
                dto/  SendOtpRequest, VerifyOtpRequest, AuthResponse
 review/        ReviewController, ReviewService, Review (entity), ReviewRepository
                dto/  CreateReviewRequest, ReviewResponse
-files/         FileController — uploads to `{APP_UPLOAD_DIR}/chat/`; allowed types:
+files/         FileController — two endpoints: `/files/upload` (any auth) and `/files/job-attachment` (CLIENT only);
+               uploads to `{APP_UPLOAD_DIR}/chat/`; allowed types:
                images + pdf/doc/docx/xls/xlsx/txt/zip; max 20 MB; returns `fileUrl`, `fileName`, `fileType`
 storage/       FileUploadService (local-disk + S3 dual backend), S3Config
+ai/            AiController, AiService (Groq API, model: llama-3.1-8b-instant)
+               endpoints: generate-description, generate-proposal, suggest-milestones,
+               job-recommendations, optimize-profile, bid-price, interview-questions,
+               extract-resume-skills, chat
 admin/         AdminController, AdminService — platform-wide stats, user ban/unban/delete,
                job moderation, dispute management, payment summary
                dto/  (under admin/dto/)
@@ -104,6 +110,9 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 - `JwtService.generateToken(User)` embeds `userId` and `role` claims (HS256, 15 min expiry).
 - Refresh token rotation: `RefreshTokenService.validateAndRotate()` revokes the old token and issues a new UUID one (7-day expiry) atomically.
 - `UserService` and `JobService` read the principal from `SecurityContextHolder` directly — no `@AuthenticationPrincipal` needed.
+- **Google OAuth**: `POST /auth/google` accepts a Google ID token, verifies it with `GOOGLE_CLIENT_ID`, and creates or links a `User` account (sets `googleId` + `emailVerified=true`).
+- **Email verification flow**: on register, a verification email is sent; `POST /auth/verify-email?token=` activates the account; `POST /auth/resend-verification` resends.
+- **Password reset flow**: `POST /auth/forgot-password` → email with reset link → `POST /auth/reset-password`.
 
 ### Job module architecture
 
@@ -138,6 +147,11 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | POST | `/auth/login` | No | Returns `accessToken`, `refreshToken`, `tokenType` |
 | POST | `/auth/refresh` | No | Rotates refresh token |
 | POST | `/auth/logout` | No | Revokes refresh token |
+| POST | `/auth/google` | No | Google OAuth — accepts Google ID token; creates or links account |
+| POST | `/auth/forgot-password` | No | Send password reset email |
+| POST | `/auth/reset-password` | No | Reset password with token from email |
+| GET | `/auth/verify-email` | No | Verify email address (`?token=`) |
+| POST | `/auth/resend-verification` | No | Resend verification email |
 | POST | `/auth/send-otp` | No | Send OTP email to `{ email }` |
 | POST | `/auth/verify-otp` | No | Verify OTP `{ email, otp }`; returns `{ token }` (access token only) |
 | GET | `/users/me` | Yes | Current user profile |
@@ -197,6 +211,16 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | GET | `/users/{userId}/reviews` | Yes | All reviews received by a user |
 | GET | `/users/{userId}/reviews/given` | Yes | All reviews given by a user |
 | POST | `/files/upload` | Yes | Upload file (multipart); returns `{ fileUrl, fileName, fileType }` |
+| POST | `/files/job-attachment` | CLIENT | Upload a job attachment (multipart) |
+| POST | `/ai/generate-description` | Yes | AI-generate a job description |
+| POST | `/ai/generate-proposal` | Yes | AI-generate a bid proposal |
+| POST | `/ai/suggest-milestones` | Yes | AI-suggest milestones for a job |
+| POST | `/ai/job-recommendations` | Yes | AI job recommendations for a freelancer |
+| POST | `/ai/optimize-profile` | Yes | AI suggestions to improve a freelancer profile |
+| POST | `/ai/bid-price` | Yes | AI-suggested bid price |
+| POST | `/ai/interview-questions` | Yes | AI-generated interview questions |
+| POST | `/ai/extract-resume-skills` | Yes | Extract skills from resume text |
+| POST | `/ai/chat` | Yes | General AI chat assistant |
 | POST | `/contracts/{contractId}/dispute` | Yes | Open a dispute on a contract |
 | GET | `/disputes/my` | Yes | All disputes for the caller |
 | PATCH | `/disputes/{disputeId}/resolve` | Yes | Resolve a dispute |
@@ -228,6 +252,10 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | `InviteAlreadyProcessedException` | 400 | `BAD_REQUEST` |
 | `ContractNotFoundException` | 404 | `NOT_FOUND` |
 | `AccessDeniedException` | 403 | `ACCESS_DENIED` |
+| `EmailNotVerifiedException` | 403 | `EMAIL_NOT_VERIFIED` |
+| `InvalidGoogleTokenException` | 401 | `INVALID_TOKEN` |
+| `InvalidOtpException` / `OtpExpiredException` / `OtpAlreadyUsedException` | 400 | `BAD_REQUEST` |
+| `OtpRateLimitException` | 429 | `RATE_LIMIT_EXCEEDED` |
 | `MethodArgumentNotValidException` | 400 | `VALIDATION_ERROR` (+ `errors[]`) |
 | `HttpMessageNotReadableException` | 400 | `MALFORMED_REQUEST` |
 
@@ -267,7 +295,7 @@ npm run lint     # ESLint
 npm run format   # Prettier
 ```
 
-**Backend must be running** (`localhost:8080`). Override with `VITE_API_BASE_URL` (see `.env.example`). No frontend test runner is configured.
+**Backend must be running** (`localhost:8080`). Frontend env vars (see `.env.example`): `VITE_API_BASE_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_GOOGLE_CLIENT_ID`. No frontend test runner is configured.
 
 ### Stack
 
@@ -338,7 +366,8 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `chat.ts` — chat room and message REST calls (supplements WebSocket)
 - `reviews.ts` — review submit/fetch
 - `admin.ts` — all admin endpoints (stats, users, jobs, disputes, payments)
-- `auth.ts` — auth calls (login, register, refresh, logout)
+- `auth.ts` — auth calls (login, register, refresh, logout, Google OAuth, forgot/reset password)
+- `ai.ts` — `aiApi`: generateDescription, generateProposal, suggestMilestones, jobRecommendations, optimizeProfile, bidPrice, interviewQuestions, extractResumeSkills, chat
 
 **Sidebar navigation** (`src/constants/sidebar.ts`): `CLIENT_SIDEBAR`, `FREELANCER_SIDEBAR`, and `ADMIN_SIDEBAR` arrays define nav links with `icon`, `label`, `short`, `path` fields. Both client and freelancer sidebars include Disputes and Payments entries with real paths. `withActive()` marks the active route.
 
@@ -360,6 +389,10 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `PlaceBidModal` — modal dialog for submitting a bid with form validation
 - `NotificationBell` — bell icon with unread badge; opens dropdown list of notifications with per-type icons and click-to-navigate; calls `markAsRead` on open
 - `NotificationToastContainer` — renders transient toast popups for real-time WS notifications
+- `AiChatBot` — floating AI chat widget used in the job posting wizard (`PostJob`)
+- `PaymentModal` — Stripe payment integration modal
+- `MobileNavDrawer` — mobile sidebar navigation drawer
+- `Footer` — site-wide footer
 
 **Inline modals in `MyJobs`**: `EditJobModal` (edit OPEN/DRAFT job fields), `InviteModal` (search + single-invite a freelancer), `InviteesModal` (view all invitees + statuses for a job), archive confirmation dialog — all defined in the same file rather than as separate component files. `MyJobs` also supports list/grid view toggle and client-side pagination (10 per page).
 
