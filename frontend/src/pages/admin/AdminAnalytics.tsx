@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import { adminApi, type AdminDispute, type AdminJob, type AdminPayment, type AdminStats, type AdminUser, type AnalyticsPoint } from '@/api/admin';
+import { PageLoader } from '@/components/ui/PageLoader';
 
 function formatMoney(value: number) {
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -214,9 +215,7 @@ export default function AdminAnalytics() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <span className="material-symbols-outlined animate-spin text-secondary text-4xl">progress_activity</span>
-          </div>
+          <PageLoader message="Loading analytics…" />
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -291,9 +290,7 @@ export default function AdminAnalytics() {
             <div className="pt-2">
               <h2 className="text-lg font-bold text-on-surface mb-4">Trend Analytics</h2>
               {chartsLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <span className="material-symbols-outlined animate-spin text-secondary text-4xl">progress_activity</span>
-                </div>
+                <PageLoader message="Loading charts…" />
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <section className="tonal-card rounded-xl p-6">

@@ -10,6 +10,7 @@ import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { PageLoader } from '@/components/ui/PageLoader';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
+import { Toast } from '@/components/Toast';
 import type { InviteWithJobResponse } from '@/types/job';
 
 
@@ -427,7 +428,7 @@ export default function FreelancerInvites() {
                 Cancel
               </button>
               <button onClick={handleConfirm}
-                className={`flex-1 py-2.5 text-slate-900 dark:text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all ${confirmAction.action === 'accept' ? 'bg-green-600' : 'bg-red-500'}`}>
+                className={`flex-1 py-2.5 text-white text-sm font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] transition-all ${confirmAction.action === 'accept' ? 'bg-green-600' : 'bg-red-500'}`}>
                 {confirmAction.action === 'accept' ? 'Accept' : 'Decline'}
               </button>
             </div>
@@ -435,15 +436,7 @@ export default function FreelancerInvites() {
         </div>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-20 right-4 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-semibold animate-fade-in ${toast.type === 'success' ? 'bg-green-600 text-slate-900 dark:text-white' : 'bg-red-500 text-slate-900 dark:text-white'}`}>
-          <span className="material-symbols-outlined text-[18px]">
-            {toast.type === 'success' ? 'check_circle' : 'error'}
-          </span>
-          {toast.message}
-        </div>
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
@@ -543,7 +536,7 @@ function InviteCard({
           {inv.inviteStatus === 'INVITED' && (
             <div className="flex items-center gap-2">
               <button onClick={onAccept} disabled={isProcessing}
-                className="flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm bg-green-600 text-slate-900 dark:text-white font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all">
+                className="flex items-center gap-1.5 px-3 h-8 text-xs md:px-5 md:h-9 md:text-sm bg-green-600 text-white font-semibold rounded-lg hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed transition-all">
                 {isProcessing
                   ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
                   : <span className="material-symbols-outlined text-[16px]">check_circle</span>}

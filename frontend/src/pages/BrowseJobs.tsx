@@ -650,6 +650,7 @@ export default function BrowseJobs() {
                   const isSaved = savedJobs.has(job.id);
                   const isApplied = appliedJobIds.has(job.id);
                   const match = matchMap[job.id];
+                  const isOverdue = job.deadline ? new Date(job.deadline) < new Date() : false;
 
                   if (isUrgent) {
                     return (
@@ -657,6 +658,7 @@ export default function BrowseJobs() {
                         style={{ backgroundColor: '#d8e2ff' }}>
                         <div className="absolute top-5 right-4 flex items-center gap-1.5 z-10">
                           <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
+                          {isOverdue && <span className="px-2.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600">Deadline Passed</span>}
                           <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
                             <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
                             {visCfg.label}
@@ -737,6 +739,7 @@ export default function BrowseJobs() {
                     <article key={job.id} className="relative tonal-card rounded-xl overflow-hidden hover:border-secondary/20 hover:shadow-md transition-all group border border-outline-variant">
                       <div className="absolute top-5 right-4 flex items-center gap-1.5 z-10">
                         <span className={`px-2.5 py-0.5 rounded text-xs font-semibold ${statusCfg.cls}`}>{statusCfg.label}</span>
+                        {isOverdue && <span className="px-2.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-600">Deadline Passed</span>}
                         <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded text-xs font-semibold ${visCfg.cls}`}>
                           <span className="material-symbols-outlined text-[12px]">{visCfg.icon}</span>
                           {visCfg.label}
