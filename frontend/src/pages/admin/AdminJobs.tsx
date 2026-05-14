@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 import { adminApi, type AdminJob } from '@/api/admin';
+import { PageLoader } from '@/components/ui/PageLoader';
 import type { SpringPage } from '@/types/job';
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
@@ -88,8 +89,8 @@ export default function AdminJobs() {
               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center">
-                      <span className="material-symbols-outlined animate-spin text-secondary text-4xl">progress_activity</span>
+                    <td colSpan={6} className="py-16">
+                      <PageLoader message="Loading jobs…" />
                     </td>
                   </tr>
                 ) : !data || data.content.length === 0 ? (

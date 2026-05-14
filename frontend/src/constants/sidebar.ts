@@ -39,5 +39,8 @@ export const ADMIN_SIDEBAR: readonly SidebarLink[] = [
 ];
 
 export function withActive(links: readonly SidebarLink[], pathname: string): (SidebarLink & { active: boolean })[] {
-  return links.map(l => ({ ...l, active: !!l.path && pathname === l.path }));
+  return links.map(l => ({
+    ...l,
+    active: !!l.path && (pathname === l.path || (l.path === '/browse' && pathname.startsWith('/jobs/'))),
+  }));
 }

@@ -9,6 +9,7 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import { CLIENT_SIDEBAR, FREELANCER_SIDEBAR, ADMIN_SIDEBAR, withActive } from '@/constants/sidebar';
+import { Toast } from '@/components/Toast';
 import { userApi } from '@/api/user';
 import { reviewsApi } from '@/api/reviews';
 import type { UserProfile, PortfolioItem } from '@/types/user';
@@ -246,6 +247,11 @@ export default function Profile() {
   const [editPortfolioSaving, setEditPortfolioSaving] = useState(false);
   const [editPortfolioErr, setEditPortfolioErr] = useState('');
 
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+  };
+
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveErr, setSaveErr] = useState('');
@@ -300,8 +306,10 @@ export default function Profile() {
       const updated = await userApi.getUserById(Number(id));
       setProfile(updated);
       setEditing(false);
+      showToast('Profile updated successfully!', 'success');
     } catch {
       setSaveErr('Failed to save changes. Please try again.');
+      showToast('Failed to save changes.', 'error');
     } finally {
       setSaving(false);
     }
@@ -856,6 +864,7 @@ export default function Profile() {
           onClose={cancelEdit}
         />
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

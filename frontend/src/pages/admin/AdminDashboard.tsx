@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import AdminLayout from './AdminLayout';
 import { adminApi, type AdminStats, type AdminUser, type AdminJob } from '@/api/admin';
+import { PageLoader } from '@/components/ui/PageLoader';
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -83,9 +84,7 @@ export default function AdminDashboard() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <span className="material-symbols-outlined animate-spin text-secondary text-4xl">progress_activity</span>
-          </div>
+          <PageLoader message="Loading dashboard…" />
         ) : stats ? (
           <>
             {/* Primary stats */}

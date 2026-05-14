@@ -34,9 +34,12 @@ function formatLastSeen(iso: string): string {
   if (diffMin < 60) return `last seen ${diffMin}m ago`;
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  if (d.toDateString() === now.toDateString()) return `last seen today at ${time}`;
-  if (d.toDateString() === yesterday.toDateString()) return `last seen yesterday at ${time}`;
+  const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' });
+  const dIST = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const nowIST = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const yestIST = new Date(nowIST); yestIST.setDate(yestIST.getDate() - 1);
+  if (dIST.toDateString() === nowIST.toDateString()) return `last seen today at ${time}`;
+  if (dIST.toDateString() === yestIST.toDateString()) return `last seen yesterday at ${time}`;
   return `last seen ${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })} at ${time}`;
 }
 

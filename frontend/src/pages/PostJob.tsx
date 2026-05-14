@@ -11,6 +11,7 @@ import { usersApi, type FreelancerSearchResult } from '@/api/users';
 import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
+import { PageLoader } from '@/components/ui/PageLoader';
 import { BidForgeLogo } from '@/components/ui/BidForgeLogo';
 import { postJobSchema, type PostJobFormValues } from '@/lib/schemas';
 import { aiApi } from '@/api/ai';
@@ -853,6 +854,13 @@ export default function PostJob() {
           <Footer />
         </main>
       </div>
+
+      {/* Submitting loader */}
+      {submitting && !submitted && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <PageLoader message="Posting your job…" />
+        </div>
+      )}
 
       {/* Success overlay */}
       {submitted && (
