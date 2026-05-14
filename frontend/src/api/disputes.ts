@@ -7,4 +7,7 @@ export const disputesApi = {
 
   getMyDisputes: (): Promise<DisputeResponse[]> =>
     axiosInstance.get('/disputes/my').then(r => r.data),
+
+  resolveDispute: (disputeId: string, resolutionNote: string): Promise<DisputeResponse> =>
+    axiosInstance.patch(`/disputes/${disputeId}/resolve`, { resolutionNote }).then(r => r.data),
 };

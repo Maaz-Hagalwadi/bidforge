@@ -15,6 +15,55 @@ import { reviewsApi } from '@/api/reviews';
 import type { UserProfile, PortfolioItem } from '@/types/user';
 import type { ReviewResponse } from '@/types/review';
 
+function PortfolioImageUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setErr('');
+    try {
+      const { fileUrl } = await userApi.uploadFile(file);
+      onChange(fileUrl);
+    } catch {
+      setErr('Upload failed. Try again.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      {value ? (
+        <div className="relative flex-shrink-0">
+          <img src={value} alt="Preview" className="w-16 h-12 object-cover rounded-lg border border-outline-variant" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+          <button type="button" onClick={() => onChange('')}
+            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center"
+            title="Remove image">
+            <span className="material-symbols-outlined text-[11px]">close</span>
+          </button>
+        </div>
+      ) : (
+        <div className="w-16 h-12 rounded-lg border-2 border-dashed border-outline-variant flex items-center justify-center flex-shrink-0">
+          <span className="material-symbols-outlined text-[18px] text-on-surface-variant/40">image</span>
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <button type="button" disabled={uploading} onClick={() => fileRef.current?.click()}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container disabled:opacity-50 transition-colors">
+          <span className="material-symbols-outlined text-[14px]">{uploading ? 'progress_activity' : 'upload'}</span>
+          {uploading ? 'Uploading…' : value ? 'Replace Image' : 'Upload Image'}
+        </button>
+        {err && <p className="text-[11px] text-red-500 mt-1">{err}</p>}
+      </div>
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+    </div>
+  );
+}
+
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
@@ -673,10 +722,13 @@ export default function Profile() {
                             className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary resize-none"
                             placeholder="Description" />
                         </div>
-                        <input value={portfolioForm.imageUrl}
-                          onChange={e => setPortfolioForm(f => ({ ...f, imageUrl: e.target.value }))}
-                          className="border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
-                          placeholder="Image URL" />
+                        <div>
+                          <label className="block text-xs text-on-surface-variant mb-1.5">Portfolio Image</label>
+                          <PortfolioImageUpload
+                            value={portfolioForm.imageUrl}
+                            onChange={url => setPortfolioForm(f => ({ ...f, imageUrl: url }))}
+                          />
+                        </div>
                         <input value={portfolioForm.projectUrl}
                           onChange={e => setPortfolioForm(f => ({ ...f, projectUrl: e.target.value }))}
                           className="border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
@@ -723,10 +775,13 @@ export default function Profile() {
                                 onChange={e => setEditPortfolioForm(f => ({ ...f, description: e.target.value }))}
                                 className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary resize-none"
                                 placeholder="Description" />
-                              <input value={editPortfolioForm.imageUrl}
-                                onChange={e => setEditPortfolioForm(f => ({ ...f, imageUrl: e.target.value }))}
-                                className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"
-                                placeholder="Image URL" />
+                              <div>
+                                <label className="block text-xs text-on-surface-variant mb-1.5">Portfolio Image</label>
+                                <PortfolioImageUpload
+                                  value={editPortfolioForm.imageUrl}
+                                  onChange={url => setEditPortfolioForm(f => ({ ...f, imageUrl: url }))}
+                                />
+                              </div>
                               <input value={editPortfolioForm.projectUrl}
                                 onChange={e => setEditPortfolioForm(f => ({ ...f, projectUrl: e.target.value }))}
                                 className="w-full border border-outline-variant rounded-xl px-3 py-2 text-sm bg-surface text-on-surface focus:outline-none focus:border-secondary"

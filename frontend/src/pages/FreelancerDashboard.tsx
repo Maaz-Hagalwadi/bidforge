@@ -13,6 +13,7 @@ import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { FreelancerDashboardData, FreelancerActivity } from '@/types/dashboard';
 import { aiApi, type JobRecommendation } from '@/api/ai';
 import { AiChatBot } from '@/components/AiChatBot';
+import { OnboardingWizard } from '@/components/OnboardingWizard';
 
 
 
@@ -99,6 +100,15 @@ export default function FreelancerDashboard() {
   const [loading, setLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<JobRecommendation[]>([]);
   const [recsLoading, setRecsLoading] = useState(true);
+
+  const onboardingKey = user ? `onboarding_done_${user.id}` : null;
+  const [showOnboarding, setShowOnboarding] = useState(() =>
+    !!(user && !user.title && onboardingKey && !localStorage.getItem(onboardingKey))
+  );
+  const handleOnboardingComplete = () => {
+    if (onboardingKey) localStorage.setItem(onboardingKey, '1');
+    setShowOnboarding(false);
+  };
 
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -364,6 +374,7 @@ export default function FreelancerDashboard() {
       </div>
 
       <AiChatBot />
+      {showOnboarding && <OnboardingWizard role="FREELANCER" onComplete={handleOnboardingComplete} />}
     </div>
   );
 }

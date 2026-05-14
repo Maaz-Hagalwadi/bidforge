@@ -21,4 +21,11 @@ export const userApi = {
     api.put<PortfolioItem>(`/users/me/portfolio/${itemId}`, payload).then(r => r.data),
   deletePortfolioItem: (itemId: number | string) =>
     api.delete(`/users/me/portfolio/${itemId}`),
+  uploadFile: (file: File): Promise<{ fileUrl: string; fileName: string; fileType: string }> => {
+    const form = new FormData();
+    form.append('file', file);
+    return api.post('/files/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data);
+  },
 };

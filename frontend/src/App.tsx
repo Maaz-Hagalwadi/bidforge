@@ -45,6 +45,7 @@ import ArchivedJobs from '@/pages/ArchivedJobs';
 import Payments from '@/pages/Payments';
 import Reviews from '@/pages/Reviews';
 import Disputes from '@/pages/Disputes';
+import Notifications from '@/pages/Notifications';
 import Settings from '@/pages/Settings';
 import FindFreelancers from '@/pages/FindFreelancers';
 import AdminDashboard from '@/pages/admin/AdminDashboard';
@@ -108,6 +109,7 @@ export default function App() {
           <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
           <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
           <Route path="/disputes" element={<ProtectedRoute><Disputes /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/client/freelancers" element={<ClientRoute><FindFreelancers /></ClientRoute>} />
           <Route path="/browse" element={<BrowseJobs />} />
