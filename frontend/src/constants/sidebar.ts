@@ -14,7 +14,8 @@ export const CLIENT_SIDEBAR: readonly SidebarLink[] = [
   { icon: 'person_search',label: 'Find Freelancers',  short: 'Freelancers', path: '/client/freelancers'   },
   { icon: 'chat',         label: 'Messages',          short: 'Messages',    path: '/messages'             },
   { icon: 'receipt_long', label: 'Contracts',         short: 'Contracts',   path: '/contracts'            },
-  { icon: 'balance',      label: 'Disputes',          short: 'Disputes',    path: '/disputes'             },
+  { icon: 'balance',       label: 'Disputes',          short: 'Disputes',    path: '/disputes'             },
+  { icon: 'notifications', label: 'Notifications',     short: 'Alerts',      path: '/notifications'        },
   { icon: 'payments',     label: 'Payments',          short: 'Payments',    path: '/payments'             },
 ];
 
@@ -25,8 +26,9 @@ export const FREELANCER_SIDEBAR: readonly SidebarLink[] = [
   { icon: 'gavel',        label: 'My Bids',     short: 'Bids',      path: '/freelancer/bids'      },
   { icon: 'chat',         label: 'Messages',    short: 'Messages',  path: '/messages'             },
   { icon: 'receipt_long', label: 'Contracts',   short: 'Contracts', path: '/contracts'            },
-  { icon: 'balance',      label: 'Disputes',    short: 'Disputes',  path: '/disputes'             },
-  { icon: 'payments',     label: 'Payments',    short: 'Payments',  path: '/payments'             },
+  { icon: 'balance',       label: 'Disputes',       short: 'Disputes',  path: '/disputes'        },
+  { icon: 'notifications', label: 'Notifications',  short: 'Alerts',    path: '/notifications'   },
+  { icon: 'payments',     label: 'Payments',        short: 'Payments',  path: '/payments'        },
 ];
 
 export const ADMIN_SIDEBAR: readonly SidebarLink[] = [

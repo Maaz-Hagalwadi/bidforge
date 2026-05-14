@@ -166,16 +166,19 @@ export function NotificationBell() {
             )}
           </div>
 
-          {/* View All / Show Less */}
-          {unread.length > 5 && (
-            <div className="px-4 py-2.5 border-t border-slate-100 dark:border-white/10 text-center">
-              <button
-                onClick={() => setShowAll(v => !v)}
+          {/* Footer */}
+          <div className="px-4 py-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-2">
+            {unread.length > 5 && (
+              <button onClick={() => setShowAll(v => !v)}
                 className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 font-semibold transition-colors">
-                {showAll ? 'Show less' : `View all ${unread.length} notifications`}
+                {showAll ? 'Show less' : `+${unread.length - 5} more`}
               </button>
-            </div>
-          )}
+            )}
+            <button onClick={() => { setOpen(false); navigate('/notifications'); }}
+              className="text-xs text-secondary dark:text-blue-400 hover:underline font-semibold transition-colors ml-auto">
+              View all notifications
+            </button>
+          </div>
         </div>
       )}
     </div>

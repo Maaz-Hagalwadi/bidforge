@@ -12,6 +12,7 @@ import { PageLoader } from '@/components/ui/PageLoader';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import type { ClientDashboardData, RecentProject } from '@/types/dashboard';
 import { AiChatBot } from '@/components/AiChatBot';
+import { OnboardingWizard } from '@/components/OnboardingWizard';
 
 
 
@@ -223,6 +224,15 @@ export default function ClientDashboard() {
   const [dashboardData, setDashboardData] = useState<ClientDashboardData | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
+  const onboardingKey = user ? `onboarding_done_${user.id}` : null;
+  const [showOnboarding, setShowOnboarding] = useState(() =>
+    !!(user && !user.title && onboardingKey && !localStorage.getItem(onboardingKey))
+  );
+  const handleOnboardingComplete = () => {
+    if (onboardingKey) localStorage.setItem(onboardingKey, '1');
+    setShowOnboarding(false);
+  };
+
   const profileRef = useRef<HTMLDivElement>(null);
 
   // Fetch dashboard data from API
@@ -421,6 +431,7 @@ export default function ClientDashboard() {
       </div>
 
       <AiChatBot />
+      {showOnboarding && <OnboardingWizard role="CLIENT" onComplete={handleOnboardingComplete} />}
     </div>
   );
 }
