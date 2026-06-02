@@ -6,10 +6,12 @@ import com.bidforge.app.auth.dto.response.LoginResponse;
 import com.bidforge.app.common.exception.EmailAlreadyExistsException;
 import com.bidforge.app.common.exception.InvalidCredentialsException;
 import com.bidforge.app.common.exception.PhoneAlreadyExistsException;
+import com.bidforge.app.login_activity.LoginActivityService;
 import com.bidforge.app.user.Role;
 import com.bidforge.app.user.User;
 import com.bidforge.app.user.UserRepository;
 import com.bidforge.app.user.dto.response.UserResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +34,8 @@ class AuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
     @Mock private RefreshTokenService refreshTokenService;
+    @Mock private LoginActivityService loginActivityService;
+    @Mock private HttpServletRequest mockHttpRequest;
 
     @InjectMocks private AuthService authService;
 
@@ -49,6 +53,7 @@ class AuthServiceTest {
                 .email("john@example.com")
                 .password("encoded")
                 .role(Role.CLIENT)
+                .emailVerified(true)
                 .build();
     }
 
@@ -107,7 +112,7 @@ class AuthServiceTest {
         when(refreshTokenService.createRefreshToken(savedUser)).thenReturn(
                 RefreshToken.builder().token("refresh-token-uuid").user(savedUser).build());
 
-        LoginResponse response = authService.login(loginRequest);
+        LoginResponse response = authService.login(loginRequest, mockHttpRequest);
 
         assertThat(response.getAccessToken()).isEqualTo("jwt-token");
         assertThat(response.getRefreshToken()).isEqualTo("refresh-token-uuid");
@@ -119,7 +124,7 @@ class AuthServiceTest {
         LoginRequest loginRequest = new LoginRequest("nobody@example.com", "Password1@");
         when(userRepository.findByEmail(any())).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.login(loginRequest))
+        assertThatThrownBy(() -> authService.login(loginRequest, mockHttpRequest))
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
     }
@@ -130,7 +135,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(savedUser));
         when(passwordEncoder.matches("WrongPass1@", "encoded")).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.login(loginRequest))
+        assertThatThrownBy(() -> authService.login(loginRequest, mockHttpRequest))
                 .isInstanceOf(InvalidCredentialsException.class)
                 .hasMessage("Invalid email or password");
     }
