@@ -1,6 +1,9 @@
 package com.bidforge.app.admin;
 
+import com.bidforge.app.admin.dto.LoginActivityResponse;
 import com.bidforge.app.admin.dto.TimeSeriesPoint;
+import com.bidforge.app.login_activity.LoginActivity;
+import com.bidforge.app.login_activity.LoginActivityRepository;
 import com.bidforge.app.notification.EmailService;
 import com.bidforge.app.notification.NotificationService;
 import com.bidforge.app.notification.NotificationType;
@@ -48,6 +51,7 @@ public class AdminService {
     private final NotificationService notificationService;
     private final EmailService emailService;
     private final com.bidforge.app.bid.BidRepository bidRepository;
+    private final LoginActivityRepository loginActivityRepository;
 
     public AdminStatsResponse getStats() {
         return AdminStatsResponse.builder()
@@ -206,6 +210,15 @@ public class AdminService {
         return disputeRepository.avgResolutionHoursByMonth(since).stream()
                 .map(r -> new TimeSeriesPoint((String) r[0], ((Number) r[1]).doubleValue()))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<LoginActivityResponse> getLoginActivity(int page, int size, Long userId) {
+        org.springframework.data.domain.Pageable pageable = PageRequest.of(page, size);
+        Page<LoginActivity> results = (userId != null)
+                ? loginActivityRepository.findByUser_IdOrderByCreatedAtDesc(userId, pageable)
+                : loginActivityRepository.findAllByOrderByCreatedAtDesc(pageable);
+        return results.map(LoginActivityResponse::from);
     }
 
     private AdminPaymentResponse mapPayment(Payment p) {

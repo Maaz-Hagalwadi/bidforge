@@ -4,9 +4,11 @@ import com.bidforge.app.auth.dto.request.GoogleLoginRequest;
 import com.bidforge.app.auth.dto.response.LoginResponse;
 import com.bidforge.app.common.exception.InvalidGoogleTokenException;
 import com.bidforge.app.common.exception.RoleRequiredException;
+import com.bidforge.app.login_activity.LoginActivityService;
 import com.bidforge.app.user.Role;
 import com.bidforge.app.user.User;
 import com.bidforge.app.user.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -28,10 +30,11 @@ public class GoogleAuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final RestTemplate restTemplate;
+    private final LoginActivityService loginActivityService;
 
     private static final String USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
-    public LoginResponse loginWithGoogle(GoogleLoginRequest request) {
+    public LoginResponse loginWithGoogle(GoogleLoginRequest request, HttpServletRequest httpRequest) {
         Map<String, String> claims = fetchGoogleUserInfo(request.getAccessToken());
 
         String googleId = claims.get("sub");
@@ -71,6 +74,7 @@ public class GoogleAuthService {
         }
 
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+        loginActivityService.record(user, httpRequest, "GOOGLE");
 
         return LoginResponse.builder()
                 .message("Google login successful")

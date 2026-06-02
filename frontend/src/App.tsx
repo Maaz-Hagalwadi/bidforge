@@ -54,6 +54,7 @@ import AdminJobs from '@/pages/admin/AdminJobs';
 import AdminDisputes from '@/pages/admin/AdminDisputes';
 import AdminRevenue from '@/pages/admin/AdminRevenue';
 import AdminAnalytics from '@/pages/admin/AdminAnalytics';
+import AdminLoginActivity from '@/pages/admin/AdminLoginActivity';
 
 export default function App() {
   return (
@@ -131,6 +132,7 @@ export default function App() {
           <Route path="/admin/jobs" element={<AdminRoute><AdminJobs /></AdminRoute>} />
           <Route path="/admin/disputes" element={<AdminRoute><AdminDisputes /></AdminRoute>} />
           <Route path="/admin/revenue" element={<AdminRoute><AdminRevenue /></AdminRoute>} />
+          <Route path="/admin/login-activity" element={<AdminRoute><AdminLoginActivity /></AdminRoute>} />
 
           {/* Legacy redirect */}
           <Route path="/dashboard" element={<Navigate to="/client/dashboard" replace />} />

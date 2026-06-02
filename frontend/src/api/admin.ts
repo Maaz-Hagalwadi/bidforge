@@ -73,6 +73,21 @@ export interface AnalyticsPoint {
   value: number;
 }
 
+export interface LoginActivityRecord {
+  id: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  role: string;
+  ipAddress: string | null;
+  city: string | null;
+  country: string | null;
+  countryCode: string | null;
+  userAgent: string | null;
+  loginMethod: 'EMAIL' | 'GOOGLE' | 'OTP';
+  createdAt: string;
+}
+
 export const adminApi = {
   getStats: () =>
     api.get<AdminStats>('/admin/stats').then(r => r.data),
@@ -120,4 +135,9 @@ export const adminApi = {
 
   getDisputesAnalytics: (months = 12) =>
     api.get<AnalyticsPoint[]>('/admin/analytics/disputes', { params: { months } }).then(r => r.data),
+
+  getLoginActivity: (page = 0, size = 20, userId?: number) =>
+    api.get<SpringPage<LoginActivityRecord>>('/admin/login-activity', {
+      params: { page, size, ...(userId !== undefined ? { userId } : {}) },
+    }).then(r => r.data),
 };

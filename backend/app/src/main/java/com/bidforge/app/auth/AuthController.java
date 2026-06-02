@@ -8,6 +8,7 @@ import com.bidforge.app.auth.dto.request.RegisterRequest;
 import com.bidforge.app.auth.dto.request.ResetPasswordRequest;
 import com.bidforge.app.auth.dto.response.LoginResponse;
 import com.bidforge.app.user.dto.response.UserResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -33,8 +34,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(authService.login(request, httpRequest));
     }
 
     @PostMapping("/refresh")
@@ -73,7 +74,7 @@ public class AuthController {
     }
 
     @PostMapping("/google")
-    public ResponseEntity<LoginResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
-        return ResponseEntity.ok(googleAuthService.loginWithGoogle(request));
+    public ResponseEntity<LoginResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request, HttpServletRequest httpRequest) {
+        return ResponseEntity.ok(googleAuthService.loginWithGoogle(request, httpRequest));
     }
 }

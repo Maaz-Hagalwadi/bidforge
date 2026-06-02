@@ -38,6 +38,7 @@ export const ADMIN_SIDEBAR: readonly SidebarLink[] = [
   { icon: 'fact_check',       label: 'Job Moderation',  short: 'Jobs',     path: '/admin/jobs'      },
   { icon: 'gavel',            label: 'Disputes',         short: 'Disputes', path: '/admin/disputes'  },
   { icon: 'payments',         label: 'Revenue',          short: 'Revenue',  path: '/admin/revenue'   },
+  { icon: 'manage_accounts',  label: 'Login Activity',   short: 'Activity', path: '/admin/login-activity' },
 ];
 
 export function withActive(links: readonly SidebarLink[], pathname: string): (SidebarLink & { active: boolean })[] {
