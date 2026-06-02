@@ -1,5 +1,6 @@
 package com.bidforge.app.auth;
 
+import com.bidforge.app.login_activity.LoginActivityService;
 import com.bidforge.app.notification.EmailService;
 import com.bidforge.app.notification.NotificationService;
 import com.bidforge.app.notification.NotificationType;
@@ -17,6 +18,7 @@ import com.bidforge.app.user.Role;
 import com.bidforge.app.user.User;
 import com.bidforge.app.user.UserRepository;
 import com.bidforge.app.user.dto.response.UserResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,6 +38,7 @@ public class AuthService {
     private final EmailService emailService;
     private final NotificationService notificationService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final LoginActivityService loginActivityService;
 
     @Value("${app.base-url:http://localhost:3000}")
     private String baseUrl;
@@ -87,7 +90,7 @@ public class AuthService {
                 .build();
     }
 
-    public LoginResponse login(LoginRequest request) {
+    public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
         String email = request.getEmail().toLowerCase().trim();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
@@ -102,6 +105,7 @@ public class AuthService {
 
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
         emailService.sendLoginNotification(user.getEmail(), user.getName());
+        loginActivityService.record(user, httpRequest, "EMAIL");
 
         return LoginResponse.builder()
                 .message("Login successful")

@@ -4,6 +4,7 @@ import com.bidforge.app.admin.dto.AdminDisputeResponse;
 import com.bidforge.app.admin.dto.AdminPaymentResponse;
 import com.bidforge.app.admin.dto.AdminStatsResponse;
 import com.bidforge.app.admin.dto.AdminUserResponse;
+import com.bidforge.app.admin.dto.LoginActivityResponse;
 import com.bidforge.app.admin.dto.TimeSeriesPoint;
 import com.bidforge.app.job.dto.response.JobResponse;
 import lombok.RequiredArgsConstructor;
@@ -121,5 +122,13 @@ public class AdminController {
     public List<TimeSeriesPoint> disputeResolutionTime(
             @RequestParam(defaultValue = "12") int months) {
         return adminService.getDisputeResolutionTime(months);
+    }
+
+    @GetMapping("/login-activity")
+    public Page<LoginActivityResponse> getLoginActivity(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Long userId) {
+        return adminService.getLoginActivity(page, size, userId);
     }
 }
