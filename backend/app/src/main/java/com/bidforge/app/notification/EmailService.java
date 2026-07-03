@@ -200,6 +200,17 @@ public class EmailService {
         ));
     }
 
+    @Async
+    public void sendReviewReceivedEmail(String to, String revieweeName, String reviewerName, int rating) {
+        String stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+        send(to, "New Review from " + reviewerName, notification(
+                "New Review Received", "Hi " + revieweeName + ",",
+                reviewerName + " has left you a review on BidForge.",
+                stars + " (" + rating + " / 5)",
+                "Log in to see the full review and your updated rating."
+        ));
+    }
+
     private String notification(String badge, String heading, String body, String highlight, String subtext) {
         Context ctx = new Context();
         ctx.setVariable("badge", badge);

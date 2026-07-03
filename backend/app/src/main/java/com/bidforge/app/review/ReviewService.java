@@ -5,6 +5,7 @@ import com.bidforge.app.common.exception.ContractNotFoundException;
 import com.bidforge.app.contract.Contract;
 import com.bidforge.app.contract.ContractRepository;
 import com.bidforge.app.contract.ContractStatus;
+import com.bidforge.app.notification.EmailService;
 import com.bidforge.app.notification.NotificationService;
 import com.bidforge.app.notification.NotificationType;
 import com.bidforge.app.review.dto.CreateReviewRequest;
@@ -27,6 +28,7 @@ public class ReviewService {
     private final ContractRepository contractRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Transactional
     public ReviewResponse submitReview(UUID contractId, CreateReviewRequest req, User reviewer) {
@@ -67,6 +69,12 @@ public class ReviewService {
                 reviewer.getName() + " left you a " + req.getRating() + "-star review.",
                 NotificationType.REVIEW_RECEIVED,
                 contractId
+        );
+        emailService.sendReviewReceivedEmail(
+                reviewee.getEmail(),
+                reviewee.getName(),
+                reviewer.getName(),
+                req.getRating()
         );
 
         return mapToResponse(review);

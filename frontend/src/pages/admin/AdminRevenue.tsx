@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from './AdminLayout';
-import { adminApi, type AdminPayment, type AdminStats } from '@/api/admin';
+import { adminApi, type AdminPayment, type AdminStats, type AnalyticsPoint } from '@/api/admin';
 import { PageLoader } from '@/components/ui/PageLoader';
 import type { SpringPage } from '@/types/job';
 
@@ -22,6 +22,75 @@ function timeAgo(d: string) {
   return `${days}d ago`;
 }
 
+function Donut({ released, escrowed, fmt }: { released: number; escrowed: number; fmt: (n: number) => string }) {
+  const total = released + escrowed;
+  const relPct = total === 0 ? 50 : (released / total) * 100;
+  const escPct = 100 - relPct;
+  return (
+    <div className="tonal-card p-5 rounded-xl flex flex-col gap-4">
+      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Escrow vs Released</p>
+      <div className="flex items-center gap-6">
+        <div className="relative w-28 h-28 flex-shrink-0">
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{ background: `conic-gradient(#10b981 0% ${relPct}%, #f59e0b ${relPct}% 100%)` }}
+          />
+          <div className="absolute inset-[14px] rounded-full bg-surface flex flex-col items-center justify-center">
+            <span className="text-[10px] font-bold text-on-surface-variant">TOTAL</span>
+            <span className="text-xs font-bold text-on-surface">{fmt(total)}</span>
+          </div>
+        </div>
+        <div className="space-y-2.5 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-on-surface-variant">Released</p>
+              <p className="text-sm font-bold text-on-surface">{fmt(released)}</p>
+            </div>
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{relPct.toFixed(0)}%</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-on-surface-variant">In Escrow</p>
+              <p className="text-sm font-bold text-on-surface">{fmt(escrowed)}</p>
+            </div>
+            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{escPct.toFixed(0)}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RevenueChart({ data }: { data: AnalyticsPoint[] }) {
+  const max = Math.max(...data.map(d => d.value), 1);
+  const fmt = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(1)}k` : `$${n.toFixed(0)}`;
+  return (
+    <div className="tonal-card p-5 rounded-xl flex flex-col gap-4">
+      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Revenue — Last 12 Months</p>
+      {data.length === 0 ? (
+        <div className="h-28 flex items-center justify-center text-xs text-on-surface-variant">No data yet</div>
+      ) : (
+        <div className="flex items-end gap-1.5 h-28">
+          {data.map(d => (
+            <div key={d.label} className="flex-1 flex flex-col items-center gap-1 group relative">
+              <div
+                className="w-full rounded-t bg-secondary/80 hover:bg-secondary transition-colors cursor-default"
+                style={{ height: `${Math.max((d.value / max) * 96, d.value > 0 ? 4 : 0)}px` }}
+              />
+              <span className="text-[9px] text-on-surface-variant truncate w-full text-center">{d.label.slice(0, 3)}</span>
+              <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex bg-surface-container border border-slate-200 dark:border-white/10 rounded px-2 py-1 text-[10px] font-semibold text-on-surface whitespace-nowrap shadow-lg z-10">
+                {d.label}: {fmt(d.value)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SummaryCard({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
   return (
     <div className="tonal-card p-5 rounded-xl flex items-start gap-4">
@@ -40,6 +109,7 @@ export default function AdminRevenue() {
   const [data, setData] = useState<SpringPage<AdminPayment> | null>(null);
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [escrowed, setEscrowed] = useState<number>(0);
+  const [revenue, setRevenue] = useState<AnalyticsPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
@@ -56,6 +126,7 @@ export default function AdminRevenue() {
   useEffect(() => {
     adminApi.getStats().then(setStats);
     adminApi.getPaymentSummary().then(s => setEscrowed(s.escrowed));
+    adminApi.getRevenueAnalytics().then(setRevenue);
   }, []);
 
   const totalPages = data ? data.totalPages : 1;
@@ -78,6 +149,12 @@ export default function AdminRevenue() {
           <SummaryCard icon="payments"                label="Total Revenue Released" value={stats ? fmt(stats.totalRevenue) : '—'}       color="bg-emerald-500" />
           <SummaryCard icon="account_balance_wallet"  label="Currently in Escrow"    value={fmt(escrowed)}                                color="bg-amber-500"   />
           <SummaryCard icon="receipt_long"            label="Total Transactions"     value={data ? data.totalElements.toLocaleString() : '—'} color="bg-secondary" />
+        </div>
+
+        {/* Analytics charts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Donut released={stats?.totalRevenue ?? 0} escrowed={escrowed} fmt={fmt} />
+          <RevenueChart data={revenue} />
         </div>
 
         {/* Filter pills */}

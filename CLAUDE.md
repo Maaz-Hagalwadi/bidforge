@@ -86,8 +86,11 @@ ai/            AiController, AiService (Groq API, model: llama-3.1-8b-instant)
                job-recommendations, optimize-profile, bid-price, interview-questions,
                extract-resume-skills, chat
 admin/         AdminController, AdminService — platform-wide stats, user ban/unban/delete,
-               job moderation, dispute management, payment summary
+               job moderation, dispute management, payment summary, analytics
                dto/  (under admin/dto/)
+login_activity/ LoginActivity (entity), LoginActivityRepository, LoginActivityService
+               Tracks per-login records: userId, loginMethod (EMAIL/GOOGLE/OTP),
+               ipAddress, city, country, userAgent; powers admin login-activity view
 dispute/       Dispute (entity), DisputeController, DisputeService, DisputeRepository,
                DisputeStatus (enum)
                dto/  (under dispute/dto/)
@@ -98,7 +101,7 @@ notification/
 websocket/     WebSocketConfig (STOMP/SockJS on /ws, brokers /topic /queue /user),
                WebSocketAuthInterceptor (JWT auth on CONNECT frame)
 config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler,
-               HealthController (GET /health)
+               WebConfig (CORS, static resource mappings), HealthController (GET /health)
 common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 ```
 
@@ -235,6 +238,11 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | PATCH | `/admin/disputes/{id}/resolve` | ADMIN | Admin resolve a dispute |
 | GET | `/admin/payments` | ADMIN | All payments |
 | GET | `/admin/payments/summary` | ADMIN | Payment summary stats |
+| GET | `/admin/analytics/revenue` | ADMIN | Revenue analytics time series |
+| GET | `/admin/analytics/users` | ADMIN | User growth analytics |
+| GET | `/admin/analytics/bids` | ADMIN | Bid activity analytics |
+| GET | `/admin/analytics/disputes` | ADMIN | Dispute trend analytics |
+| GET | `/admin/login-activity` | ADMIN | Paginated login activity records |
 | GET | `/health` | No | Health check |
 
 ### Exception → HTTP mapping
@@ -337,9 +345,12 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 | `/admin/jobs` | `AdminJobs` | `AdminRoute` |
 | `/admin/disputes` | `AdminDisputes` | `AdminRoute` |
 | `/admin/revenue` | `AdminRevenue` | `AdminRoute` |
+| `/admin/analytics` | `AdminAnalytics` | `AdminRoute` |
+| `/admin/login-activity` | `AdminLoginActivity` | `AdminRoute` |
+| `/notifications` | `Notifications` | `ProtectedRoute` |
 | `/dashboard` | redirect → `/client/dashboard` | — |
 
-`ClientRoute` / `FreelancerRoute` / `AdminRoute` (in `src/components/ProtectedRoute.tsx`) extend `ProtectedRoute` and additionally check `user.role`; redirect to the correct dashboard if wrong role. Admin pages live under `src/pages/admin/` (AdminDashboard, AdminUsers, AdminJobs, AdminDisputes, AdminRevenue, AdminLayout).
+`ClientRoute` / `FreelancerRoute` / `AdminRoute` (in `src/components/ProtectedRoute.tsx`) extend `ProtectedRoute` and additionally check `user.role`; redirect to the correct dashboard if wrong role. Admin pages live under `src/pages/admin/` (AdminDashboard, AdminUsers, AdminJobs, AdminDisputes, AdminRevenue, AdminAnalytics, AdminLoginActivity, AdminLayout).
 
 ### Key architecture patterns
 
@@ -365,7 +376,7 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `disputes.ts` — dispute open/list/resolve
 - `chat.ts` — chat room and message REST calls (supplements WebSocket)
 - `reviews.ts` — review submit/fetch
-- `admin.ts` — all admin endpoints (stats, users, jobs, disputes, payments)
+- `admin.ts` — all admin endpoints (stats, users, jobs, disputes, payments, analytics, login activity)
 - `auth.ts` — auth calls (login, register, refresh, logout, Google OAuth, forgot/reset password)
 - `ai.ts` — `aiApi`: generateDescription, generateProposal, suggestMilestones, jobRecommendations, optimizeProfile, bidPrice, interviewQuestions, extractResumeSkills, chat
 
@@ -392,6 +403,8 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `AiChatBot` — floating AI chat widget used in the job posting wizard (`PostJob`)
 - `PaymentModal` — Stripe payment integration modal
 - `MobileNavDrawer` — mobile sidebar navigation drawer
+- `BidForgeLoader` — branded full-screen loading spinner used on auth pages (Login, Register)
+- `OnboardingWizard` — modal shown to new users on first dashboard visit (client or freelancer)
 - `Footer` — site-wide footer
 
 **Inline modals in `MyJobs`**: `EditJobModal` (edit OPEN/DRAFT job fields), `InviteModal` (search + single-invite a freelancer), `InviteesModal` (view all invitees + statuses for a job), archive confirmation dialog — all defined in the same file rather than as separate component files. `MyJobs` also supports list/grid view toggle and client-side pagination (10 per page).

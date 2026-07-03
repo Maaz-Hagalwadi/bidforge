@@ -20,6 +20,7 @@ public enum NotificationType {
     REVIEW_RECEIVED,
     // Admin notifications
     DISPUTE_OPENED,
+    DISPUTE_RESOLVED,
     USER_BANNED,
     NEW_USER_REGISTERED,
 }

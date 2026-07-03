@@ -55,6 +55,13 @@ const TRUST = [
   { icon: 'bolt',          label: 'AI-Powered',         desc: 'Smart matching & proposal tools' },
 ];
 
+const APP_FEATURES = [
+  'Manage bids and proposals on the go',
+  'Real-time notifications for messages and milestones',
+  'Approve deliverables and release payments instantly',
+];
+const APK_URL = import.meta.env.VITE_APK_DOWNLOAD_URL || '#';
+
 export default function Landing() {
   const { setTheme } = useTheme();
   const { isAuthenticated, user } = useAuth();
@@ -422,6 +429,167 @@ export default function Landing() {
                 <p className="text-xs text-slate-400 leading-snug">{desc}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── App Download ── */}
+        <section className="py-24 px-6 bg-slate-50">
+          <div className="max-w-8xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+
+            {/* Left column: copy */}
+            <div>
+              <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-full px-4 py-1.5 mb-6">
+                <span className="material-symbols-outlined text-[14px] text-[#0059bb]" style={{ fontVariationSettings: "'FILL' 1" }}>smartphone</span>
+                <span className="text-xs font-semibold text-[#0059bb] uppercase tracking-wider">Mobile App</span>
+              </div>
+
+              <h2 className="text-[36px] font-extrabold text-slate-900 tracking-tight mb-4 leading-tight">
+                Take BidForge<br />
+                <span className="text-[#0059bb]">Everywhere</span>
+              </h2>
+
+              <p className="text-base text-slate-500 leading-relaxed mb-8 max-w-md">
+                Your freelance business doesn't stop when you step away from your desk. Manage bids, chat with clients, and approve milestones from anywhere — all in the BidForge mobile app.
+              </p>
+
+              <ul className="flex flex-col gap-3 mb-10">
+                {APP_FEATURES.map((feat) => (
+                  <li key={feat} className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-[18px] text-emerald-500 flex-shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                    <span className="text-sm text-slate-700 leading-relaxed">{feat}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href={APK_URL}
+                  {...(APK_URL !== '#' ? { download: true, target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  className="inline-flex items-center gap-2 bg-[#0059bb] text-white px-6 py-3 rounded-xl text-sm font-semibold hover:bg-[#004fa3] transition-all shadow-lg shadow-blue-100"
+                >
+                  <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>android</span>
+                  Download APK
+                </a>
+
+                <div className="relative">
+                  <button
+                    disabled
+                    className="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-400 px-6 py-3 rounded-xl text-sm font-semibold cursor-not-allowed select-none"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">phone_iphone</span>
+                    App Store
+                  </button>
+                  <span className="absolute -top-2 -right-2 bg-amber-400 text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm">
+                    Soon
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right column: phone mockup */}
+            <div className="relative flex justify-center lg:justify-end">
+              <div className="relative w-[220px] h-[440px] bg-slate-900 rounded-[40px] p-[10px] shadow-[0_32px_80px_rgba(0,0,0,0.25)] flex-shrink-0">
+                {/* Side buttons */}
+                <div className="absolute -right-[3px] top-[90px] w-[3px] h-10 bg-slate-700 rounded-r-sm" />
+                <div className="absolute -left-[3px] top-[70px] w-[3px] h-8 bg-slate-700 rounded-l-sm" />
+                <div className="absolute -left-[3px] top-[110px] w-[3px] h-8 bg-slate-700 rounded-l-sm" />
+
+                {/* Screen */}
+                <div className="w-full h-full bg-white rounded-[32px] overflow-hidden flex flex-col">
+                  {/* Status bar */}
+                  <div className="bg-[#0059bb] px-4 pt-3 pb-2 flex items-center justify-between flex-shrink-0">
+                    <span className="text-[9px] text-white font-semibold">9:41</span>
+                    <div className="w-10 h-2.5 bg-slate-900/60 rounded-full" />
+                    <div className="flex items-center gap-1">
+                      <div className="flex gap-[2px] items-end h-3">
+                        <div className="w-[2px] h-1 bg-white/70 rounded-sm" />
+                        <div className="w-[2px] h-1.5 bg-white/70 rounded-sm" />
+                        <div className="w-[2px] h-2 bg-white rounded-sm" />
+                        <div className="w-[2px] h-2.5 bg-white rounded-sm" />
+                      </div>
+                      <span className="material-symbols-outlined text-[10px] text-white">wifi</span>
+                    </div>
+                  </div>
+
+                  {/* App header */}
+                  <div className="bg-[#0059bb] px-4 pb-4 flex-shrink-0">
+                    <p className="text-[10px] text-white/70 mb-0.5">Good morning,</p>
+                    <p className="text-[13px] font-bold text-white">Priya ✦</p>
+                  </div>
+
+                  {/* App body */}
+                  <div className="flex-1 bg-slate-50 p-3 flex flex-col gap-2 overflow-hidden">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-white rounded-xl p-2.5 border border-slate-100">
+                        <p className="text-[8px] text-slate-400 uppercase font-semibold tracking-wide">Active Bids</p>
+                        <p className="text-[16px] font-extrabold text-[#0059bb]">7</p>
+                      </div>
+                      <div className="bg-white rounded-xl p-2.5 border border-slate-100">
+                        <p className="text-[8px] text-slate-400 uppercase font-semibold tracking-wide">Earnings</p>
+                        <p className="text-[16px] font-extrabold text-emerald-600">$3.2k</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-2.5 border border-slate-100 flex items-start gap-2">
+                      <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-[11px] text-emerald-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-800">Milestone Approved</p>
+                        <p className="text-[8px] text-slate-400 mt-0.5">$800 released · 2m ago</p>
+                      </div>
+                    </div>
+
+                    {[
+                      { title: 'React Developer', budget: '$3k', tag: 'New', color: '#0059bb' },
+                      { title: 'UI/UX Design', budget: '$1.5k', tag: '5 bids', color: '#7c3aed' },
+                    ].map(({ title, budget, tag, color }) => (
+                      <div key={title} className="bg-white rounded-xl p-2.5 border border-slate-100 flex items-center justify-between">
+                        <div>
+                          <p className="text-[9px] font-bold text-slate-800">{title}</p>
+                          <p className="text-[8px] text-slate-400 mt-0.5">{budget}</p>
+                        </div>
+                        <span className="text-[7px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: `${color}15`, color }}>
+                          {tag}
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* Bottom nav */}
+                    <div className="mt-auto bg-white rounded-xl border border-slate-100 flex items-center justify-around py-2">
+                      {[
+                        { icon: 'home', active: true },
+                        { icon: 'search', active: false },
+                        { icon: 'forum', active: false },
+                        { icon: 'person', active: false },
+                      ].map(({ icon, active }) => (
+                        <div key={icon} className="flex flex-col items-center gap-0.5">
+                          <span
+                            className="material-symbols-outlined text-[16px]"
+                            style={{ color: active ? '#0059bb' : '#94a3b8', fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}
+                          >
+                            {icon}
+                          </span>
+                          {active && <div className="w-1 h-1 rounded-full bg-[#0059bb]" />}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating notification badge */}
+              <div className="absolute hidden lg:flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 shadow-xl border border-slate-200 -translate-x-16 translate-y-12 self-start">
+                <div className="w-7 h-7 rounded-full bg-[#0059bb] flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-[13px] text-white" style={{ fontVariationSettings: "'FILL' 1" }}>notifications</span>
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold text-slate-900">New bid received</p>
+                  <p className="text-[10px] text-slate-400">Just now</p>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
 

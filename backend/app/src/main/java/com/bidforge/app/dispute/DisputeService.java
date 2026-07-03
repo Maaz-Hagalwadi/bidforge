@@ -72,7 +72,26 @@ public class DisputeService {
         dispute.setStatus(DisputeStatus.RESOLVED);
         dispute.setResolutionNote(resolutionNote);
         dispute.setResolvedAt(java.time.LocalDateTime.now());
-        return mapToResponse(disputeRepository.save(dispute));
+        DisputeResponse response = mapToResponse(disputeRepository.save(dispute));
+
+        String jobTitle = dispute.getContract().getJob().getTitle();
+        User client = dispute.getContract().getClient();
+        User freelancer = dispute.getContract().getFreelancer();
+
+        notificationService.createNotification(client,
+                "Dispute Resolved",
+                "The dispute for \"" + jobTitle + "\" has been resolved.",
+                NotificationType.DISPUTE_RESOLVED,
+                response.getId());
+        notificationService.createNotification(freelancer,
+                "Dispute Resolved",
+                "The dispute for \"" + jobTitle + "\" has been resolved.",
+                NotificationType.DISPUTE_RESOLVED,
+                response.getId());
+        emailService.sendDisputeResolvedEmail(client.getEmail(), client.getName(), jobTitle, resolutionNote);
+        emailService.sendDisputeResolvedEmail(freelancer.getEmail(), freelancer.getName(), jobTitle, resolutionNote);
+
+        return response;
     }
 
     private DisputeResponse mapToResponse(Dispute d) {

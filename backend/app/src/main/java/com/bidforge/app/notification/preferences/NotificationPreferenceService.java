@@ -66,6 +66,7 @@ public class NotificationPreferenceService {
                     case PAYMENT_RELEASED   -> p.isPaymentReleased();
                     case REVIEW_RECEIVED    -> p.isReviewReceived();
                     case DISPUTE_OPENED     -> p.isDisputeOpened();
+                    case DISPUTE_RESOLVED   -> p.isDisputeOpened();
                     case USER_BANNED        -> p.isUserBanned();
                     case NEW_USER_REGISTERED-> p.isNewUserRegistered();
                 })
