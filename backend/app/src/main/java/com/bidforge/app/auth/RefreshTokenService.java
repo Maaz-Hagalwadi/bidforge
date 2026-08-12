@@ -1,59 +1,52 @@
 package com.bidforge.app.auth;
 
+import com.bidforge.app.auth.dto.RefreshTokenResult;
 import com.bidforge.app.common.exception.InvalidTokenException;
 import com.bidforge.app.user.User;
+import com.bidforge.app.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
 
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final StringRedisTemplate redisTemplate;
+    private final UserRepository userRepository;
 
     @Value("${refresh.token.expiry-days:7}")
     private long expiryDays;
 
-    @Transactional
-    public RefreshToken createRefreshToken(User user) {
-        RefreshToken token = RefreshToken.builder()
-                .token(UUID.randomUUID().toString())
-                .user(user)
-                .expiresAt(LocalDateTime.now().plusDays(expiryDays))
-                .revoked(false)
-                .build();
-        return refreshTokenRepository.save(token);
+    private static final String KEY_PREFIX = "refresh_token:";
+
+    public String createRefreshToken(User user) {
+        String token = UUID.randomUUID().toString();
+        redisTemplate.opsForValue().set(KEY_PREFIX + token,
+                String.valueOf(user.getId()), expiryDays, TimeUnit.DAYS);
+        return token;
     }
 
-    // Validates the incoming token, revokes it, and issues a fresh one (rotation).
-    @Transactional
-    public RefreshToken validateAndRotate(String tokenValue) {
-        RefreshToken existing = refreshTokenRepository.findByToken(tokenValue)
-                .orElseThrow(() -> new InvalidTokenException("Invalid refresh token"));
-
-        if (existing.isRevoked()) {
-            throw new InvalidTokenException("Refresh token has been revoked");
-        }
-        if (existing.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new InvalidTokenException("Refresh token has expired");
+    public RefreshTokenResult validateAndRotate(String tokenValue) {
+        String userId = redisTemplate.opsForValue().get(KEY_PREFIX + tokenValue);
+        if (userId == null) {
+            throw new InvalidTokenException("Invalid or expired refresh token");
         }
 
-        existing.setRevoked(true);
-        refreshTokenRepository.save(existing);
+        redisTemplate.delete(KEY_PREFIX + tokenValue);
 
-        return createRefreshToken(existing.getUser());
+        User user = userRepository.findById(Long.parseLong(userId))
+                .orElseThrow(() -> new InvalidTokenException("User not found"));
+
+        String newToken = createRefreshToken(user);
+        return new RefreshTokenResult(newToken, user);
     }
 
-    @Transactional
     public void revokeByToken(String tokenValue) {
-        refreshTokenRepository.findByToken(tokenValue).ifPresent(t -> {
-            t.setRevoked(true);
-            refreshTokenRepository.save(t);
-        });
+        redisTemplate.delete(KEY_PREFIX + tokenValue);
     }
 }

@@ -1,5 +1,6 @@
 package com.bidforge.app.auth;
 
+import com.bidforge.app.auth.dto.RefreshTokenResult;
 import com.bidforge.app.login_activity.LoginActivityService;
 import com.bidforge.app.notification.EmailService;
 import com.bidforge.app.notification.NotificationService;
@@ -21,11 +22,12 @@ import com.bidforge.app.user.dto.response.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -37,8 +39,10 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final EmailService emailService;
     private final NotificationService notificationService;
-    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final StringRedisTemplate redisTemplate;
     private final LoginActivityService loginActivityService;
+
+    private static final String PWD_RESET_PREFIX = "pwd_reset:";
 
     @Value("${app.base-url:http://localhost:3000}")
     private String baseUrl;
@@ -103,26 +107,25 @@ public class AuthService {
             throw new EmailNotVerifiedException("Please verify your email address before logging in.");
         }
 
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+        String refreshTokenValue = refreshTokenService.createRefreshToken(user);
         emailService.sendLoginNotification(user.getEmail(), user.getName());
         loginActivityService.record(user, httpRequest, "EMAIL");
 
         return LoginResponse.builder()
                 .message("Login successful")
                 .accessToken(jwtService.generateToken(user))
-                .refreshToken(refreshToken.getToken())
+                .refreshToken(refreshTokenValue)
                 .tokenType("Bearer")
                 .build();
     }
 
     public LoginResponse refresh(RefreshTokenRequest request) {
-        RefreshToken newRefreshToken = refreshTokenService.validateAndRotate(request.getRefreshToken());
-        User user = newRefreshToken.getUser();
+        RefreshTokenResult result = refreshTokenService.validateAndRotate(request.getRefreshToken());
 
         return LoginResponse.builder()
                 .message("Token refreshed")
-                .accessToken(jwtService.generateToken(user))
-                .refreshToken(newRefreshToken.getToken())
+                .accessToken(jwtService.generateToken(result.user()))
+                .refreshToken(result.token())
                 .tokenType("Bearer")
                 .build();
     }
@@ -155,35 +158,24 @@ public class AuthService {
         String email = request.getEmail().toLowerCase().trim();
         userRepository.findByEmail(email).ifPresent(user -> {
             String token = UUID.randomUUID().toString();
-            PasswordResetToken resetToken = PasswordResetToken.builder()
-                    .token(token)
-                    .user(user)
-                    .expiresAt(LocalDateTime.now().plusMinutes(15))
-                    .used(false)
-                    .build();
-            passwordResetTokenRepository.save(resetToken);
+            redisTemplate.opsForValue().set(PWD_RESET_PREFIX + token,
+                    String.valueOf(user.getId()), 15, TimeUnit.MINUTES);
             String resetUrl = baseUrl + "/reset-password?token=" + token;
             emailService.sendForgotPasswordEmail(user.getEmail(), user.getName(), resetUrl);
         });
     }
 
     public void resetPassword(ResetPasswordRequest request) {
-        PasswordResetToken resetToken = passwordResetTokenRepository
-                .findByToken(request.getToken())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired token"));
-
-        if (resetToken.isUsed()) {
-            throw new IllegalArgumentException("Token already used");
-        }
-        if (resetToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new IllegalArgumentException("Token has expired");
+        String userId = redisTemplate.opsForValue().get(PWD_RESET_PREFIX + request.getToken());
+        if (userId == null) {
+            throw new IllegalArgumentException("Invalid or expired token");
         }
 
-        User user = resetToken.getUser();
+        User user = userRepository.findById(Long.parseLong(userId))
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
-
-        resetToken.setUsed(true);
-        passwordResetTokenRepository.save(resetToken);
+        redisTemplate.delete(PWD_RESET_PREFIX + request.getToken());
     }
 }

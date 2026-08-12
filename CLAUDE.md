@@ -20,19 +20,21 @@ All Maven commands run from `backend/app/`:
 ./mvnw test -Dtest=ClassName#methodName  # single method
 ```
 
-**Prerequisites**: PostgreSQL on `localhost:5433`, database `bidforge`, user `admin`, password `admin`.  
-Override with env vars: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `RESEND_API_KEY` (email via Resend), `EMAIL_TEST_MODE` (set `true` to avoid real sends), `APP_BASE_URL` (frontend origin, default `http://localhost:5173`), `APP_SERVER_URL` (backend origin, default `http://localhost:8080`), `APP_UPLOAD_DIR` (file storage path, default `uploads`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, `GOOGLE_CLIENT_ID` (Google OAuth), `GROQ_API_KEY` (AI features), `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `aws.s3.region`, `aws.s3.bucket` (S3 file storage; falls back to local disk when not configured).
+**Prerequisites**: PostgreSQL on `localhost:5433`, database `bidforge`, user `admin`, password `admin`. Redis on `localhost:6379` (required — used for rate limiting, OTPs, refresh tokens, password reset tokens, and online user tracking).  
+Override with env vars: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `RESEND_API_KEY` (email via Resend), `EMAIL_TEST_MODE` (set `true` to avoid real sends), `APP_BASE_URL` (frontend origin, default `http://localhost:5173`), `APP_SERVER_URL` (backend origin, default `http://localhost:8080`), `APP_UPLOAD_DIR` (file storage path, default `uploads`), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PUBLISHABLE_KEY`, `GOOGLE_CLIENT_ID` (Google OAuth), `GROQ_API_KEY` (AI features), `AWS_ACCESS_KEY`, `AWS_SECRET_KEY`, `aws.s3.region`, `aws.s3.bucket` (S3 file storage; falls back to local disk when not configured), `REDIS_HOST` (default `localhost`), `REDIS_PORT` (default `6379`), `REDIS_PASSWORD` (default empty).
 
-`spring.jpa.hibernate.ddl-auto=none` — schema is managed by Flyway migrations in `src/main/resources/db/migration/` (V1–V16+; includes Google auth, disputes, notification preferences, admin ban, AI features). Tests use H2 in-memory with `create-drop`.
+`spring.jpa.hibernate.ddl-auto=none` — schema is managed by Flyway migrations in `src/main/resources/db/migration/` (V1–V18; V18 drops the `email_otp`, `refresh_tokens`, and `password_reset_tokens` tables which were replaced by Redis). Tests use H2 in-memory with `create-drop`.
 
 ### Package structure (`com.bidforge.app`)
 
 ```
 auth/          AuthController, AuthService, JwtService, JwtAuthFilter,
-               RateLimitFilter, RefreshToken(Entity/Repository/Service),
+               RateLimitFilter (Redis-backed per-IP counter, 60s window),
+               RefreshTokenService (Redis-backed, no DB entity),
                GoogleAuthService (Google OAuth token verification + account linking)
                dto/request/  LoginRequest, RegisterRequest, RefreshTokenRequest
                dto/response/ LoginResponse
+               dto/          RefreshTokenResult (record: token + user; return type of validateAndRotate)
 user/          User (entity), Role (enum: CLIENT/FREELANCER/ADMIN),
                UserRepository, UserController, UserService
                dto/request/  UpdateUserRequest
@@ -69,11 +71,12 @@ notification/  Notification (entity), NotificationController, NotificationServic
                (event-driven: Spring ApplicationEvent → listener → persist + push via WS)
 messages/      ChatRoom (entity), Message (entity), ChatController (WS @MessageMapping),
                ChatRestController (REST under /contracts/**), ChatService,
-               ChatRoomRepository, MessageRepository, OnlineUserTracker
+               ChatRoomRepository, MessageRepository,
+               OnlineUserTracker (Redis Set `online_users`; survives restarts)
                dto/  ChatMessageRequest, ChatMessageResponse, ChatRoomResponse,
                      OnlineStatusEvent, ReadReceiptEvent, TypingEvent, UnreadNotification
-otp/           OtpAuthController, OtpService, EmailOtp (entity), EmailOtpRepository,
-               OtpEmailTemplate, OtpConstants
+otp/           OtpAuthController, OtpService (Redis-backed, no DB entity),
+               OtpEmailTemplate, OtpConstants (OTP_EXPIRY_MINUTES=5, OTP_RATE_LIMIT_MINUTES=1)
                dto/  SendOtpRequest, VerifyOtpRequest, AuthResponse
 review/        ReviewController, ReviewService, Review (entity), ReviewRepository
                dto/  CreateReviewRequest, ReviewResponse
@@ -101,7 +104,8 @@ notification/
 websocket/     WebSocketConfig (STOMP/SockJS on /ws, brokers /topic /queue /user),
                WebSocketAuthInterceptor (JWT auth on CONNECT frame)
 config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler,
-               WebConfig (CORS, static resource mappings), HealthController (GET /health)
+               WebConfig (CORS, static resource mappings), HealthController (GET /health),
+               RedisConfig (registers StringRedisTemplate bean)
 common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 ```
 
@@ -111,11 +115,12 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 - Filter chain: `RateLimitFilter` → `JwtAuthFilter` → `UsernamePasswordAuthenticationFilter`.
 - `JwtAuthFilter` sets a `UsernamePasswordAuthenticationToken` with `ROLE_<role>` authority; the principal is the full `User` entity.
 - `JwtService.generateToken(User)` embeds `userId` and `role` claims (HS256, 15 min expiry).
-- Refresh token rotation: `RefreshTokenService.validateAndRotate()` revokes the old token and issues a new UUID one (7-day expiry) atomically.
+- Refresh token rotation: `RefreshTokenService.validateAndRotate()` deletes the old Redis key and writes a new UUID one (key: `refresh_token:{uuid}`, TTL 7 days). Returns `RefreshTokenResult(token, user)`.
+- `RefreshTokenService.createRefreshToken(User)` returns `String` (the token value) — not an entity.
 - `UserService` and `JobService` read the principal from `SecurityContextHolder` directly — no `@AuthenticationPrincipal` needed.
 - **Google OAuth**: `POST /auth/google` accepts a Google ID token, verifies it with `GOOGLE_CLIENT_ID`, and creates or links a `User` account (sets `googleId` + `emailVerified=true`).
 - **Email verification flow**: on register, a verification email is sent; `POST /auth/verify-email?token=` activates the account; `POST /auth/resend-verification` resends.
-- **Password reset flow**: `POST /auth/forgot-password` → email with reset link → `POST /auth/reset-password`.
+- **Password reset flow**: `POST /auth/forgot-password` stores `pwd_reset:{uuid}` → userId in Redis (15-min TTL) → email with reset link → `POST /auth/reset-password` reads + deletes key.
 
 ### Job module architecture
 
@@ -284,10 +289,21 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
   - Read receipts pushed to `/topic/read/{roomId}` by `ChatRestController.markMessagesAsRead`
 - **Env var required**: `STRIPE_SECRET_KEY` for Stripe features; missing key causes startup failure.
 
+### Redis key reference
+
+| Key | Value | TTL | Owner |
+|-----|-------|-----|-------|
+| `rate_limit:{ip}` | request count | 60s | `RateLimitFilter` |
+| `otp:{email}` | OTP code | 5 min | `OtpService` |
+| `otp:ratelimit:{email}` | `"1"` | 1 min | `OtpService` |
+| `refresh_token:{uuid}` | userId string | 7 days | `RefreshTokenService` |
+| `pwd_reset:{uuid}` | userId string | 15 min | `AuthService` |
+| `online_users` | Redis Set of usernames | none | `OnlineUserTracker` |
+
 ### Testing strategy
 
-- **Unit tests** (`AuthServiceTest`, `JwtServiceTest`): `@ExtendWith(MockitoExtension.class)`. `JwtServiceTest` uses `ReflectionTestUtils` to inject `@Value` fields.
-- **Integration tests** (`AuthControllerTest`): `@SpringBootTest` + `@AutoConfigureMockMvc` + `@ActiveProfiles("test")` + `@Transactional`. H2 in-memory DB (`application-test.properties`). `rate-limit.max-requests=1000` prevents 429s.
+- **Unit tests** (`AuthServiceTest`, `JwtServiceTest`): `@ExtendWith(MockitoExtension.class)`. `JwtServiceTest` uses `ReflectionTestUtils` to inject `@Value` fields. `AuthServiceTest` mocks `RefreshTokenService.createRefreshToken()` which now returns `String`.
+- **Integration tests** (`AuthControllerTest`): `@SpringBootTest` + `@AutoConfigureMockMvc` + `@ActiveProfiles("test")` + `@Transactional` + `@Import(TestRedisConfig.class)`. H2 in-memory DB; embedded Redis on port 6370 (`TestRedisConfig` in `src/test/java/.../config/`). `rate-limit.max-requests=1000` prevents 429s.
 - Do **not** use `@WebMvcTest` — `SecurityConfig` pulls in JPA-dependent filters that break the slice context.
 - Only auth is covered by tests; job/bid/invite modules have no tests yet.
 

@@ -73,13 +73,13 @@ public class GoogleAuthService {
             user = userRepository.save(user);
         }
 
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+        String refreshTokenValue = refreshTokenService.createRefreshToken(user);
         loginActivityService.record(user, httpRequest, "GOOGLE");
 
         return LoginResponse.builder()
                 .message("Google login successful")
                 .accessToken(jwtService.generateToken(user))
-                .refreshToken(refreshToken.getToken())
+                .refreshToken(refreshTokenValue)
                 .tokenType("Bearer")
                 .build();
     }

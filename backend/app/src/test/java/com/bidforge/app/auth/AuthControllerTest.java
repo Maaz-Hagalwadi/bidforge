@@ -3,18 +3,19 @@ package com.bidforge.app.auth;
 import com.bidforge.app.auth.dto.request.LoginRequest;
 import com.bidforge.app.auth.dto.request.RefreshTokenRequest;
 import com.bidforge.app.auth.dto.request.RegisterRequest;
+import com.bidforge.app.config.TestRedisConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -23,11 +24,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@Import(TestRedisConfig.class)
 class AuthControllerTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
-    @Autowired RefreshTokenRepository refreshTokenRepository;
+    @Autowired StringRedisTemplate redisTemplate;
 
     private static final String VALID_EMAIL = "user@example.com";
     private static final String VALID_PASSWORD = "Password1@";
@@ -201,10 +203,8 @@ class AuthControllerTest {
     void refresh_withExpiredToken_returns401() throws Exception {
         String refreshToken = loginAndGet("refreshToken");
 
-        // Force-expire the token directly in the DB
-        RefreshToken stored = refreshTokenRepository.findByToken(refreshToken).orElseThrow();
-        stored.setExpiresAt(LocalDateTime.now().minusMinutes(1));
-        refreshTokenRepository.save(stored);
+        // Delete the Redis key to simulate TTL expiry
+        redisTemplate.delete("refresh_token:" + refreshToken);
 
         mockMvc.perform(post("/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)

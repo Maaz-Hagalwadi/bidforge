@@ -109,8 +109,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(savedUser));
         when(passwordEncoder.matches("Password1@", "encoded")).thenReturn(true);
         when(jwtService.generateToken(savedUser)).thenReturn("jwt-token");
-        when(refreshTokenService.createRefreshToken(savedUser)).thenReturn(
-                RefreshToken.builder().token("refresh-token-uuid").user(savedUser).build());
+        when(refreshTokenService.createRefreshToken(savedUser)).thenReturn("refresh-token-uuid");
 
         LoginResponse response = authService.login(loginRequest, mockHttpRequest);
 

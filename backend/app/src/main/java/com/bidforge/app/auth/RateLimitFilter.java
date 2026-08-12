@@ -4,24 +4,26 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Component
+@RequiredArgsConstructor
 public class RateLimitFilter extends OncePerRequestFilter {
 
     @Value("${rate-limit.max-requests:10}")
     private int maxRequests;
 
-    private static final long WINDOW_MS = 60_000;
+    private static final long WINDOW_SECONDS = 60;
+    private static final String KEY_PREFIX = "rate_limit:";
 
-    private final ConcurrentHashMap<String, Deque<Long>> requestLog = new ConcurrentHashMap<>();
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -34,19 +36,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
             return;
         }
 
-        String clientIp = resolveClientIp(request);
-        long now = System.currentTimeMillis();
+        String key = KEY_PREFIX + resolveClientIp(request);
+        Long count = redisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1) {
+            redisTemplate.expire(key, WINDOW_SECONDS, TimeUnit.SECONDS);
+        }
 
-        requestLog.compute(clientIp, (ip, timestamps) -> {
-            if (timestamps == null) timestamps = new ArrayDeque<>();
-            while (!timestamps.isEmpty() && now - timestamps.peekFirst() > WINDOW_MS) {
-                timestamps.pollFirst();
-            }
-            timestamps.addLast(now);
-            return timestamps;
-        });
-
-        if (requestLog.get(clientIp).size() > maxRequests) {
+        if (count != null && count > maxRequests) {
             response.setStatus(429);
             response.setContentType("application/json");
             response.getWriter().write(
