@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter"/>
+
+    <!-- Console: colored, human-readable -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p){highlight} %clr([%X{requestId:-no-req}]){cyan} %clr([u:%X{userId:-anon}]){magenta} %clr(%-36.36logger{35}){cyan} : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File: daily rolling, 30-day retention, 500MB cap -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/bidforge.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/bidforge.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [%X{requestId:-no-req}] [u:%X{userId:-anon}] [%X{method}:%X{uri}] %-36.36logger{35} : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- DEV: console only, DEBUG for app code -->
+    <springProfile name="default,dev">
+        <logger name="com.bidforge.app" level="DEBUG"/>
+        <logger name="org.springframework.web" level="WARN"/>
+        <logger name="org.hibernate.SQL" level="WARN"/>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- PROD: console + file, INFO for app code -->
+    <springProfile name="prod">
+        <logger name="com.bidforge.app" level="INFO"/>
+        <logger name="org.springframework" level="WARN"/>
+        <logger name="org.hibernate" level="WARN"/>
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- TEST: suppress noise -->
+    <springProfile name="test">
+        <logger name="com.bidforge.app" level="WARN"/>
+        <root level="WARN">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+</configuration>

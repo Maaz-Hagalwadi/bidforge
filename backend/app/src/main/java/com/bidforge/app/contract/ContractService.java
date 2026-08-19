@@ -14,6 +14,7 @@ import com.bidforge.app.review.ReviewRepository;
 import com.bidforge.app.user.User;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ContractService {
@@ -65,6 +67,7 @@ public class ContractService {
         // ✅ Complete
         contract.setStatus(ContractStatus.COMPLETED);
         contractRepository.save(contract);
+        log.info("Contract completed: contractId={}, jobId={}", contractId, contract.getJob().getId());
 
         // 🔥 Update job
         Job job = contract.getJob();
@@ -104,6 +107,7 @@ public class ContractService {
         // ✅ Update status
         contract.setStatus(ContractStatus.REVISION_REQUESTED);
         contractRepository.save(contract);
+        log.info("Revision requested: contractId={}", contractId);
 
         notificationService.createNotification(
                 contract.getFreelancer(),
@@ -146,6 +150,7 @@ public class ContractService {
         contract.setStatus(ContractStatus.SUBMITTED);
 
         contractRepository.save(contract);
+        log.info("Work submitted: contractId={}, freelancerId={}", contractId, freelancer.getId());
 
         notificationService.createNotification(
                 contract.getClient(),

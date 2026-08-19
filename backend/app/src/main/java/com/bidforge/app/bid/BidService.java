@@ -25,11 +25,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class BidService {
@@ -77,6 +79,8 @@ public class BidService {
                 .build();
 
         Bid saved = bidRepository.save(bid);
+        log.info("Bid placed: bidId={}, jobId={}, freelancerId={}, amount={}",
+                saved.getId(), jobId, freelancer.getId(), request.getAmount());
 
         notificationService.createNotification(
                 job.getClient(),
@@ -127,6 +131,7 @@ public class BidService {
 
         bid.setStatus(BidStatus.REJECTED);
         bidRepository.save(bid);
+        log.info("Bid declined: bidId={}, jobId={}", bidId, bid.getJob().getId());
 
         notificationService.createNotification(
                 bid.getFreelancer(),
@@ -195,6 +200,8 @@ public class BidService {
                 .build();
 
         Contract savedContract = contractRepository.save(contract);
+        log.info("Bid accepted: bidId={}, jobId={}, contractId={}, freelancerId={}",
+                bidId, job.getId(), savedContract.getId(), bid.getFreelancer().getId());
 
         notificationService.createNotification(
                 bid.getFreelancer(),

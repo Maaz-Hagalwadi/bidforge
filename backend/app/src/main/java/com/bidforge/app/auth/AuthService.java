@@ -21,6 +21,7 @@ import com.bidforge.app.user.UserRepository;
 import com.bidforge.app.user.dto.response.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,6 +30,7 @@ import org.springframework.stereotype.Service;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -74,6 +76,7 @@ public class AuthService {
                 .build();
 
         User saved = userRepository.save(user);
+        log.info("User registered: email={}, role={}", email, role);
         String verifyUrl = baseUrl + "/verify-email?token=" + verificationToken;
         emailService.sendVerificationEmail(saved.getEmail(), saved.getName(), verifyUrl);
         userRepository.findByRole(Role.ADMIN).forEach(admin -> {
@@ -104,10 +107,12 @@ public class AuthService {
         }
 
         if (!user.isEmailVerified()) {
+            log.warn("Login blocked - email not verified: {}", email);
             throw new EmailNotVerifiedException("Please verify your email address before logging in.");
         }
 
         String refreshTokenValue = refreshTokenService.createRefreshToken(user);
+        log.info("User logged in: email={}, role={}", email, user.getRole());
         emailService.sendLoginNotification(user.getEmail(), user.getName());
         loginActivityService.record(user, httpRequest, "EMAIL");
 
@@ -132,6 +137,7 @@ public class AuthService {
 
     public void logout(RefreshTokenRequest request) {
         refreshTokenService.revokeByToken(request.getRefreshToken());
+        log.info("User logged out");
     }
 
     public void verifyEmail(String token) {
@@ -160,6 +166,7 @@ public class AuthService {
             String token = UUID.randomUUID().toString();
             redisTemplate.opsForValue().set(PWD_RESET_PREFIX + token,
                     String.valueOf(user.getId()), 15, TimeUnit.MINUTES);
+            log.info("Password reset requested: email={}", email);
             String resetUrl = baseUrl + "/reset-password?token=" + token;
             emailService.sendForgotPasswordEmail(user.getEmail(), user.getName(), resetUrl);
         });
@@ -177,5 +184,6 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
         redisTemplate.delete(PWD_RESET_PREFIX + request.getToken());
+        log.info("Password reset completed: userId={}", user.getId());
     }
 }

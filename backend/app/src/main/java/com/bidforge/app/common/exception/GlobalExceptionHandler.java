@@ -1,6 +1,7 @@
 package com.bidforge.app.common.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,11 +11,11 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -145,12 +146,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ErrorResponse> handleInvalidCredentials(
             InvalidCredentialsException ex, HttpServletRequest request) {
+        log.warn("Login failed [{}]: {}", request.getRemoteAddr(), ex.getMessage());
         return buildResponse(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage(), request);
     }
 
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<ErrorResponse> handleInvalidToken(
             InvalidTokenException ex, HttpServletRequest request) {
+        log.warn("Invalid token on {} {}", request.getMethod(), request.getRequestURI());
         return buildResponse(HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", ex.getMessage(), request);
     }
 
@@ -210,6 +213,7 @@ public class GlobalExceptionHandler {
             AccessDeniedException ex,
             HttpServletRequest request
     ) {
+        log.warn("Access denied on {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         ErrorResponse error = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.FORBIDDEN.value())
@@ -254,6 +258,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(com.stripe.exception.StripeException.class)
     public ResponseEntity<ErrorResponse> handleStripeException(
             com.stripe.exception.StripeException ex, HttpServletRequest request) {
+        log.error("Stripe error on {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
         return buildResponse(HttpStatus.BAD_GATEWAY, "STRIPE_ERROR",
                 "Payment processing failed: " + ex.getUserMessage(), request);
     }
@@ -268,7 +273,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {
-        ex.printStackTrace();
+        log.error("Unhandled exception on {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
         String message = (ex.getMessage() != null && ex.getMessage().contains("Gemini"))
                 ? ex.getMessage()
                 : "Something went wrong";
