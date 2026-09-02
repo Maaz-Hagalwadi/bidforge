@@ -36,9 +36,10 @@ auth/          AuthController, AuthService, JwtService, JwtAuthFilter,
                dto/response/ LoginResponse
                dto/          RefreshTokenResult (record: token + user; return type of validateAndRotate)
 user/          User (entity), Role (enum: CLIENT/FREELANCER/ADMIN),
+               PortfolioItem (entity), PortfolioRepository,
                UserRepository, UserController, UserService
-               dto/request/  UpdateUserRequest
-               dto/response/ UserResponse
+               dto/request/  UpdateUserRequest, PortfolioRequest
+               dto/response/ UserResponse, PortfolioResponse
 job/           Job (entity), JobController, JobService, JobRepository,
                JobSpecification, JobInvitation (entity), JobInvitationRepository
                enums/  BudgetType, JobStatus (DRAFT/OPEN/ASSIGNED/COMPLETED/CANCELLED),
@@ -105,7 +106,8 @@ websocket/     WebSocketConfig (STOMP/SockJS on /ws, brokers /topic /queue /user
                WebSocketAuthInterceptor (JWT auth on CONNECT frame)
 config/        SecurityConfig, JwtAuthenticationEntryPoint, JwtAccessDeniedHandler,
                WebConfig (CORS, static resource mappings), HealthController (GET /health),
-               RedisConfig (registers StringRedisTemplate bean)
+               RedisConfig (registers StringRedisTemplate bean),
+               MdcLoggingFilter (sets requestId/clientIp/method/uri in MDC; adds X-Request-Id response header)
 common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 ```
 
@@ -164,7 +166,12 @@ common/exception/  GlobalExceptionHandler, ErrorResponse, all custom exceptions
 | POST | `/auth/verify-otp` | No | Verify OTP `{ email, otp }`; returns `{ token }` (access token only) |
 | GET | `/users/me` | Yes | Current user profile |
 | PATCH | `/users/me` | Yes | Update `name` or `profileImageUrl` |
+| GET | `/users/{id}` | Yes | Get any user's profile by ID |
 | GET | `/users/search?q=` | CLIENT | Search freelancers by name/email (max 10 results) |
+| GET | `/users/{id}/portfolio` | Yes | Get portfolio items for a user |
+| POST | `/users/me/portfolio` | Yes | Add a portfolio item |
+| PUT | `/users/me/portfolio/{itemId}` | Yes | Update a portfolio item (owner only) |
+| DELETE | `/users/me/portfolio/{itemId}` | Yes | Delete a portfolio item (owner only) |
 | GET | `/users/me/notification-preferences` | Yes | Get caller's notification preferences |
 | PATCH | `/users/me/notification-preferences` | Yes | Update notification preferences |
 | GET | `/client/dashboard` | CLIENT | Aggregated client stats |
@@ -319,7 +326,7 @@ npm run lint     # ESLint
 npm run format   # Prettier
 ```
 
-**Backend must be running** (`localhost:8080`). Frontend env vars (see `.env.example`): `VITE_API_BASE_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_GOOGLE_CLIENT_ID`. No frontend test runner is configured.
+**Backend must be running** (`localhost:8080`). Frontend env vars (see `.env.example`): `VITE_API_BASE_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_GOOGLE_CLIENT_ID`, `VITE_APK_DOWNLOAD_URL` (optional, for Android APK distribution link). No frontend test runner is configured.
 
 ### Stack
 
@@ -384,7 +391,7 @@ React 18, TypeScript, Vite, Tailwind CSS v3, React Router v6, React Hook Form + 
 - `jobs.ts` — `jobsApi`: create, getAll (paginated), getById, getMyJobs, inviteFreelancer (single), inviteFreelancers (bulk), getInvites, acceptInvite, declineInvite, getJobInvites, getAllClientInvites, getInvitedJobs, createBid, getJobBids, acceptBid, declineBid, getMyBids, updateJob, archiveJob, **repostJob**, **deleteJob**
 - `contracts.ts` — `contractsApi`: `getClientContracts()`, `getFreelancerContracts()`, `submitWork(contractId, payload)`, `completeContract(contractId)`, `requestRevision(contractId, note)`
 - `milestones.ts` — `milestonesApi`: `createMilestones()`, `getMilestonesByContract()`, `getFreelancerMilestones()`, `fundMilestone()`, `submitMilestone()`, `approveMilestone()`, `getSummaryForClient()`, `getSummaryForFreelancer()`
-- `user.ts` — `userApi`: `getMe()`, `updateMe()`
+- `user.ts` — `userApi`: `getMe()`, `updateMe()`, `getUserById()`, `getPortfolio()`, `addPortfolioItem()`, `updatePortfolioItem()`, `deletePortfolioItem()`
 - `users.ts` — `usersApi`: `searchFreelancers()`
 - `dashboard.ts` — `dashboardApi`: `getClientDashboard()`, `getFreelancerDashboard()`
 - `notifications.ts` — `notificationsApi`: `getAll()`, `getUnreadCount()`, `markAsRead(id)`, `markAllAsRead()`
