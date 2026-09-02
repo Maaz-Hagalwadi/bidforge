@@ -1,0 +1,11 @@
+# Copy this file to application-local.properties and fill in your values.
+# application-local.properties is gitignored — never commit real keys.
+
+resend.api-key=re_your_key_here
+stripe.secret-key=sk_test_your_key_here
+stripe.publishable-key=pk_test_your_key_here
+stripe.webhook-secret=whsec_your_secret_here
+google.client-id=your_google_client_id.apps.googleusercontent.com
+groq.api-key=gsk_your_key_here
+aws.access-key=your_aws_access_key
+aws.secret-key=your_aws_secret_key
