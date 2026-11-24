@@ -3,14 +3,14 @@ import type { ReviewResponse, CreateReviewRequest } from '@/types/review';
 
 export const reviewsApi = {
   submitReview: (contractId: string, data: CreateReviewRequest) =>
-    api.post<ReviewResponse>(`/contracts/${contractId}/review`, data).then(r => r.data),
+    api.post<ReviewResponse>(`/reviews/contracts/${contractId}`, data).then(r => r.data),
 
   getMyReview: (contractId: string) =>
-    api.get<ReviewResponse>(`/contracts/${contractId}/my-review`).then(r => r.data).catch(() => null),
+    api.get<ReviewResponse>(`/reviews/contracts/${contractId}/mine`).then(r => r.data).catch(() => null),
 
   getUserReviews: (userId: number) =>
-    api.get<ReviewResponse[]>(`/users/${userId}/reviews`).then(r => r.data),
+    api.get<ReviewResponse[]>(`/reviews/users/${userId}`).then(r => r.data),
 
   getReviewsGiven: (userId: number) =>
-    api.get<ReviewResponse[]>(`/users/${userId}/reviews/given`).then(r => r.data),
+    api.get<ReviewResponse[]>(`/reviews/users/${userId}/given`).then(r => r.data),
 };

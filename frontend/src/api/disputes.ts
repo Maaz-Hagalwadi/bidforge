@@ -3,7 +3,7 @@ import type { DisputeResponse, OpenDisputePayload } from '@/types/dispute';
 
 export const disputesApi = {
   openDispute: (contractId: string, payload: OpenDisputePayload): Promise<DisputeResponse> =>
-    axiosInstance.post(`/contracts/${contractId}/dispute`, payload).then(r => r.data),
+    axiosInstance.post(`/disputes/contracts/${contractId}`, payload).then(r => r.data),
 
   getMyDisputes: (): Promise<DisputeResponse[]> =>
     axiosInstance.get('/disputes/my').then(r => r.data),

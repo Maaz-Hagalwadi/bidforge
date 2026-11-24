@@ -11,7 +11,7 @@ import { ProfileDropdown } from '@/components/ui/ProfileDropdown';
 import { MobileNavDrawer } from '@/components/MobileNavDrawer';
 import { chatApi, type ChatRoom, type ChatMessage } from '@/api/chat';
 
-const WS_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080') + '/ws';
+const WS_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080') + '/chat-ws';
 
 function getInitials(name: string) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);

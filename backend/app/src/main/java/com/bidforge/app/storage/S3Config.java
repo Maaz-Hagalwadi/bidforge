@@ -1,6 +1,7 @@
 package com.bidforge.app.storage;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -11,26 +12,22 @@ import software.amazon.awssdk.services.s3.S3Client;
 @Configuration
 public class S3Config {
 
-    @Value("${aws.access-key}")
+    @Value("${aws.access-key:}")
     private String accessKey;
 
-    @Value("${aws.secret-key}")
+    @Value("${aws.secret-key:}")
     private String secretKey;
 
-    @Value("${aws.s3.region}")
+    @Value("${aws.s3.region:us-east-1}")
     private String region;
 
     @Bean
+    @ConditionalOnExpression("!'${aws.access-key:}'.isBlank()")
     public S3Client s3Client() {
-
-        AwsBasicCredentials credentials =
-                AwsBasicCredentials.create(accessKey, secretKey);
-
         return S3Client.builder()
                 .region(Region.of(region))
-                .credentialsProvider(
-                        StaticCredentialsProvider.create(credentials)
-                )
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKey, secretKey)))
                 .build();
     }
 }

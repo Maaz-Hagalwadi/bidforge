@@ -1,0 +1,15 @@
+# Secrets — never commit the real .env
+.env
+
+# macOS
+.DS_Store
+
+# Java build output
+target/
+
+# Redis dump
+dump.rdb
+
+# IDE
+.idea/
+*.iml

@@ -1,0 +1,95 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns:
+              - "http://localhost:*"
+              - "https://*.vercel.app"
+              - "https://bidforge.mzdev.co.in"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+            allowCredentials: true
+      routes:
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/auth/**,/users/**
+
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/notifications/**
+
+        - id: notification-ws
+          uri: ${NOTIFICATION_WS_URL:ws://localhost:8082}
+          predicates:
+            - Path=/ws/**
+
+        - id: job-service
+          uri: ${JOB_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/jobs/**,/bids/**
+
+        - id: contract-service
+          uri: ${CONTRACT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/contracts/**,/milestones/**
+
+        - id: file-service
+          uri: ${FILE_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/files/**
+
+        - id: ai-service
+          uri: ${AI_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/ai/**
+
+        - id: admin-service
+          uri: ${ADMIN_SERVICE_URL:http://localhost:8087}
+          predicates:
+            - Path=/admin/**
+
+        - id: contract-service-chat
+          uri: ${CONTRACT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/chat/**
+
+        - id: contract-service-reviews
+          uri: ${CONTRACT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/reviews/**
+
+        - id: contract-service-disputes
+          uri: ${CONTRACT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/disputes/**
+
+        - id: contract-chat-ws
+          uri: ${CONTRACT_WS_URL:ws://localhost:8084}
+          predicates:
+            - Path=/chat-ws/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always

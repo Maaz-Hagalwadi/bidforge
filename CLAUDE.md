@@ -442,3 +442,56 @@ Custom spacing: `xs`=4px, `sm`=8px, `md`=16px, `lg`=24px, `xl`=32px, `2xl`=48px,
 Key colors: `dark-navy`=`#0A192F`, `secondary`=`#0059bb`, `secondary-container`=`#0070ea`, `primary-container`=`#0d1c32`.  
 `max-w-8xl` = 1280px (standard page container). `tonal-card` utility class used for elevated card surfaces.  
 Font: `Plus Jakarta Sans`. Typography scale follows Material 3 (`h1`–`h4`, `body-sm/md/lg`, `label-sm/md`).
+
+---
+
+## Microservices Layer
+
+A separate microservices stack lives alongside the monolith. Both share the same frontend but use different backends. The microservices stack is started via Docker Compose and exposes port 8080 through an API gateway (same port as the monolith — don't run both at once).
+
+```bash
+docker compose up --build    # start all services + infra
+docker compose down          # stop everything
+```
+
+### Services
+
+| Service | Port | Database | Description |
+|---------|------|----------|-------------|
+| `api-gateway` | 8080 | — | Spring Cloud Gateway; routes by path prefix; blocks `/internal/**` from external callers |
+| `auth-service` | 8081 | `bidforge_auth` | Identity provider — issues JWTs, all other services validate tokens against it |
+| `notification-service` | 8082 | `bidforge_notifications` | Stores & delivers notifications; consumes Kafka events; WebSocket push |
+| `job-service` | 8083 | `bidforge_jobs` | Job posting, browsing, bidding, invitations |
+| `contract-service` | 8084 | `bidforge_contracts` | Contract workflow, milestones |
+
+Infrastructure: PostgreSQL 16 (port 5433), Redis 7 (port 6379), Kafka 3.9 KRaft (port 9092). All databases are created by `infra/postgres/init.sql` on first Postgres start. Each service manages its own schema via Flyway.
+
+### Routing (gateway → service)
+
+| Path prefix | Downstream |
+|-------------|------------|
+| `/auth/**`, `/users/**` | auth-service |
+| `/notifications/**`, `/ws/**` | notification-service |
+| `/jobs/**`, `/bids/**` | job-service |
+| `/contracts/**`, `/milestones/**` | contract-service |
+
+### Inter-service communication
+
+**Auth validation**: Every service has its own `JwtAuthFilter` that calls `GET /auth/validate` (auth-service) on every authenticated request. No local JWT parsing in downstream services.
+
+**Synchronous (HTTP REST)**:
+- job-service → contract-service: `POST /internal/contracts` (on bid accept)
+- contract-service → job-service: `PATCH /internal/jobs/{id}/complete` (on contract complete)
+- job-service / contract-service → notification-service: `POST /internal/notifications` (fire-and-forget)
+
+**Asynchronous (Kafka)**:
+- Topic: `notification-events` — published by job-service and contract-service; consumed by notification-service (group `notification-service`)
+- Event payload: `{ userId, userEmail, title, message, type, referenceId }`
+
+### Key architectural decisions
+
+- **Database-per-service**: no shared tables; user data denormalized (userId/email/name stored as columns, no FK to auth DB).
+- **Internal endpoints**: services expose `/internal/**` for service-to-service calls; gateway blocks these from the outside.
+- **No service registry**: downstream URLs are plain env vars (`AUTH_SERVICE_URL`, etc.); no Eureka/Consul.
+- **No circuit breaker**: HTTP client failures are logged and swallowed (non-blocking); critical paths like bid→contract are synchronous HTTP with no retry.
+- Each service builds with Maven (`./mvnw spring-boot:run` from its own directory) and has a `Dockerfile` for container builds.

@@ -1,0 +1,18 @@
+package com.bidforge.job.job;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface JobInvitationRepository extends JpaRepository<JobInvitation, UUID> {
+
+    boolean existsByJobIdAndFreelancerId(UUID jobId, Long freelancerId);
+
+    List<JobInvitation> findByJob(Job job);
+
+    @Query("SELECT i.job.id FROM JobInvitation i WHERE i.freelancerId = :freelancerId")
+    List<UUID> findJobIdsByFreelancerId(@Param("freelancerId") Long freelancerId);
+}

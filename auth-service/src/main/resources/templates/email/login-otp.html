@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>BidForge OTP</title>
+</head>
+<body style="font-family: Arial, sans-serif;">
+
+<h2>Your BidForge Login OTP</h2>
+
+<p>Your OTP code is:</p>
+
+<h1 th:text="${otp}"></h1>
+
+<p>This OTP is valid for 5 minutes.</p>
+
+<p>If you did not request this login, please ignore this email.</p>
+
+</body>
+</html>
